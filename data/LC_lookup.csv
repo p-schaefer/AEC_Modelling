@@ -1,0 +1,115 @@
+Layer,Code,Label,Priority,LDI,Unified_Code,BK_Label,BC_BroadLabel
+SOLRIS,11,Open Beach/Bar ,SOLRIS,0.05,3,OtherNatural,Natural
+SOLRIS,21,Open Sand Dune ,SOLRIS,0.05,21,OtherNatural,Natural
+SOLRIS,23,Treed Sand Dune ,SOLRIS,0.05,21,OtherNatural,Natural
+SOLRIS,41,Open Cliff and Talus ,SOLRIS,0.1,19,OtherNatural,Natural
+SOLRIS,43,Treed Cliff and Talus ,SOLRIS,0.1,19,OtherNatural,Natural
+SOLRIS,51,Open Alvar ,SOLRIS,0.1,20,OtherNatural,Natural
+SOLRIS,52,Shrub Alvar ,SOLRIS,0.1,20,OtherNatural,Natural
+SOLRIS,53,Treed Alvar ,SOLRIS,0.1,20,OtherNatural,Natural
+SOLRIS,64,Open Bedrock,SOLRIS,0.75,26,OtherNatural,Natural
+SOLRIS,65,Sparse Treed,SOLRIS,0.01,11,OtherNatural,Natural
+SOLRIS,81,Open Tallgrass Prairie ,SOLRIS,0.02,22,Grassland,Natural
+SOLRIS,82,Tallgrass Savannah ,SOLRIS,0.02,23,Grassland,Natural
+SOLRIS,83,Tallgrass Woodland ,SOLRIS,0.02,24,Grassland,Natural
+SOLRIS,90,Forest ,SOLRIS,0.01,12,MixedForest,Natural
+SOLRIS,91,Coniferous Forest ,SOLRIS,0.01,15,ConiferousForest,Natural
+SOLRIS,92,Mixed Forest ,SOLRIS,0.01,14,MixedForest,Natural
+SOLRIS,93,Deciduous Forest ,SOLRIS,0.01,13,BroadleafForest,Natural
+SOLRIS,131,Treed Swamp ,SOLRIS,0,6,Wetland,Natural
+SOLRIS,135,Thicket Swamp ,SOLRIS,0,6,Wetland,Natural
+SOLRIS,140,Fen ,SOLRIS,0,7,Wetland,Natural
+SOLRIS,150,Bog ,SOLRIS,0,8,Wetland,Natural
+SOLRIS,160,Marsh ,SOLRIS,0,5,Wetland,Natural
+SOLRIS,170,Open Water ,SOLRIS,0,1,Water,Natural
+SOLRIS,191,Plantations – Tree Cultivated ,SOLRIS,0.03,16,MixedForest,Agricultural
+SOLRIS,192,Hedge Rows ,SOLRIS,0.04,17,MixedForest,Natural
+SOLRIS,193,Tilled ,SOLRIS,0.25,28,MixedAgriculture,Agricultural
+SOLRIS,201,Transportation ,SOLRIS,0.9,27,Transportation,Urban
+SOLRIS,202,Built-Up Area - Pervious ,SOLRIS,0.3,27,UrbanLow,Urban
+SOLRIS,203,Built-Up Area - Impervious ,SOLRIS,0.75,27,UrbanHigh,Urban
+SOLRIS,204,Extraction - Aggregate ,SOLRIS,0.45,25,ExposedLandBarren,NonNatural
+SOLRIS,205,Extraction - Peat/Topsoil ,SOLRIS,0.45,25,ExposedLandBarren,NonNatural
+SOLRIS,250,Undifferentiated ,SOLRIS,0.25,28,MixedAgriculture,Agricultural
+FNLC,1,Clear Open Water,FNLC,,1,Water,Natural
+FNLC,2,Turbid Water,FNLC,,2,Water,Natural
+FNLC,3,Intertidal Mudflat,FNLC,,4,OtherNatural,Natural
+FNLC,4,Intertidal Marsh,FNLC,,5,Wetland,Natural
+FNLC,5,Supertidal Marsh,FNLC,,5,Wetland,Natural
+FNLC,6,Freshwater Marsh,FNLC,,5,Wetland,Natural
+FNLC,7,Heath,FNLC,,10,Wetland,Natural
+FNLC,8,Thicket Swamp,FNLC,,6,Wetland,Natural
+FNLC,9,Coniferous Swamp,FNLC,,6,Wetland,Natural
+FNLC,10,Deciduous Swamp,FNLC,,6,Wetland,Natural
+FNLC,11,Open Fen,FNLC,,7,Wetland,Natural
+FNLC,12,Treed Fen,FNLC,,7,Wetland,Natural
+FNLC,13,Open Bog,FNLC,,8,Wetland,Natural
+FNLC,14,Treed Bog,FNLC,,8,Wetland,Natural
+FNLC,15,Sparse Treed,FNLC,,11,MixedForest,Natural
+FNLC,16,Deciduous Treed,FNLC,,13,BroadleafForest,Natural
+FNLC,17,Mixed Treed,FNLC,,14,MixedForest,Natural
+FNLC,18,Coniferous Treed,FNLC,,15,ConiferousForest,Natural
+FNLC,19,Disturbance – Non and Sparse Woody,FNLC,,18,ExposedLandBarren,NonNatural
+FNLC,20,Disturbance – Treed and / or Shrub,FNLC,,18,ExposedLandBarren,NonNatural
+FNLC,21,Sand / Gravel / Mine Tailings,FNLC,,25,ExposedLandBarren,NonNatural
+FNLC,22,Bedrock,FNLC,,26,OtherNatural,Natural
+FNLC,23,Communi ty/ Infrastructure,FNLC,,27,UrbanLow,Urban
+FNLC,24,Agriculture,FNLC,,28,MixedAgriculture,Agricultural
+FNLC,-9,Cloud / Shadow,FNLC,,-9,NA,NA
+FNLC,-99,Other,FNLC,,-99,NA,NA
+PLC,1,Water - Deep or Clear,PLC,,1,,
+PLC,2,Water - Shallow or Sedimented,PLC,,2,,
+PLC,3,Settlement/Infrastructure,PLC,,27,,
+PLC,4,Sand/Gravel/Mine Tailings,PLC,,25,,
+PLC,5,Bedrock,PLC,,26,,
+PLC,6,Mudflats,PLC,,4,,
+PLC,7,Cuts,PLC,,18,,
+PLC,8,Burns,PLC,,18,,
+PLC,9,Regenerating Depletion,PLC,,18,,
+PLC,10,Sparse Forest,PLC,,11,,
+PLC,11,Deciduous Forest,PLC,,13,,
+PLC,12,Mixed Forest,PLC,,14,,
+PLC,13,Coniferous Forest,PLC,,15,,
+PLC,15,Intertidal Marsh,PLC,,5,,
+PLC,16,Supertidal Marsh,PLC,,5,,
+PLC,17,Inland Marsh,PLC,,5,,
+PLC,18,Deciduous Swamp,PLC,,6,,
+PLC,19,Coniferous Swamp,PLC,,6,,
+PLC,20,Open Fen,PLC,,7,,
+PLC,21,Treed Fen,PLC,,7,,
+PLC,22,Open Bog,PLC,,8,,
+PLC,23,Treed Bog,PLC,,8,,
+PLC,24,Tundra Heath,PLC,,10,,
+PLC,25,Pasture,PLC,,28,,
+PLC,27,Cropland,PLC,,28,,
+PLC,28,Other (Undefined),PLC,,-99,,
+PLC,29,Cloud and Shadow,PLC,,-9,,
+OLCC,1,Clear Open Water,OLCC,,1,Water,Natural
+OLCC,2,Turbid Water,OLCC,,2,Water,Natural
+OLCC,3,Shoreline,OLCC,,3,OtherNatural,Natural
+OLCC,4,Mudflats,OLCC,,4,OtherNatural,Natural
+OLCC,5,Marsh,OLCC,,5,Wetland,Natural
+OLCC,6,Swamp,OLCC,,6,Wetland,Natural
+OLCC,7,Fen,OLCC,,7,Wetland,Natural
+OLCC,8,Bog,OLCC,,8,Wetland,Natural
+OLCC,10,Heath,OLCC,,10,OtherNatural,Natural
+OLCC,11,Sparse Treed,OLCC,,11,MixedForest,Natural
+OLCC,12,Treed Upland,OLCC,,12,MixedForest,Natural
+OLCC,13,Deciduous Treed,OLCC,,13,BroadleafForest,Natural
+OLCC,14,Mixed Treed,OLCC,,14,MixedForest,Natural
+OLCC,15,Coniferous Treed,OLCC,,15,ConiferousForest,Natural
+OLCC,16,Plantations – Treed Cultivated,OLCC,,16,MixedForest,Agricultural
+OLCC,17,Hedge Rows,OLCC,,17,MixedForest,Natural
+OLCC,18,Disturbance,OLCC,,18,ExposedLandBarren,NonNatural
+OLCC,19,Open Cliff and Talus,OLCC,,19,OtherNatural,Natural
+OLCC,20,Alvar,OLCC,,20,OtherNatural,Natural
+OLCC,21,Sand Barren and Dune,OLCC,,21,OtherNatural,Natural
+OLCC,22,Open Tallgrass Prairie,OLCC,,22,Grassland,Natural
+OLCC,23,Tallgrass Savannah,OLCC,,23,Grassland,Natural
+OLCC,24,Tallgrass Woodland,OLCC,,24,Grassland,Natural
+OLCC,25,Sand / Gravel / Mine Tailings / Extraction,OLCC,,25,ExposedLandBarren,NonNatural
+OLCC,26,Bedrock,OLCC,,26,OtherNatural,Natural
+OLCC,27,Community / Infrastructure,OLCC,,27,UrbanDeveloped,Urban
+OLCC,28,Agriculture and Undifferentiated Rural Land Use,OLCC,,28,MixedAgriculture,Agricultural
+OLCC,-99,Other,OLCC,,-99,NA,NA
+OLCC,-9,Cloud / Shadow,OLCC,,-9,NA,NA

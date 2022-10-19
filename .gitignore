@@ -3,4 +3,5 @@
 .RData
 .Ruserdata
 data/raw/GIS/
-data/raw/HW/
+data/HW/
+data/Processed/

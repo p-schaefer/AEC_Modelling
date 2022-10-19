@@ -1,5 +1,5 @@
-# Generate GIS summaries
-#devtools::install_github("p-schaefer/hydroweight@p-schaefer-patch-1",force=TRUE)
+# Generate Hydroweights
+#devtools::install_github("p-schaefer/hydroweight@main",force=TRUE)
 
 library(tidyverse)
 library(sf)
@@ -8,45 +8,23 @@ library(whitebox)
 library(future.apply)
 library(hydroweight)
 
+#HW_save_loc<-"/mnt/storage/HW"
+HW_save_loc<-file.path("data","HW")
+if (!dir.exists(HW_save_loc)) dir.create(HW_save_loc)
+
 lu_master<-readRDS(file.path("data","lookups.rds"))
 
 myinv <- function(x) {
   (x * 0.001 + 1)^-1
 } ## 0.001 multiplier turns m to km
 
-n_cores<-8
-
 td<-tempdir()
 
+n_cores<-parallel::detectCores()
 
-# SOLRIS Processing -------------------------------------------------------
+plan(multisession)
 
-crs_master<-rast(file.path("/vsizip",
-                           file.path("data","raw","GIS",lu_master$stream_packages$AEC_Core_Package01_LakeErie.zip),
-                           gsub(".zip","",gsub("OIH-Data-Package-","IntegratedHydrology",basename(lu_master$stream_packages$AEC_Core_Package01_LakeErie.zip))),
-                           "EnforcedDEM.tif")) 
 
-solris<-rast(file.path("/vsizip",file.path("data","raw","GIS",lu_master$GIS_Pred$landcover,"SOLRIS_Version_3_0_LAMBERT.tif")))
-solris<-project(solris,crs_master,method="near")
-
-solris_lu<-lu_master$GIS_Pred$landcover_lu 
-
-ldi<-classify(solris,
-              solris_lu %>%
-                select(Code,LDI) %>%
-                as.matrix()
-)
-
-lc_class<-classify(solris,
-                   solris_lu %>%
-                     select(Code,BK_Label_code) %>%
-                     as.matrix()
-)
-
-lc_out<-list(
-  LDI=ldi,
-  LC_Class=lc_class
-)
 
 
 # AEC region processing ---------------------------------------------------
@@ -72,7 +50,7 @@ names(IH_regions)<-gsub(".zip","",basename(names(aec_region)))
 
 
 # Prepare AEC subregions data
-sub_regions<-future_lapply(names(aec_region),function(aes_nm){
+sub_regions<-lapply(names(aec_region),function(aes_nm){
   unzip(aes_nm,exdir=td)
   
   zip_cont<-list.files(file.path(td,gsub(".zip","",basename(aes_nm))),recursive = T,full.names = T)
@@ -97,15 +75,15 @@ names(sub_regions)<-gsub(".zip","",basename(names(aec_region)))
 # Process subregion hydrology data
 sub_region_out<-lapply(setNames(names(sub_regions),names(sub_regions)),function(reg_nm){
   sub_all<-sub_regions[[reg_nm]]
-  IH_list<-c(IH_regions[[reg_nm]],
-             lc_out
+  IH_list<-c(IH_regions[[reg_nm]]#,
+             #lc_out
   )
   
   lapply(setNames(names(sub_all),names(sub_all)),function(sub_nm){
     temp_path<-normalizePath(file.path(td,sub_nm),winslash="\\")
     sub_r<-sub_all[[sub_nm]]
     
-    message(paste("Processing:",sub_nm))
+    message(paste("Process subregion hydrology:",sub_nm))
     suppressWarnings(dir.create(temp_path))
     
     IH_list_temp<-map(IH_list,~crop(.,vect(sub_r$boundary),mask=T))
@@ -197,7 +175,7 @@ sub_region_PourPoint<-lapply(setNames(names(sub_region_out),names(sub_region_out
   sub_all<-sub_region_out[[reg_nm]]
   
   lapply(setNames(names(sub_all),names(sub_all)),function(sub_nm){
-    message(paste("Processing:",sub_nm))
+    message(paste("Identify Pour Points:",sub_nm))
     
     temp_path<-normalizePath(file.path(td,sub_nm),winslash="\\")
     sub_r<-sub_all[[sub_nm]]
@@ -253,26 +231,27 @@ sub_region_PourPoint<-lapply(setNames(names(sub_region_out),names(sub_region_out
   
 })
 
-# Generate Hydroweights
+# Generate Hydroweights --------------------------------------------------------
+
 plan(list(tweak(multisession, workers = 2), tweak(multisession, workers = 8)))
 
 fl<-list.files(td,"AEC_Core$")
 names(fl)<-fl
 HW_out<-future_lapply(fl,function(sub_nm){
   temp_path<-normalizePath(file.path(td,sub_nm),winslash="\\")
-  
+
   loc<-sapply(sub_region_PourPoint,function(x) names(x)==sub_nm)
   
+
   pp_all<-sub_region_PourPoint[[names(sub_region_PourPoint)[sapply(loc,any)]]][[sub_nm]]
-  
-  #pp_all<-head(pp_all)#,round(length(pp1_split)*0.01)
   
   pp1_split<-split(pp_all,pp_all$ProvReachID)
   
   
   future_lapply(pp1_split,function(pp_sub){
 
-    out_file<-file.path(file.path("data","HW",paste0(pp_sub$ProvReachID,"_inv_distances.rds")))
+    
+    out_file<-file.path(file.path(HW_save_loc,paste0(pp_sub$ProvReachID,"_inv_distances.rds")))
     
     if (file.exists(out_file)) return(T)
     
@@ -284,26 +263,31 @@ HW_out<-future_lapply(fl,function(sub_nm){
       pour_pts = paste0(pp_sub$ProvReachID,"-temp_pnt.shp"),
       output = paste0(pp_sub$ProvReachID,"-temp_catch.tif")
     )
+    # 
+    # rcat<-st_as_sf(rast(file.path(temp_path,paste0(pp_sub$ProvReachID,"-temp_catch.tif"))) %>% as.polygons())
     
-    rcat<-st_as_sf(rast(file.path(temp_path,paste0(pp_sub$ProvReachID,"-temp_catch.tif"))) %>% as.polygons())
-    
-    hw1 <- try(suppressMessages(hydroweight::hydroweight(
+    hw1 <- try(suppressMessages(hydroweight(
       hydroweight_dir = temp_path,
       target_O = pp_sub,
       target_S = "strm_grid.tif",
       target_uid = pp_sub$ProvReachID,
-      clip_region = rcat,
-      OS_combine = F,
+      clip_region = paste0(pp_sub$ProvReachID,"-temp_catch.tif"),
+      OS_combine = T,
       dem = "fill_enf_dem.tif",
       flow_accum = "flow_accu.tif",
       weighting_scheme = c(
-        "lumped", "iFLO", "HAiFLO",
-        "iFLS", "HAiFLS"
+        "lumped",
+        "iEucO",
+        "iFLO",
+        "HAiFLO",
+        "iEucS",
+        "iFLS",
+        "HAiFLS"
       ),
       inv_function = myinv
     )),silent=T)
     
-    if (inherits(res, "try-error")) return(F)
+    if (inherits(hw1, "try-error")) return(F)
     
     fc<-file.copy(file.path(temp_path,paste0(pp_sub$ProvReachID,"_inv_distances.rds")),
                   out_file,
@@ -321,67 +305,66 @@ HW_out<-future_lapply(fl,function(sub_nm){
 })
 
 
-
-
-fl<-list.files(file.path(file.path("data","HW"),"_inv_distances.rds"))
-
-hwa_numeric <- suppressMessages(hydroweight_attributes(
-  loi = raster::raster(ldi),
-  loi_attr_col = "LDI",
-  loi_numeric = TRUE,
-  loi_numeric_stats = c("distwtd_mean", "distwtd_sd", "mean", "sd", "median", "min", "max"),
-  roi = rcat,
-  roi_uid = pp_sub$ProvReachID,
-  roi_uid_col = "ProvReachID",
-  distance_weights = hw1,
-  remove_region = NULL,
-  return_products = FALSE
-))
-
-hwa_categorical <- suppressMessages(hydroweight_attributes(
-  loi = raster::raster(lc_class),
-  loi_attr_col = "LC_Class",
-  loi_numeric = FALSE,
-  roi = rcat,
-  roi_uid = pp_sub$ProvReachID,
-  roi_uid_col = "ProvReachID",
-  distance_weights = hw1,
-  remove_region = NULL,
-  return_products = FALSE
-))
-
-hw2<-list()
-hw2$LDI<-hwa_numeric
-hw2$LC_Class<-hwa_categorical
-return(hw2)
-
-})
-
-})
-
-})
+# Calculate Weighted Landscape Attributes ---------------------------------
 
 
 
+if (F){
+  fl<-list.files(file.path(file.path("data","HW"),"_inv_distances.rds"))
+  
+  hwa_numeric <- suppressMessages(hydroweight_attributes(
+    loi = raster::raster(ldi),
+    loi_attr_col = "LDI",
+    loi_numeric = TRUE,
+    loi_numeric_stats = c("distwtd_mean", "distwtd_sd", "mean", "sd", "median", "min", "max"),
+    roi = rcat,
+    roi_uid = pp_sub$ProvReachID,
+    roi_uid_col = "ProvReachID",
+    distance_weights = hw1,
+    remove_region = NULL,
+    return_products = FALSE
+  ))
+  
+  hwa_categorical <- suppressMessages(hydroweight_attributes(
+    loi = raster::raster(lc_class),
+    loi_attr_col = "LC_Class",
+    loi_numeric = FALSE,
+    roi = rcat,
+    roi_uid = pp_sub$ProvReachID,
+    roi_uid_col = "ProvReachID",
+    distance_weights = hw1,
+    remove_region = NULL,
+    return_products = FALSE
+  ))
+  
+  hw2<-list()
+  hw2$LDI<-hwa_numeric
+  hw2$LC_Class<-hwa_categorical
+  return(hw2)
+  
+  
+  HW_out<-map_dfr(hw,~.$LDI) %>% #this wont work as is, need to change LC_Class names back to real names
+    left_join(
+      map_dfr(hw,~.$LC_Class)
+    )
+  
+  out2<-s1 %>% 
+    tibble() %>% 
+    left_join(out)
+  
+  return(out2)
+  
+  
+}
 
-HW_out<-map_dfr(hw,~.$LDI) %>% #this wont work as is, need to change LC_Class names back to real names
-  left_join(
-    map_dfr(hw,~.$LC_Class)
-  )
-
-out2<-s1 %>% 
-  tibble() %>% 
-  left_join(out)
-
-return(out2)
 
 
-#browser()
 
-#   return(sub_region_out)
-#   
-# })
+
+
+
+
+
+
 
 plan(sequential)
-
-
