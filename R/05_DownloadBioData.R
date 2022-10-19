@@ -1,7 +1,10 @@
 source("R/00_Functions/FWIS_Functions.R")
 library(tidyverse)
 
-fwis_login<-wideLogin("http://www.comap.ca/fwis/wideR.php","pscha","P@tr!ck33")
+username<-""
+password<-""
+
+fwis_login<-wideLogin("http://www.comap.ca/fwis/wideR.php",username,password)
 
 # Fish Download -----------------------------------------------------------
 

@@ -15,7 +15,7 @@ td<-tempdir()
 
 n_cores<-availableCores(logical = F)-1
 
-plan(multisession(workers=8))
+plan(multisession(workers=4))
 
 # AEC region processing ---------------------------------------------------
 
@@ -133,47 +133,7 @@ sub_regions_out<-map2(sub_regions,IH_regions,
                           )
                           
                           return(file.path("data","Processed","Hydrology",paste0(aec_sub$boundary$WorkUnitName,".zip")))
-                          # ihydro_out<-generate_vectors(
-                          #   input=ihydro_out,
-                          #   #points=file.path(save_dir, "sites.shp"), # These are optional
-                          #   #site_id_col="site_id", # Column name in points layer that corresponds to 
-                          #   #                      # unique IDs that will be available in data products
-                          #   #snap_distance=100L, # points that are more than 100m from closest stream are excluded
-                          #   #break_on_noSnap =F, # default is to stop when any points don't snap, this will ignore that
-                          #   return_products=F,
-                          #   temp_dir=NULL,
-                          #   verbose=F
-                          # ) 
-                          # 
-                          # ihydro_out<-trace_flowpaths(
-                          #   input=ihydro_out,
-                          #   return_products=F,
-                          #   temp_dir=NULL,
-                          #   verbose=F
-                          # )
-                          
-                          # ihydro_out<-ihydro::process_hydrology(
-                          #   dem=file.path(temp_path,"fill_enf_dem.tif"),
-                          #   output_filename=file.path("data","Processed","Hydrology",
-                          #                             paste0(aec_sub$boundary$WorkUnitName,".zip")),
-                          #   depression_corr = "fill",
-                          #   calc_catch ="none",
-                          #   pwise_dist = F,
-                          #   threshold=1000L,
-                          #   compress=T,
-                          #   verbose=T
-                          # )
-                          
-                          # p1<-ihydro::generate_pwisedist(
-                          #   input=list(outfile=file.path("data","Processed","Hydrology",
-                          #                                paste0("w01_Lake_Erie_West",".zip"))),
-                          #   return_products=F,
-                          #   temp_dir=NULL,
-                          #   verbose=T
-                          # )
-                          
-                          #return(ihydro_out)
-                          
+
                         })
                       })
 
