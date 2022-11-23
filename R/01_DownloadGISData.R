@@ -24,22 +24,54 @@ AEC_list<-list(
 
 
 # Land Cover --------------------------------------------------------------
+# Only Ontario_Landcover_compilation used for now
 
 LC_list<-list(
-  Ontario_Landcover_compilation="https://ws.gisetl.lrc.gov.on.ca/fmedatadownload/Packages/OntarioLandCoverComp-v2.zip",
-  SOLRIS="https://ws.gisetl.lrc.gov.on.ca/fmedatadownload/Packages/SOLRIS_Version_3_0.zip",
-  Far_North_LC="https://ws.gisetl.lrc.gov.on.ca/fmedatadownload/Packages/FarNorthLandCover.zip",
-  Provincial_LC="https://ws.gisetl.lrc.gov.on.ca/fmedatadownload/Packages/Provincial-Landcover-2000.zip",
-  Canada_landcover="https://ftp.maps.canada.ca/pub/nrcan_rncan/Land-cover_Couverture-du-sol/canada-landcover_canada-couverture-du-sol/CanadaLandcover2015.zip"
+  Ontario_Landcover_compilation="https://ws.gisetl.lrc.gov.on.ca/fmedatadownload/Packages/OntarioLandCoverComp-v2.zip"#,
+  # SOLRIS="https://ws.gisetl.lrc.gov.on.ca/fmedatadownload/Packages/SOLRIS_Version_3_0.zip",
+  # Far_North_LC="https://ws.gisetl.lrc.gov.on.ca/fmedatadownload/Packages/FarNorthLandCover.zip",
+  # Provincial_LC="https://ws.gisetl.lrc.gov.on.ca/fmedatadownload/Packages/Provincial-Landcover-2000.zip",
+  # Canada_landcover_2010="https://ftp.maps.canada.ca/pub/nrcan_rncan/Land-cover_Couverture-du-sol/canada-landcover_canada-couverture-du-sol/CanadaLandcover2010.zip",
+  # Canada_landcover_2015="https://ftp.maps.canada.ca/pub/nrcan_rncan/Land-cover_Couverture-du-sol/canada-landcover_canada-couverture-du-sol/CanadaLandcover2015.zip",
+  # Canada_landcover_2015="https://datacube-prod-data-public.s3.ca-central-1.amazonaws.com/store/land/landcover/landcover-2020-classification.tif"
 )
 
+ESRI_LC_list<-list(
+  ESRI_LC_17T_2017="https://lulctimeseries.blob.core.windows.net/lulctimeseriespublic/lc2017/17T_20170101-20180101.tif",
+  ESRI_LC_17T_2018="https://lulctimeseries.blob.core.windows.net/lulctimeseriespublic/lc2018/17T_20180101-20190101.tif",
+  ESRI_LC_17T_2019="https://lulctimeseries.blob.core.windows.net/lulctimeseriespublic/lc2019/17T_20190101-20200101.tif",
+  ESRI_LC_17T_2020="https://lulctimeseries.blob.core.windows.net/lulctimeseriespublic/lc2020/17T_20200101-20210101.tif",
+  ESRI_LC_17T_2021="https://lulctimeseries.blob.core.windows.net/lulctimeseriespublic/lc2021/17T_20210101-20220101.tif",
+  ESRI_LC_18T_2017="https://lulctimeseries.blob.core.windows.net/lulctimeseriespublic/lc2017/18T_20170101-20180101.tif",
+  ESRI_LC_18T_2018="https://lulctimeseries.blob.core.windows.net/lulctimeseriespublic/lc2018/18T_20180101-20190101.tif",
+  ESRI_LC_18T_2019="https://lulctimeseries.blob.core.windows.net/lulctimeseriespublic/lc2019/18T_20190101-20200101.tif",
+  ESRI_LC_18T_2020="https://lulctimeseries.blob.core.windows.net/lulctimeseriespublic/lc2020/18T_20200101-20210101.tif",
+  ESRI_LC_18T_2021="https://lulctimeseries.blob.core.windows.net/lulctimeseriespublic/lc2021/18T_20210101-20220101.tif",
+  ESRI_LC_17U_2017="https://lulctimeseries.blob.core.windows.net/lulctimeseriespublic/lc2017/17U_20170101-20180101.tif",
+  ESRI_LC_17U_2018="https://lulctimeseries.blob.core.windows.net/lulctimeseriespublic/lc2018/17U_20180101-20190101.tif",
+  ESRI_LC_17U_2019="https://lulctimeseries.blob.core.windows.net/lulctimeseriespublic/lc2019/17U_20190101-20200101.tif",
+  ESRI_LC_17U_2020="https://lulctimeseries.blob.core.windows.net/lulctimeseriespublic/lc2020/17U_20200101-20210101.tif",
+  ESRI_LC_17U_2021="https://lulctimeseries.blob.core.windows.net/lulctimeseriespublic/lc2021/17U_20210101-20220101.tif",
+  ESRI_LC_16U_2017="https://lulctimeseries.blob.core.windows.net/lulctimeseriespublic/lc2017/16U_20170101-20180101.tif",
+  ESRI_LC_16U_2018="https://lulctimeseries.blob.core.windows.net/lulctimeseriespublic/lc2018/16U_20180101-20190101.tif",
+  ESRI_LC_16U_2019="https://lulctimeseries.blob.core.windows.net/lulctimeseriespublic/lc2019/16U_20190101-20200101.tif",
+  ESRI_LC_16U_2020="https://lulctimeseries.blob.core.windows.net/lulctimeseriespublic/lc2020/16U_20200101-20210101.tif",
+  ESRI_LC_16U_2021="https://lulctimeseries.blob.core.windows.net/lulctimeseriespublic/lc2021/16U_20210101-20220101.tif",
+  ESRI_LC_15U_2017="https://lulctimeseries.blob.core.windows.net/lulctimeseriespublic/lc2017/15U_20170101-20180101.tif",
+  ESRI_LC_15U_2018="https://lulctimeseries.blob.core.windows.net/lulctimeseriespublic/lc2018/15U_20180101-20190101.tif",
+  ESRI_LC_15U_2019="https://lulctimeseries.blob.core.windows.net/lulctimeseriespublic/lc2019/15U_20190101-20200101.tif",
+  ESRI_LC_15U_2020="https://lulctimeseries.blob.core.windows.net/lulctimeseriespublic/lc2020/15U_20200101-20210101.tif",
+  ESRI_LC_15U_2021="https://lulctimeseries.blob.core.windows.net/lulctimeseriespublic/lc2021/15U_20210101-20220101.tif"
+
+)
 
 # Combine Lists -----------------------------------------------------------
 
 master_dl<-list(
   IH=IH_list,
   AEC=AEC_list,
-  LC=LC_list
+  LC=LC_list,
+  ESRI=ESRI_LC_list
 )
 
 

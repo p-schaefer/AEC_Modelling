@@ -1,8 +1,16 @@
 source("R/00_Functions/FWIS_Functions.R")
 library(tidyverse)
 
-username<-""
-password<-""
+
+# Put in your username and password:
+# username<-""
+# password<-""
+
+# You can store your username and password locally by
+# adding them to file.edit("~/.Renviron")
+username<-Sys.getenv("FWIS_username")
+password<-Sys.getenv("FWIS_password")
+
 
 fwis_login<-wideLogin("http://www.comap.ca/fwis/wideR.php",username,password)
 

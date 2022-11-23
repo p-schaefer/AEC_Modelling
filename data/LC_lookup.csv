@@ -1,4 +1,4 @@
-Layer,Code,Label,Priority,LDI,Unified_Code,BK_Label,BC_BroadLabel
+Layer,Code,Label,Priority,LDI,Unified_Code,LabelG1,LabelG2
 SOLRIS,11,Open Beach/Bar ,SOLRIS,0.05,3,OtherNatural,Natural
 SOLRIS,21,Open Sand Dune ,SOLRIS,0.05,21,OtherNatural,Natural
 SOLRIS,23,Treed Sand Dune ,SOLRIS,0.05,21,OtherNatural,Natural
@@ -57,33 +57,33 @@ FNLC,23,Communi ty/ Infrastructure,FNLC,,27,UrbanLow,Urban
 FNLC,24,Agriculture,FNLC,,28,MixedAgriculture,Agricultural
 FNLC,-9,Cloud / Shadow,FNLC,,-9,NA,NA
 FNLC,-99,Other,FNLC,,-99,NA,NA
-PLC,1,Water - Deep or Clear,PLC,,1,,
-PLC,2,Water - Shallow or Sedimented,PLC,,2,,
-PLC,3,Settlement/Infrastructure,PLC,,27,,
-PLC,4,Sand/Gravel/Mine Tailings,PLC,,25,,
-PLC,5,Bedrock,PLC,,26,,
-PLC,6,Mudflats,PLC,,4,,
-PLC,7,Cuts,PLC,,18,,
-PLC,8,Burns,PLC,,18,,
-PLC,9,Regenerating Depletion,PLC,,18,,
-PLC,10,Sparse Forest,PLC,,11,,
-PLC,11,Deciduous Forest,PLC,,13,,
-PLC,12,Mixed Forest,PLC,,14,,
-PLC,13,Coniferous Forest,PLC,,15,,
-PLC,15,Intertidal Marsh,PLC,,5,,
-PLC,16,Supertidal Marsh,PLC,,5,,
-PLC,17,Inland Marsh,PLC,,5,,
-PLC,18,Deciduous Swamp,PLC,,6,,
-PLC,19,Coniferous Swamp,PLC,,6,,
-PLC,20,Open Fen,PLC,,7,,
-PLC,21,Treed Fen,PLC,,7,,
-PLC,22,Open Bog,PLC,,8,,
-PLC,23,Treed Bog,PLC,,8,,
-PLC,24,Tundra Heath,PLC,,10,,
-PLC,25,Pasture,PLC,,28,,
-PLC,27,Cropland,PLC,,28,,
-PLC,28,Other (Undefined),PLC,,-99,,
-PLC,29,Cloud and Shadow,PLC,,-9,,
+PLC,1,Water - Deep or Clear,PLC,,1,Water,Natural
+PLC,2,Water - Shallow or Sedimented,PLC,,2,Water,Natural
+PLC,3,Settlement/Infrastructure,PLC,,27,UrbanLow,Urban
+PLC,4,Sand/Gravel/Mine Tailings,PLC,,25,ExposedLandBarren,NonNatural
+PLC,5,Bedrock,PLC,,26,OtherNatural,Natural
+PLC,6,Mudflats,PLC,,4,OtherNatural,Natural
+PLC,7,Cuts,PLC,,18,ExposedLandBarren,NonNatural
+PLC,8,Burns,PLC,,18,ExposedLandBarren,NonNatural
+PLC,9,Regenerating Depletion,PLC,,18,ExposedLandBarren,NonNatural
+PLC,10,Sparse Forest,PLC,,11,MixedForest,Natural
+PLC,11,Deciduous Forest,PLC,,13,BroadleafForest,Natural
+PLC,12,Mixed Forest,PLC,,14,MixedForest,Natural
+PLC,13,Coniferous Forest,PLC,,15,ConiferousForest,Natural
+PLC,15,Intertidal Marsh,PLC,,5,Wetland,Natural
+PLC,16,Supertidal Marsh,PLC,,5,Wetland,Natural
+PLC,17,Inland Marsh,PLC,,5,Wetland,Natural
+PLC,18,Deciduous Swamp,PLC,,6,Wetland,Natural
+PLC,19,Coniferous Swamp,PLC,,6,Wetland,Natural
+PLC,20,Open Fen,PLC,,7,Wetland,Natural
+PLC,21,Treed Fen,PLC,,7,Wetland,Natural
+PLC,22,Open Bog,PLC,,8,Wetland,Natural
+PLC,23,Treed Bog,PLC,,8,Wetland,Natural
+PLC,24,Tundra Heath,PLC,,10,OtherNatural,Natural
+PLC,25,Pasture,PLC,,28,MixedAgriculture,Agricultural
+PLC,27,Cropland,PLC,,28,MixedAgriculture,Agricultural
+PLC,28,Other (Undefined),PLC,,-99,NA,NA
+PLC,29,Cloud and Shadow,PLC,,-9,NA,NA
 OLCC,1,Clear Open Water,OLCC,,1,Water,Natural
 OLCC,2,Turbid Water,OLCC,,2,Water,Natural
 OLCC,3,Shoreline,OLCC,,3,OtherNatural,Natural
@@ -111,5 +111,14 @@ OLCC,25,Sand / Gravel / Mine Tailings / Extraction,OLCC,,25,ExposedLandBarren,No
 OLCC,26,Bedrock,OLCC,,26,OtherNatural,Natural
 OLCC,27,Community / Infrastructure,OLCC,,27,UrbanDeveloped,Urban
 OLCC,28,Agriculture and Undifferentiated Rural Land Use,OLCC,,28,MixedAgriculture,Agricultural
-OLCC,-99,Other,OLCC,,-99,NA,NA
-OLCC,-9,Cloud / Shadow,OLCC,,-9,NA,NA
+OLCC,-99,Other,OLCC,,-99,Other,Natural
+OLCC,-9,Cloud / Shadow,OLCC,,-9,Other,Natural
+ESRI,1,Water,,,,,
+ESRI,2,Trees,,,,,
+ESRI,4,Flooded Vegetation,,,,,
+ESRI,5,Crops,,,,,
+ESRI,7,Built Area,,,,,
+ESRI,8,Bare Ground,,,,,
+ESRI,9,Snow,,,,,
+ESRI,10,Clouds,,,,,
+ESRI,11,Rangeland,,,,,
