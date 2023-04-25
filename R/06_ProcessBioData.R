@@ -13,8 +13,6 @@ colnames(lookup_tbl)[colnames(lookup_tbl)=="OMNR.Code"]<-"SpeciesCode"
 
 raw_tbl<-read.csv(file.path("data","raw","Bio","tblFishSummaryOfTotalCatches.csv"))
 
-
-
 # Setup Sample Event table ------------------------------------------------
 
 SampleEventID<-raw_tbl[!is.na(raw_tbl$UsableArea) & raw_tbl$UsableArea>0,
@@ -51,8 +49,51 @@ sub_tbl<-sub_tbl[sub_tbl$NumberOfFish>0,] %>%
   ungroup() %>% 
   na.omit()
 
-atr_tbl<-left_join(sub_tbl,lookup_tbl,by="SpeciesCode")
+atr_tbl<-left_join(sub_tbl,lookup_tbl,by="SpeciesCode") 
 
+
+
+# Taxa Tables -------------------------------------------------------------
+
+taxa_tbl <- atr_tbl %>% 
+  group_by(SampleEventID,SampleDate) %>% 
+  mutate(Comm_Biomass=sum(EstimatedBiomass,na.rm=T),
+         Comm_Abundance=sum(NumberOfFish,na.rm=T),
+         Perc_Biomass=EstimatedBiomass/Comm_Biomass,
+         Perc_Abundance=NumberOfFish/Comm_Abundance
+  ) %>% 
+  ungroup() %>% 
+  select(SampleEventID,SampleDate,SpeciesCode,Comm_Biomass,Comm_Abundance,Perc_Biomass,Perc_Abundance) %>% 
+  mutate(SpeciesCode=factor(SpeciesCode)) %>% 
+  group_by(SampleEventID,SampleDate) %>% 
+  complete(SpeciesCode,fill = list(Comm_Biomass=0,Comm_Abundance=0,Perc_Biomass=0,Perc_Abundance=0)) %>% 
+  ungroup() %>% 
+  mutate(Comm_Biomass=ifelse(Perc_Abundance>0 & Comm_Biomass==0,NA_real_,Comm_Biomass)) %>% 
+  mutate(Perc_Biomass=ifelse(Perc_Abundance>0 & Perc_Biomass==0,NA_real_,Perc_Biomass))
+  
+
+# No Catch Table ----------------------------------------------------------
+
+no_catch_tbl<-SampleEventID %>% 
+  as_tibble() %>% 
+  select(SampleEventID,SampleDate) %>% 
+  left_join(taxa_tbl,by = c("SampleEventID", "SampleDate")) %>% 
+  filter(is.na(Comm_Biomass)) %>% 
+  mutate_at(vars(Comm_Biomass:Perc_Abundance),~0) %>% 
+  mutate(SpeciesCode=atr_tbl$SpeciesCode[[1]]) %>% 
+  mutate(SpeciesCode=factor(SpeciesCode,levels=unique(taxa_tbl$SpeciesCode))) %>% 
+  group_by(SampleEventID,SampleDate) %>% 
+  complete(SpeciesCode,fill = list(Comm_Biomass=0,Comm_Abundance=0,Perc_Biomass=0,Perc_Abundance=0)) %>% 
+  ungroup() 
+
+lookup_tbl2<-read_csv(file.path("data","fish_lookup.csv"))
+colnames(lookup_tbl2)[colnames(lookup_tbl2)=="OMNR Code"]<-"SpeciesCode"
+
+taxa_tbl<-taxa_tbl %>% 
+  bind_rows(no_catch_tbl) %>% 
+  mutate(SpeciesCode=as.character(SpeciesCode)) %>% 
+  mutate(SpeciesCode=as.integer(SpeciesCode)) %>% 
+  left_join(lookup_tbl2,by="SpeciesCode")
 
 # Calculate endpoints -----------------------------------------------------
 
@@ -179,9 +220,11 @@ ep_tbl<-atr_tbl %>%
     Rep_Lith_Abuperc=sum(NumberOfFish[grepl("Litho",Reproductive.Guild)],na.rm=T)/sum(NumberOfFish,na.rm=T),
     Rep_Lith_Rich=length(NumberOfFish[grepl("Litho",Reproductive.Guild)])
   ) %>% 
-  ungroup() 
+  ungroup() %>% 
+  mutate(Comm_Biomass=if_else(Comm_Biomass==0,NA_real_,Comm_Biomass))
 
-# Add stations with no fish
+# No Catch Table ----------------------------------------------------------
+
 no_catch_tbl<-SampleEventID %>% 
   select(SampleEventID,SampleDate) %>% 
   left_join(ep_tbl,by = c("SampleEventID", "SampleDate")) %>% 
@@ -193,7 +236,8 @@ ep_tbl[sapply(ep_tbl,is.nan)]<-NA
 ep_tbl<-ep_tbl %>% 
   bind_rows(no_catch_tbl)
 
-# Endpoint Index
+
+# Endpoint Index ----------------------------------------------------------
 ep_tbl_lng<-ep_tbl %>% 
   gather("Endpoint","Value",-SampleEventID,-SampleDate) %>% 
   mutate(Value=ifelse(is.nan(Value),NA,Value)) %>% 
@@ -269,50 +313,40 @@ param_tbl_out<-ep_tbl_lng %>%
   select(Endpoint_group,Endpoint_subgroup,Endpoint_type,Endpoint) %>% 
   distinct()
 
+taxa_tbl_out<-taxa_tbl %>% 
+  left_join(SampleEventID) %>% 
+  select(StreamName, StreamCode, SiteCode, Latitude, Longitude, SampleEventType, SampleDate,SampleEventID,everything())
+
+
 wb = createWorkbook()
 
 addWorksheet(wb, "Endpoints")
 addWorksheet(wb, "Results - Wide")
 addWorksheet(wb, "Results - Long")
+addWorksheet(wb, "Taxa Table")
 
 writeData(wb,param_tbl_out, sheet="Endpoints", rowNames =FALSE)
 writeData(wb,ep_tbl_out, sheet="Results - Wide", rowNames =FALSE)
 writeData(wb,ep_tbl_lng_out, sheet="Results - Long", rowNames =FALSE)
+writeData(wb,taxa_tbl_out, sheet="Taxa Table", rowNames =FALSE)
 
 saveWorkbook(wb, file.path("data","Processed","Bio","Fish_Endpoints.xlsx"),overwrite = T)
 
 
 # Generate Point Shapefile ------------------------------------------------
-
 library(sf)
 library(tidyverse)
 
-td<-tempdir()
-lu_master<-readRDS(file.path("data","lookups.rds"))
-
-hydrology<-readRDS(file.path("data","Processed","Hydrology","Processed_Hydrology.rds"))
-
-boundaries<-map_dfr(hydrology,~map_dfr(.,~.$boundary))
-streams<-map_dfr(hydrology,~map_dfr(.,~filter(.$clean_stream_line, ProvReachID %in% .$pour_points$ProvReachID))) %>% 
-  filter(Network_Line_Type !="Shoreline Virtual Connector",
-         Network_Line_Type != "Virtual Connector"
-         )
-
 fish_ep<-readxl::read_excel(file.path("data","Processed","Bio","Fish_Endpoints.xlsx"),"Results - Wide")
 
-pnts<-fish_ep %>% 
+pnts<-fish_ep %>%
   mutate(SampleDate=as.Date(SampleDate)) %>%
-  filter(SampleDate>=as.Date("2000-01-01")) %>% 
-  select(StreamName:SampleEventID) %>% 
-  distinct() %>% 
-  st_as_sf(coords=c("Longitude","Latitude"),crs=st_crs(4326),remove = F) %>% 
-  st_transform(st_crs(streams)) %>% 
-  st_join(streams,join =nngeo::st_nn,k=1,maxdist=60,parallel = 4)
+  #filter(SampleDate>=as.Date("2000-01-01")) %>%
+  select(StreamName:SampleEventID) %>%
+  distinct() %>%
+  st_as_sf(coords=c("Longitude","Latitude"),crs=st_crs(4326),remove = F) %>%
+  st_transform(st_crs(3161)) 
 
-pnts %>% 
-  select(StreamName:Longitude,ProvReachID) %>% 
-  distinct() %>% 
-  mapview::mapview(zcol="ProvReachID")
 
 saveRDS(pnts,file.path("data","Processed","SamplePoint","Fish_points.rds"))
 write_sf(pnts,file.path("data","Processed","SamplePoint","Fish_points.shp"))

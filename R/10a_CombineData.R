@@ -2,9 +2,6 @@ library(tidyverse)
 library(sf)
 library(future.apply)
 
-HW_save_loc<-file.path("data","HW")
-if (!dir.exists(HW_save_loc)) dir.create(HW_save_loc)
-
 lu_master<-readRDS(file.path("data","lookups.rds"))
 
 td<-tempdir()
@@ -56,11 +53,12 @@ sub_regions<-future_lapply(names(aec_region),function(aes_nm){
 
 # Identify Pour Points
 #plan(multisession(workers=8))
-sub_region_out<-lapply(sub_regions,function(sub_regions_1){
+sub_region_out<-future_lapply(sub_regions,function(sub_regions_1){
   
   lapply(sub_regions_1,function(sub_r){
-    browser()
+    #browser()
     ihydro_r<-fl[grepl(sub_r$boundary$WorkUnitName,fl)]
+    ihydro_r<-ihydro_r[!grepl("loi",ihydro_r)]
     
     con <- DBI::dbConnect(RSQLite::SQLite(), ihydro_r)
     
@@ -76,76 +74,66 @@ sub_region_out<-lapply(sub_regions,function(sub_regions_1){
     ihydro_points<-read_sf(ihydro_r,"stream_points")
     ihydro_links<-read_sf(ihydro_r,"stream_links")
     
-
+    
     # Adds a buffer around the stream network
     aec_streams_buff<-sub_r$stream %>% 
       filter(!Network_Line_Type %in% c("Shoreline Virtual Connector","Virtual Connector")) %>% 
-      st_buffer(29,endCapStyle="FLAT") %>% 
-      st_buffer(-3,endCapStyle="SQUARE") 
+      st_buffer(60,endCapStyle="FLAT") %>% 
+      st_buffer(-45,endCapStyle="SQUARE") %>% 
+      select(ProvReachID)
     
+    ihydro_streams_buff<-ihydro_streams %>% 
+      st_buffer(60,endCapStyle="FLAT") %>% 
+      st_buffer(-45,endCapStyle="SQUARE") %>% 
+      select(link_id)
     
-    t_out<-ihydro_links %>% 
-      left_join(attr %>% select(link_id,trib_id,USChnLn_Fr), by = "link_id") %>% 
-      st_buffer(dis=22) %>% 
-      st_join(aec_streams_buff %>% 
-                select(ProvReachID,
-                       Network_Line_Type,
-                       Temperature_30yr_MeanJuly,
-                       Turbidity_percUpstreamChannel_TurbGeo,
-                       Slope_ReachChannel_Percent,
-                       BFI_RCA,
-                       BFI_UCA,
-                       GDDair_UpstreamCatchmentMean,
-                       Upstream_Catchment_Area,
-                       Lake_Influence_Code,
-                       Wadeability
-                )
-              ,largest = TRUE) %>% 
-      mutate(ProvReachID_fin=ProvReachID) %>% 
-      group_by(ProvReachID) %>% 
-      mutate(ProvReachID_fin=case_when(
-        trib_id==trib_id[USChnLn_Fr==max(USChnLn_Fr)] ~ ProvReachID_fin,
-        T ~ NA_character_
-      )) %>% 
-      ungroup() %>% 
-      mutate(ProvReachID=ProvReachID_fin) %>% 
-      select(-ProvReachID_fin) %>% 
+    streams_join1<- aec_streams_buff %>% 
+      st_join(ihydro_streams_buff,
+              largest = TRUE) %>% 
       as_tibble() %>% 
-      select(-geom) %>% 
-      group_by(trib_id) %>% 
-      arrange(desc(USChnLn_Fr)) %>% 
-      fill(ProvReachID,.direction="down") %>% 
-      ungroup() %>% 
-      arrange(link_id)
+      select(link_id,ProvReachID)
     
-    bio_pnt_sub<-bio_pnt  %>% 
-      st_join(ihydro_points %>%
-                st_buffer(dis=22) %>% 
-                st_join(aec_streams_buff %>%
-                          filter(!Network_Line_Type %in% c("Shoreline Virtual Connector","Virtual Connector")) %>% 
-                          select(Network_Line_Type),
-                        largest = TRUE) %>% 
-                filter(!is.na(Network_Line_Type)) %>% 
-                select(-Network_Line_Type) %>% 
-                left_join(attr_all %>%
-                            select(ID,link_id),
-                          by="ID"),
-              join =nngeo::st_nn,k=1,maxdist=60,parallel =8) 
+    streams_join2<- ihydro_streams_buff %>% 
+      st_join(aec_streams_buff,
+              largest = TRUE) %>% 
+      as_tibble() %>% 
+      select(link_id,ProvReachID) %>% 
+      left_join(attr %>% select(link_id,USChnLn_Fr) %>% mutate(link_id=as.numeric(link_id)))
     
-    bio_pnt_sub2<-bio_pnt_sub %>% 
-      filter(!is.na(link_id)) %>% 
-      mutate(WorkUnitName=sub_r$boundary$WorkUnitName)
+    stream_joins_final<-full_join(streams_join1,streams_join2) %>%
+      filter(!is.na(link_id)) %>%
+      filter(!is.na(ProvReachID)) %>% 
+      group_by(ProvReachID) %>% 
+      summarize(link_id=unique(link_id[USChnLn_Fr==max(USChnLn_Fr)]))
     
-    # mapview::mapview(t_out,zcol="ProvReachID")+
-    #   mapview::mapview(ihydro_links)+
-    #   mapview::mapview(ihydro_streams)+
-    #   mapview::mapview(aec_streams_buff,zcol="ProvReachID")+
-    #   mapview::mapview(bio_pnt_sub2)
+    #stream_joins_final<-streams_join1
     
+    aec_steam_out<-sub_r$stream %>% 
+      left_join(stream_joins_final) %>% 
+      select(ProvReachID,link_id,everything())
+    
+    ihydro_streams_out<-ihydro_streams %>% 
+      left_join(stream_joins_final) %>% 
+      select(ProvReachID,link_id,everything())
+    
+    bio_pnt_out <- bio_pnt %>% 
+      st_crop(sub_r$boundary) %>% 
+      filter(st_within(.,sub_r$boundary,sparse = F)[,1])
+    
+    if (nrow(bio_pnt_out)>0){
+      bio_pnt_out<-bio_pnt_out %>% 
+        st_join(sub_r$stream %>% 
+                  filter(!Network_Line_Type %in% c("Shoreline Virtual Connector","Virtual Connector")),
+                join =nngeo::st_nn,k=1,maxdist=120,parallel =1) %>% 
+        filter(!is.na(ProvReachID)) %>% 
+        left_join(stream_joins_final,by="ProvReachID")
+    }
+
     out<-
       list(
-        attr_linkID=t_out,
-        joined_biopnt=bio_pnt_sub2
+        aec_steam_out=aec_steam_out,
+        ihydro_streams_out=ihydro_streams_out,
+        bio_pnt_out=bio_pnt_out
       )
     
     return(out)
@@ -159,3 +147,6 @@ plan(sequential)
 sub_region_out2<-unlist(sub_region_out,recursive=F)
 
 saveRDS(sub_region_out2,file.path("data","final","int_results.rds"))
+
+
+

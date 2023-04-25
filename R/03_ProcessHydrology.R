@@ -15,7 +15,7 @@ td<-tempdir()
 
 n_cores<-availableCores(logical = F)-1
 
-plan(multisession(workers=8))
+plan(multisession(workers=4))
 
 # AEC region processing ---------------------------------------------------
 
@@ -62,11 +62,12 @@ sub_regions_out<-map2(sub_regions,IH_regions,
                       function(aec,ih){
                         map(aec,function(aec_sub){
                           #browser()
+                          print(paste0(aec_sub$boundary$WorkUnitName,": ",Sys.time()))
+                          
                           temp_path<-tempfile()
                           dir.create(temp_path)
                           
                           if (!file.exists(file.path("data","Processed","ihydro",paste0(aec_sub$boundary$WorkUnitName,".gpkg")))) { #return(file.path("data","Processed","ihydro",paste0(aec_sub$boundary$WorkUnitName,".gpkg")))
-                            print(paste0(aec_sub$boundary$WorkUnitName,": ",Sys.time()))
                             
                             #browser()
                             enf_dem<-ih$enf_dem
@@ -130,18 +131,20 @@ sub_regions_out<-map2(sub_regions,IH_regions,
                             
                             ihydro_out<-trace_flowpaths(
                               input=ihydro_out,
-                              pwise_dist =T,
+                              pwise_dist =F,
                               return_products=F,
                               temp_dir=temp_path,
                               verbose=F
                             )
+                            
+                            a1<-ihydro::get_catchment(ihydro_out)
                           }
                           
                           if (!file.exists(file.path("data","Processed","ihydro",paste0(aec_sub$boundary$WorkUnitName,"_DW.gpkg")))){
                             ihydro_out<-prep_weights(
                               input=ihydro::as.ihydro(file.path("data","Processed","ihydro",paste0(aec_sub$boundary$WorkUnitName,".gpkg"))),
                               output_filename =file.path("data","Processed","ihydro",paste0(aec_sub$boundary$WorkUnitName,"_DW.gpkg")),
-                              target_o_type = "point",
+                              target_o_type = "segment_whole",
                               weighting_scheme = c( "iFLS", "HAiFLS", "iFLO", "HAiFLO"),
                               temp_dir=temp_path
                             )
@@ -158,3 +161,4 @@ sub_regions_out<-map2(sub_regions,IH_regions,
                         })
                       })
 
+plan(sequential)

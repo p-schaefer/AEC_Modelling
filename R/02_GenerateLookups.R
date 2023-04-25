@@ -25,7 +25,8 @@ master_lu$stream_packages<-stream_packages
 GIS_Pred<-list(landcover=file.path("/vsizip","data","raw","GIS","OntarioLandCoverComp-v2.zip","OntarioLandCoverComp-v2","OLCC_V2_TIFF","OLCC_V2_TIFF.tif"),
                landcover_lu=read_csv(file.path("data","LC_lookup.csv"),
                                      show_col_types = FALSE) %>% 
-                 mutate(LDI=LDI*100) %>% 
+                 mutate(LDI=LDI*100,
+                        LDI_Natural=LDI_Natural*100) %>% 
                  filter(Layer=="OLCC") %>% 
                  mutate(LabelG1_code=as.numeric(factor(LabelG1)),
                         LabelG2_code=as.numeric(factor(LabelG2)))
