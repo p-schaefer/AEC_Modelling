@@ -11,6 +11,101 @@ knitr::opts_chunk$set(echo = TRUE)
 
 The goal of this project is to use data from [Ontario's Aquatic Ecosystem Classification (AEC)](https://geohub.lio.gov.on.ca/maps/mnrf::aquatic-ecosystem-classification-aec-for-ontario/about) together with [Flowing Waters Information System (FWIS)](https://www.comap.ca/fwis/) to develop predictive models of fish and benthic invertebrate communities across Ontario.
 
+```{r overviewMap, echo=FALSE}
+library(tmap)
+library(tidyverse)
+library(sf)
+
+td<-tempdir()
+
+lu_master<-readRDS(file.path("data","lookups.rds"))
+
+aec_region<-lapply(lu_master$stream_packages,function(x) file.path("data","raw","GIS",x))
+names(aec_region)<-sapply(names(aec_region),function(x) file.path("data","raw","GIS",x))
+
+sub_regions<-lapply(names(aec_region),function(aes_nm){
+  unzip(aes_nm,exdir=td)
+  
+  zip_cont<-list.files(file.path(td,gsub(".zip","",basename(aes_nm))),recursive = T,full.names = T)
+  sub_regions<-zip_cont[grepl("/w",zip_cont) & grepl("AEC_Class.lyrx",zip_cont)]
+  sub_regions<-gsub("_Class\\.lyrx","_Core\\.gdb",sub_regions)
+  names(sub_regions)<-sub_regions
+  
+  sub_regions<-lapply(sub_regions, st_layers)
+  
+  sub_region_out<-map2(names(sub_regions),sub_regions,function(src,lyr) {
+    list(boundary=read_sf(src,lyr$name[grepl("Boundary",lyr$name)]),
+         stream=read_sf(src,lyr$name[grepl("Reach",lyr$name)]))
+  })
+  
+  names(sub_region_out)<-sapply(names(sub_regions),function(x) gsub(".gdb","",basename(x)))
+  
+  return(sub_region_out)
+})
+
+boundary<-map(sub_regions,~map(.x,~.x$boundary)) %>% 
+  unlist(recursive = F) %>% 
+  bind_rows()
+
+sub_region_out<-readRDS(file.path("data","final","int_results.rds"))
+matched_points<-map(sub_region_out,~.x$bio_pnt_out)
+
+keep_wu<-sapply(matched_points,function(x) nrow(x)>20)
+keep_wu<-names(keep_wu)[keep_wu]
+keep_wu<-str_extract(keep_wu,"^...")
+
+matched_points2<-matched_points[str_extract(names(matched_points),"^...") %in% keep_wu]
+
+matched_points2<-map2(matched_points2,names(matched_points2),~mutate(.x,WorkUnitName=.y)) %>% 
+  bind_rows()
+
+tm_shape(boundary) +
+  tm_polygons() +
+  tm_shape(matched_points2) +
+  tm_dots() +
+  tm_layout(main.title="Fish Sampling Locations Across Ontario") +
+  tm_credits(paste(length(unique(matched_points2$SampleEventID)),"Sampling events"))
+
+
+```
+
+```{r detailedMap, echo=FALSE}
+
+sub_region_out<-readRDS(file.path("data","final","int_results.rds"))
+
+matched_points<-map(sub_region_out,~.x$bio_pnt_out)
+
+keep_wu<-sapply(matched_points,function(x) nrow(x)>20)
+keep_wu<-names(keep_wu)[keep_wu]
+keep_wu<-str_extract(keep_wu,"^...")
+
+matched_points2<-matched_points[str_extract(names(matched_points),"^...") %in% keep_wu]
+
+matched_points2<-map2(matched_points2,names(matched_points2),~mutate(.x,WorkUnitName=.y)) %>% 
+  bind_rows()
+
+streams<-map(sub_regions,~map(.x,~.x$stream)) %>% 
+    unlist(recursive = F) 
+
+streams<-map2(streams,names(streams),~mutate(.x,WorkUnitName=.y)) %>% 
+  bind_rows() %>% 
+  filter(str_extract(WorkUnitName,"^...") %in% keep_wu)
+
+
+tm_layout(main.title="Fish Sampling Locations Across AEC Subregions") +
+  tm_shape(boundary %>% filter(str_extract(WorkUnitName,"^...") %in% keep_wu)) +
+  tm_polygons() +
+  tm_facets("WorkUnitName") +
+  tm_shape(streams %>% filter(Strahler_Order>2)) +
+  tm_lines(alpha = 0.5, col="darkblue") +
+  tm_facets("WorkUnitName") +
+  tm_shape(matched_points2) +
+  tm_dots() +
+  tm_facets("WorkUnitName") 
+  
+
+```
+
 ## Workflow
 
 The data required for running models is too large to store on github, but can be downloaded from scripts included in this project.
