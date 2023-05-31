@@ -41,7 +41,7 @@ OMNR Code,lowest taxonomic level achievable for biomass,name to use ,Common Name
 132,132,Muskellunge (muskie),Muskellunge (muskie),Esocidae - pikes and mudminnows,Esox masquinongy,common,intermediate,carnivore,warmwater,lacustrine; riverine,benthopelagic,A.1.5,Nonguarders: Open substratum spawners: Phytophils
 133,133,Grass Pickerel,Grass Pickerel,Esocidae - pikes and mudminnows,Esox americanus vermiculatus,uncommon,intermediate,invertivore/carnivore,warmwater,lacustrine; riverine,benthopelagic,A.1.5,Nonguarders: Open substratum spawners: Phytophils
 135,135,Chain Pickerel,Chain Pickerel,Esocidae - pikes and mudminnows,Esox niger,rare,intermediate,carnivore,warmwater,lacustrine; riverine,benthopelagic,A.1.5,Nonguarders: Open substratum spawners: Phytophils
-140,141,,Central Mudminnow,Esocidae - pikes and mudminnows,Umbra limi,common,tolerant,invertivore,coolwater,riverine,benthic,B.1.5,Guarders: Substratum choosers: Phytophils
+140,141,Central Mudminnow,Central Mudminnow,Esocidae - pikes and mudminnows,Umbra limi,common,tolerant,invertivore,coolwater,riverine,benthic,B.1.5,Guarders: Substratum choosers: Phytophils
 141,141,Central Mudminnow,Central Mudminnow,Esocidae - pikes and mudminnows,Umbra limi,common,tolerant,invertivore,coolwater,riverine,benthic,B.1.4,Guarders: Substratum choosers: Phytophils
 151,151,Goldeye,Goldeye,Hiodontidae - mooneyes,Hiodon alosoides,limited distribution,intolerant,invertivore,coolwater,lacustrine; riverine,pelagic,A.1.1,Nonguarders: Open substratum spawners: Pelagophils
 152,152,Mooneye,Mooneye,Hiodontidae - mooneyes,Hiodon tergisus,common,intolerant,invertivore,coolwater,lacustrine; riverine,pelagic,A.1.2,Nonguarders: Open substratum spawners: Litho-pelagophils
@@ -155,7 +155,7 @@ OMNR Code,lowest taxonomic level achievable for biomass,name to use ,Common Name
 350,350,Ruffe,Ruffe,Percidae - perches and darters,Gymnocephalus cernua,limited distribution,intermediate,invertivore,coolwater,lacustrine; riverine,benthopelagic,A.1.4,Nonguarders: Open substratum spawners: Phyto-lithophils
 351,341,Johnny/Tessellated Darter,Johnny/Tessellated Darter hybrid,Percidae - perches and darters,Etheostoma nigrum,common,tolerant,invertivore,coolwater,lacustrine; riverine,benthic,B.2.7,Guarders: Nest spawners: Speleophils
 361,361,Brook Silverside,Brook Silverside,Atherinopsidae - New World silversides,Labidesthes sicculus,common,intermediate,planktivore/invertivore,warmwater,lacustrine; riverine,pelagic,A.1.4,Nonguarders: Open substratum spawners: Phyto-lithophils
-365,366,round goby,,,,,,,,,,,
+365,366,Round Goby,Round Goby,Gobiidae - gobies,Neogobius melanostomus,common,intermediate,invertivore,coolwater,lacustrine; riverine,benthic,B.1.3,Guarders: Substratum choosers: Lithophils
 366,366,Round Goby,Round Goby,Gobiidae - gobies,Neogobius melanostomus,common,intermediate,invertivore,coolwater,lacustrine; riverine,benthic,B.1.3,Guarders: Substratum choosers: Lithophils
 367,367,Freshwater Tubenose Goby,Freshwater Tubenose Goby,Gobiidae - gobies,Proterorhinus semilunaris,rare,intermediate,invertivore,coolwater,lacustrine; riverine,benthic,B.2.7,Guarders: Nest spawners: Speleophils
 371,371,Freshwater Drum (sheepshead),Freshwater Drum (sheepshead),Sciaenidae - drums and croakers,Aplodinotus grunniens,common,tolerant,invertivore/carnivore,warmwater,lacustrine; riverine,benthic,A.1.1,Nonguarders: Open substratum spawners: Pelagophils
