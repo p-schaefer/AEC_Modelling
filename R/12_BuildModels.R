@@ -3,90 +3,16 @@ library(tidymodels)
 library(ranger)
 library(doParallel)
 
-tx_data<-read_csv(file.path("data","final","Model_building_taxa_data.csv"))
+model_data<-read_rds(file.path("data","final","Model_building_finaltaxa_data.rds"))
 
-inv.logit <- function(f,a) {
-  a <- (1-2*a)
-  zapsmall((a*(1+exp(f))+(exp(f)-1))/(2*a*(1+exp(f))))
-}
-
-# Finalize Model Data -----------------------------------------------------
-
-model_data<-tx_data %>% 
-  filter(!is.na(`name to use`)) %>% 
-  filter(!is.na(ProvSegmentID)) %>% 
-  mutate(
-    tx_Repro_1=str_split(`Reproductive Guild`,": ",simplify = T)[,1],
-    tx_Repro_2=str_split(`Reproductive Guild`,": ",simplify = T)[,2],
-    tx_Repro_3=str_split(`Reproductive Guild`,": ",simplify = T)[,3],
-  ) %>% 
-  select(# Taxa Info
-    gen_ProvSegmentID=ProvSegmentID,
-    gen_link_id=link_id,
-    gen_SampleEventID=SampleEventID,
-    gen_StreamName=StreamName,
-    gen_SampleDate=SampleDate,
-    # Responses
-    resp_Comm_Biomass=Comm_Biomass,
-    resp_Comm_Abundance=Comm_Abundance,
-    resp_Perc_Biomass=Perc_Biomass,
-    resp_Perc_Abundance=Perc_Abundance,
-    # Taxa Data
-    tx_Taxa=`name to use`,
-    tx_Family=Family,
-    tx_Tolerance=Tolerance,
-    tx_Trophic_Class=`Trophic Class`,
-    tx_Thermal_Regime=`Thermal Regime`,
-    tx_General_Habitat=`General Habitat(s)`,
-    tx_Environment=Environment,
-    tx_Repro_1,
-    tx_Repro_2,
-    tx_Repro_3,
-    # Habitat
-    hb_Temperature_Class=Temperature_Class,
-    hb_Temperature=Temperature_30yr_MeanJuly,
-    hh_GDDair_UpstreamCatchmentMean=GDDair_UpstreamCatchmentMean,
-    hb_Turbidity=Turbidity_percUpstreamChannel_TurbGeo,
-    hb_Slope=Slope_ReachChannel_Percent,
-    hb_BFI_RCA=BFI_RCA,
-    hb_BFI_UCA=BFI_UCA,
-    hb_UCA=Upstream_Catchment_Area,
-    hb_Lake_Inf=Lake_Influence_Code,
-    hb_Wadeability=Wadeability,
-    # Stressor
-    starts_with("nr_")
-  ) %>% 
-  group_by(gen_ProvSegmentID) %>% 
-  mutate(case_weight=importance_weights(1/n())) %>% 
-  ungroup() %>% 
-  select(case_weight,everything()) %>% 
-  mutate(
-    resp_Comm_Biomass=log1p(resp_Comm_Biomass),
-    resp_Comm_Abundance=log1p(resp_Comm_Abundance),
-    resp_Perc_Biomass=car::logit(resp_Perc_Biomass,F,0.005),
-    resp_Perc_Abundance=car::logit(resp_Perc_Abundance,F,0.005)
-  ) %>% 
-  drop_na()
-
-taxa_prop <- model_data %>% 
-  group_by(tx_Taxa) %>% 
-  summarise(
-    mean_biomass_perc=inv.logit(mean(resp_Perc_Biomass,na.rm=T),0.005)*100,
-    mean_abund_perc=inv.logit(mean(resp_Perc_Abundance,na.rm=T),0.005)*100
-  ) %>% 
-  arrange(desc(mean_abund_perc)) %>% 
-  filter(mean_abund_perc>0.01)
-
-model_data<-model_data %>% 
-  filter(tx_Taxa %in% taxa_prop$tx_Taxa) %>% 
-  mutate(across(where(is.character),~factor(.))) 
+model_data<-ingredients::select_sample(model_data,10000,seed=1234)
 
 
 # Define Cross-Validation -------------------------------------------------
 
 cros_v<-group_vfold_cv(model_data,
                        "gen_ProvSegmentID",
-                       10)
+                       5)
 
 # Define Recipe -----------------------------------------------------------
 
@@ -118,7 +44,7 @@ r_mod<-rand_forest(mode="regression",
              quantreg = TRUE,
              keep.inbag = TRUE,
              oob.error = FALSE,
-             num.threads=8,
+             num.threads=parallel::detectCores(logical = FALSE),
              respect.unordered.factors="partition"
   )
 
@@ -129,9 +55,9 @@ tune_param <- r_mod %>%
   hardhat::extract_parameter_set_dials() %>% 
   update(
     mtry = sample_prop(c(0.1,0.9)),
-    trees = trees(c(500,10000)), 
-    min_n = min_n(c(2,50)),
-    max.depth = tree_depth(c(20,100000)),
+    trees = trees(c(100000,1000000)), 
+    min_n = min_n(c(20,50)),
+    max.depth = tree_depth(c(100,100000)),
     num.random.splits = num_random_splits(c(3,50)),
     regularization.factor=regularization_factor(range = c(0, 1), trans = NULL),
     regularization.usedepth=regularize_depth(values = c(TRUE, FALSE))
@@ -141,6 +67,7 @@ tune_param <- r_mod %>%
 
 resp<-model_data %>% select(starts_with("resp_")) %>% colnames()
 resp<-resp[grepl("Perc",resp)]
+resp<-resp[1]
 
 for (ep in resp) {
   
@@ -148,10 +75,11 @@ for (ep in resp) {
     add_model(r_mod) %>% 
     add_recipe(recip_main %>% 
                  update_role(
-                   any_of(ep),
+                   any_of(!!ep),
                    new_role = "outcome"
                  )%>% 
-                 step_naomit(any_of(ep))
+                 step_naomit(any_of(!!ep)) %>% 
+                 step_naomit(c(everything(),-any_of("case_weight")))
     ) %>% 
     add_case_weights(case_weight)
   
@@ -184,24 +112,3 @@ for (ep in resp) {
 }
 
 
-
-
-# library(reticulate)
-# 
-# if (F) {
-#   # Setup Python Environment
-#   # Make sure microsoft VS and CUDA is installed before you start
-#   
-#   install_miniconda(force = TRUE)
-#   
-#   conda_list()
-#   conda_create("aec_model")
-#   
-#   use_condaenv("aec_model")
-#   conda_install("aec_model","cupy")
-#   conda_install("aec_model","git")
-#   conda_install("aec_model","git+https://github.com/StatMixedML/Py-BoostLSS.git",pip=T)
-# }
-# 
-# use_condaenv("aec_model")
-# 
