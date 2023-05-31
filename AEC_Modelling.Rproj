@@ -13,3 +13,7 @@ RnwWeave: Sweave
 LaTeX: pdfLaTeX
 
 QuitChildProcessesOnExit: Yes
+
+PythonType: conda
+PythonVersion: 3.11.3
+PythonPath: C:/Users/Patrick/AppData/Local/r-miniconda/envs/AEC_Model/python.exe
