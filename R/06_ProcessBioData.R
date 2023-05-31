@@ -8,7 +8,8 @@ library(sf)
 
 # Load Data ---------------------------------------------------------------
 
-lookup_tbl<-read.csv(file.path("data","fish_lookup.csv"))
+lookup_tbl<-read.csv(file.path("data","fish_lookup.csv")) %>% 
+  mutate(name.to.use=trimws(name.to.use))
 colnames(lookup_tbl)[colnames(lookup_tbl)=="OMNR.Code"]<-"SpeciesCode"
 
 raw_tbl<-read.csv(file.path("data","raw","Bio","tblFishSummaryOfTotalCatches.csv"))
@@ -55,7 +56,7 @@ atr_tbl<-left_join(sub_tbl,lookup_tbl,by="SpeciesCode")
 
 # Taxa Tables -------------------------------------------------------------
 
-taxa_tbl <- atr_tbl %>% 
+taxa_tbl1 <- atr_tbl %>% 
   group_by(SampleEventID,SampleDate) %>% 
   mutate(Comm_Biomass=sum(EstimatedBiomass,na.rm=T),
          Comm_Abundance=sum(NumberOfFish,na.rm=T),
@@ -77,23 +78,30 @@ taxa_tbl <- atr_tbl %>%
 no_catch_tbl<-SampleEventID %>% 
   as_tibble() %>% 
   select(SampleEventID,SampleDate) %>% 
-  left_join(taxa_tbl,by = c("SampleEventID", "SampleDate")) %>% 
+  left_join(taxa_tbl1,by = c("SampleEventID", "SampleDate")) %>% 
   filter(is.na(Comm_Biomass)) %>% 
   mutate_at(vars(Comm_Biomass:Perc_Abundance),~0) %>% 
   mutate(SpeciesCode=atr_tbl$SpeciesCode[[1]]) %>% 
-  mutate(SpeciesCode=factor(SpeciesCode,levels=unique(taxa_tbl$SpeciesCode))) %>% 
+  mutate(SpeciesCode=factor(SpeciesCode,levels=unique(taxa_tbl1$SpeciesCode))) %>% 
   group_by(SampleEventID,SampleDate) %>% 
   complete(SpeciesCode,fill = list(Comm_Biomass=0,Comm_Abundance=0,Perc_Biomass=0,Perc_Abundance=0)) %>% 
   ungroup() 
 
-lookup_tbl2<-read_csv(file.path("data","fish_lookup.csv"))
+lookup_tbl2<-read_csv(file.path("data","fish_lookup.csv")) %>% 
+  mutate(`name to use`=trimws(`name to use`))
 colnames(lookup_tbl2)[colnames(lookup_tbl2)=="OMNR Code"]<-"SpeciesCode"
 
-taxa_tbl<-taxa_tbl %>% 
+taxa_tbl<-taxa_tbl1 %>% 
   bind_rows(no_catch_tbl) %>% 
   mutate(SpeciesCode=as.character(SpeciesCode)) %>% 
   mutate(SpeciesCode=as.integer(SpeciesCode)) %>% 
-  left_join(lookup_tbl2,by="SpeciesCode")
+  left_join(lookup_tbl2,by="SpeciesCode") %>% 
+  group_by(SampleEventID,SampleDate,`name to use`) %>% 
+  reframe(across(where(is.numeric),~sum(.,na.rm=T)),
+            across(where(is.character),~head(.[!is.na(.)],1))
+            ) %>% 
+  ungroup() %>% 
+  select(any_of(colnames(lookup_tbl2)),everything())
 
 # Calculate endpoints -----------------------------------------------------
 
