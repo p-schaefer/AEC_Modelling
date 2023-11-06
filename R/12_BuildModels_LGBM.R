@@ -5,7 +5,7 @@ library(doParallel)
 
 model_data<-read_rds(file.path("data","final","Model_building_finaltaxa_data.rds"))
 
-model_data<-ingredients::select_sample(model_data,10000,seed=1234)
+model_data<-ingredients::select_sample(model_data,1000,seed=1234)
 
 
 # Define Cross-Validation -------------------------------------------------
@@ -29,23 +29,28 @@ recip_main<-recipe(x=model_data) %>%
 
 # Define Model ------------------------------------------------------------
 
-r_mod<-rand_forest(mode="regression",
-                   mtry=tune(),
-                   trees=tune(),
-                   min_n=tune()) %>% 
-  set_engine("ranger",
-             replace=FALSE,
-             max.depth = tune(),
-             splitrule = "extratrees",
-             num.random.splits = tune(),
-             regularization.factor = tune(),
-             regularization.usedepth = tune(),
-             always.split.variables = model_data %>% select(starts_with("tx_")) %>% colnames(),
-             quantreg = TRUE,
-             keep.inbag = TRUE,
-             oob.error = FALSE,
-             num.threads=parallel::detectCores(logical = FALSE),
-             respect.unordered.factors="partition"
+r_mod<-boost_tree(mode="regression",
+                  learn_rate=tune(),
+                  mtry=tune(),
+                  trees=tune(),
+                  min_n=tune(),
+                  tree_depth=tune(),
+                  loss_reduction=tune()) %>% 
+  set_engine("lightgbm",
+             weight_column = "name:case_weight",
+             objective = "quantile",
+             alpha = 0.5,
+             boosting = "gbdt",
+             num_threads = parallel::detectCores(logical = FALSE),
+             num_leaves = tune(),
+             bagging_fraction = tune(),
+             bagging_freq = 1,
+             early_stopping_round = 50,
+             max_cat_to_onehot= tune(),
+             min_data_per_group = tune(),
+             max_cat_threshold = tune(),
+             cat_l2 = tune(),
+             cat_smooth = tune()
   )
 
 
@@ -54,10 +59,13 @@ r_mod<-rand_forest(mode="regression",
 tune_param <- r_mod %>% 
   hardhat::extract_parameter_set_dials() %>% 
   update(
-    mtry = sample_prop(c(0.1,0.9)),
-    trees = trees(c(100000,1000000)), 
-    min_n = min_n(c(20,50)),
-    max.depth = tree_depth(c(100,100000)),
+    mtry = sample_prop(c(0.2,0.8)),
+    trees = trees(c(1000,10000)), 
+    min_n = min_n(c(5,50)),
+    tree_depth = tree_depth(c(100,10000)),
+    learn_rate=learn_rate(c(-6,1)),
+    loss_reduction=tube()
+    
     num.random.splits = num_random_splits(c(3,50)),
     regularization.factor=regularization_factor(range = c(0, 1), trans = NULL),
     regularization.usedepth=regularize_depth(values = c(TRUE, FALSE))
@@ -92,7 +100,7 @@ for (ep in resp) {
     resamples=cros_v,
     param_info=tune_param,
     metrics=yardstick::metric_set(mae,rmse,rsq),
-    initial= 10,
+    initial= 25,
     iter = 50,
     control=control_bayes(
       verbose = T,
