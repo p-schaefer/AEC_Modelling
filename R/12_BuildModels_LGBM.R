@@ -36,8 +36,7 @@ r_mod<-boost_tree(mode="regression",
                   min_n=tune(),
                   tree_depth=tune(),
                   loss_reduction=tune()) %>% 
-  set_engine("lightgbm",
-             weight_column = "name:case_weight",
+  set_engine("xgboost",
              objective = "quantile",
              alpha = 0.5,
              boosting = "gbdt",
@@ -54,22 +53,6 @@ r_mod<-boost_tree(mode="regression",
   )
 
 
-# Set Tuning Range --------------------------------------------------------
-
-tune_param <- r_mod %>% 
-  hardhat::extract_parameter_set_dials() %>% 
-  update(
-    mtry = sample_prop(c(0.2,0.8)),
-    trees = trees(c(1000,10000)), 
-    min_n = min_n(c(5,50)),
-    tree_depth = tree_depth(c(100,10000)),
-    learn_rate=learn_rate(c(-6,1)),
-    loss_reduction=tube()
-    
-    num.random.splits = num_random_splits(c(3,50)),
-    regularization.factor=regularization_factor(range = c(0, 1), trans = NULL),
-    regularization.usedepth=regularize_depth(values = c(TRUE, FALSE))
-  ) 
 
 # Tune Models -------------------------------------------------------------
 
