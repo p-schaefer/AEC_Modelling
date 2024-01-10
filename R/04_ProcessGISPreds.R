@@ -15,7 +15,7 @@ td<-tempdir()
 
 n_cores<-availableCores(logical = F)-1
 
-plan(multisession(workers=2))
+plan(multisession(workers=8))
 
 # AEC region processing ---------------------------------------------------
 

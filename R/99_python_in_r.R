@@ -46,24 +46,27 @@ distr.xgb<-import("xgboostlss.distributions")
 # Prepare Data ------------------------------------------------------------
 
 model_data0<-read_rds(file.path("data","final","Model_building_finaltaxa_data.rds")) %>% 
-  mutate(across(contains("_Perc_"),~inv.logit(.,adj))) 
+  mutate(across(contains("_Perc_"),~inv.logit(.,adj))) %>% 
+  mutate(across(contains("_Comm_"),~expm1(.))) 
 
 resp<-model_data0 %>% select(starts_with("resp_")) %>% colnames()
-resp<-resp[grepl("Perc",resp)]
-ep<-resp[[2]]
+resp<-resp[!grepl("Perc",resp)]
+ep<-resp[[1]]
 
-model_data <- model_data0 %>% 
-  mutate(across(any_of(resp),~case_when(
-    .==0 ~ 1e-4,
-    .==1 ~ 1-1e-4,
-    T ~ .
-  ))) %>% 
-  select(-tx_Family:-tx_Repro_3) %>% 
-  pivot_wider(
-    names_from=tx_Taxa,
-    values_from=any_of(ep),
-    values_fill = 1e-4
-  )
+model_data <- model_data0
+
+# model_data <- model_data0 %>% 
+#   # mutate(across(any_of(resp),~case_when(
+#   #   .==0 ~ 1e-4,
+#   #   .==1 ~ 1-1e-4,
+#   #   T ~ .
+#   # ))) %>% 
+#   select(-tx_Family:-tx_Repro_3) #%>% 
+#   # pivot_wider(
+#   #   names_from=tx_Taxa,
+#   #   values_from=any_of(ep),
+#   #   values_fill = 0
+#   # )
 
 recip_main<-recipe(x=model_data %>%
                      select(-starts_with("gen_")) %>% 
@@ -80,10 +83,10 @@ recip_main<-recipe(x=model_data %>%
                     "nr_")),
     new_role = "predictor"
   ) %>% 
-  update_role(
-    any_of(levels(model_data0$tx_Taxa)),
-    new_role = "response"
-  ) %>% 
+  # update_role(
+  #   any_of(levels(model_data0$tx_Taxa)),
+  #   new_role = "response"
+  # ) %>% 
   step_nzv(all_predictors()) %>% 
   step_unorder(all_factor_predictors()) %>% 
   update_role(
@@ -121,8 +124,8 @@ weight<-final_data %>% select(any_of("case_weight")) %>% unlist()
 #   #free_raw_data=r_to_py(FALSE)
 # )
 
-train_py = xgb.model$DMatrix(data = final_data %>% select(-any_of(levels(model_data0$tx_Taxa)),-any_of("case_weight")) %>% as.data.frame() %>%   r_to_py(), 
-                             label=final_data %>% select(any_of(levels(model_data0$tx_Taxa))) %>% as.matrix() %>% r_to_py(), 
+train_py = xgb.model$DMatrix(data = final_data %>% select(-any_of("case_weight"),-starts_with("resp_")) %>% as.data.frame() %>%   r_to_py(), 
+                             label=final_data %>% select(any_of(ep)) %>% as.matrix() %>% r_to_py(), 
                              weight =weight %>% as.matrix() %>% r_to_py(),
                              enable_categorical=r_to_py(TRUE),
                              nthread=8L)
@@ -195,9 +198,9 @@ train_py = xgb.model$DMatrix(data = final_data %>% select(-any_of(levels(model_d
 
 params_lightgbm = list(boosting= list("categorical",list("gbdt")),
                        feature_pre_filter= list("categorical",list("false")),
-                       eta= list("float",list(low= 1e-7, high=30, log=TRUE)), 
+                       eta= list("float",list(low= 1e-5, high=30, log=TRUE)), 
                        max_depth= list("int",list(low= 10L, high=1000L, log=FALSE)),
-                       num_leaves= list("int",list(low= 124L, high=1056L, log=FALSE)),           
+                       num_leaves= list("int",list(low= 100L, high=2000L, log=FALSE)),           
                        min_data_in_leaf= list("int",list(low= 5L, high=100L, log=FALSE)),       
                        # lambda_l1= list("float",list(low= 0, high=0, log=TRUE)),                
                        # lambda_l2= list("float",list(low= 0, high=0, log=TRUE)),                
@@ -221,14 +224,14 @@ params_lightgbm = list(boosting= list("categorical",list("gbdt")),
 params_xgb = list(booster = list("categorical",list("gbtree")),
                   #tree_method = list("categorical",list("hist")),
                   #feature_pre_filter= list("categorical",list("false")),
-                  eta= list("float",list(low= 1e-10, high=1e-3, log=TRUE)), 
-                  max_depth= list("int",list(low= 500L, high=100000L, log=FALSE)),
+                  eta= list("float",list(low= 1e-7, high=10, log=TRUE)), 
+                  max_depth= list("int",list(low= 100L, high=100000L, log=FALSE)),
                   #num_leaves= list("int",list(low= 124L, high=2056L, log=FALSE)),           
                   #min_data_in_leaf= list("int",list(low= 5L, high=100L, log=FALSE)),       
                   # lambda_l1= list("float",list(low= 0, high=0, log=TRUE)),                
                   # lambda_l2= list("float",list(low= 0, high=0, log=TRUE)),                
-                  gamma = list("float",list(low= 1e-15, high=10, log=TRUE)),
-                  min_child_weight =list("float",list(low= 1e-15, high=10, log=TRUE)),
+                  gamma = list("float",list(low= 1e-7, high=10, log=TRUE)),
+                  min_child_weight =list("float",list(low= 1e-7, high=10, log=TRUE)),
                   subsample= list("float",list(low= 0.2, high=0.8, log=FALSE)),
                   #feature_fraction = list("float",list(low= 0.2, high=0.8, log=FALSE)),
                   colsample_bynode = list("float",list(low= 0.2, high=0.8, log=FALSE)),
@@ -278,7 +281,7 @@ params_xgb = list(booster = list("categorical",list("gbtree")),
 # )
 
 xgb = xgb.model$XGBoostLSS(
-  distr.xgb$Dirichlet$Dirichlet(
+  distr.xgb$ZABeta $Dirichlet$Dirichlet(
     D = length(levels(model_data0$tx_Taxa)),
     stabilization = "None",
     response_fn = "softplus",

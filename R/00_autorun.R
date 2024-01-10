@@ -1,7 +1,29 @@
-#source("R/03_ProcessHydrology.R")
+#source("R/01_DownloadGISData.R",local=T)
 
-#source("R/04_ProcessGISPreds.R")
+#source("R/02_GenerateLookups.R",local=T)
 
-source("R/07_Calculate_Attributes.R")
+#source("R/03_ProcessHydrology.R",local=T)
 
-source("R/10_CombineData.R")
+#source("R/04_ProcessGISPreds.R",local=T)
+
+#source("R/05_DownloadBioData.R",local=T)
+
+#source("R/06_ProcessBioData.R",local=T)
+
+#source("R/07_Calculate_Attributes.R",local=T)
+
+
+source("R/10a_CombineData.R",local=T)
+print("**1")
+
+source("R/10b_Calculate_Attributes_at_Bio.R",local=T)
+print("**2")
+
+source("R/11a_CombineData2.R",local=T)
+print("**3")
+
+source("R/11b_FormatModelData.R",local=T)
+print("**4")
+
+source("R/11c_FormatModelData.R",local=T)
+print("**5")

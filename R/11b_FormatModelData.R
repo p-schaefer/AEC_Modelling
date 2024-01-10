@@ -20,9 +20,9 @@ model_data<-tx_data %>%
     tx_Repro_2=str_split(`Reproductive Guild`,": ",simplify = T)[,2],
     tx_Repro_3=str_split(`Reproductive Guild`,": ",simplify = T)[,3],
   ) %>% 
-  mutate(
-    Lake_Influence_Code=as.numeric(Lake_Influence_Code),
-  ) %>% 
+  # mutate(
+  #   Lake_Influence_Code=as.numeric(as.factor(Lake_Influence_Code)),
+  # ) %>% 
   select(# Taxa Info
     gen_ProvSegmentID=ProvSegmentID,
     gen_link_id=link_id,
@@ -46,7 +46,7 @@ model_data<-tx_data %>%
     tx_Repro_2,
     tx_Repro_3,
     # Habitat
-    #hb_Temperature_Class=Temperature_Class,
+    hb_Temperature_Class=Temperature_Class,
     hb_Temperature=Temperature_30yr_MeanJuly,
     hh_GDDair_UpstreamCatchmentMean=GDDair_UpstreamCatchmentMean,
     hb_Turbidity=Turbidity_percUpstreamChannel_TurbGeo,
@@ -55,7 +55,7 @@ model_data<-tx_data %>%
     hb_BFI_UCA=BFI_UCA,
     hb_UCA=Upstream_Catchment_Area,
     hb_Lake_Inf=Lake_Influence_Code,
-    #hb_Wadeability=Wadeability,
+    hb_Wadeability=Wadeability,
     # Stressor
     starts_with("nr_")
   ) %>% 
