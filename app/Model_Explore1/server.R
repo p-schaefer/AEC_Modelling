@@ -274,20 +274,22 @@ function(input, output, session) {
         col_range<-levels(sel_data$.pred_class)
       } else {
         rg<-max(abs(sel_data3[[input$cl_sel]]))
-        col_range<-pretty(c(-rg,rg))
+        col_range<-pretty(c(-rg,rg),n=9)
       }
     } else {
       if (input$cl_sel %in% c("Observed","Predicted")){
         col_range<-pretty(c(sel_data3[["Observed"]],sel_data3[["Predicted"]]))
       } else {
         rg<-max(abs(sel_data3[[input$cl_sel]]))
-        col_range<-pretty(c(-rg,rg,n=7))
+        col_range<-pretty(c(-rg,rg,n=9))
       }
     }
     
+    if (grepl("Categorical",input$ep_sel)) col_range<-NULL
+
     m1<-mapview::mapview(Map,
                          zcol=input$cl_sel,
-                         at = if_else(grepl("Categorical",input$ep_sel),NULL,col_range),
+                         at = col_range,
                          burst=grepl("Categorical",input$ep_sel),
                          na.color="gray"#,
                          #col.regions = if_else(input$cl_sel %in% c("Observed","Predicted"),mapview::mapviewColors("viridis"),mapview::mapviewColors("spectral"))
