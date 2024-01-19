@@ -24,22 +24,29 @@ parse_fn<-function(x){
   
 }
 
+
+fl<-list.files(file.path("fits"),full.names = T)
+tune=fl[grepl("Tune",fl)]
+
+fl<-tibble(
+  fl=fl[!grepl("Tune",fl)]
+) %>% 
+  mutate(ep=parse_fn(fl)) %>% 
+  unnest(ep)
+
+tx<-unique(readRDS(fl$fl[[1]])$tx_Taxa)
+
+stm_lns<-readRDS("AEC_Streams.rds")
+
+has_data<-unique(readRDS(fl$fl[[1]])$gen_ProvSegmentID)
+
+stm_lns<-stm_lns[map_lgl(stm_lns,~any(.x$ProvSegmentID %in% has_data))]
+
 # Define server logic required to draw a histogram
 function(input, output, session) {
   
   # Setup Data --------------------------------------------------------------
   
-  fl<-list.files(file.path("fits"),full.names = T)
-  tune=fl[grepl("Tune",fl)]
-  
-  
-  fl<-tibble(
-    fl=fl[!grepl("Tune",fl)]
-  ) %>% 
-    mutate(ep=parse_fn(fl)) %>% 
-    unnest(ep)
-  
-  tx<-unique(readRDS(fl$fl[[1]])$tx_Taxa)
   
   fl <- reactiveValues(
     tune=tune,
@@ -48,7 +55,7 @@ function(input, output, session) {
   )
   
   stm_lns <- reactiveValues(
-    lns=readRDS("AEC_Streams.rds")
+    lns=stm_lns
   )
   
   # Model Performance -------------------------------------------------------
@@ -198,6 +205,7 @@ function(input, output, session) {
       input$cl_sel
     )
     
+    
     lns<-stm_lns$lns
     lns<-lns[grepl(input$ml_sel,names(lns))][[1]]
     
@@ -265,21 +273,25 @@ function(input, output, session) {
       if (input$cl_sel %in% c("Observed","Predicted")){
         col_range<-levels(sel_data$.pred_class)
       } else {
-        col_range<-pretty(sel_data3[[input$cl_sel]])
+        rg<-max(abs(sel_data3[[input$cl_sel]]))
+        col_range<-pretty(c(-rg,rg))
       }
     } else {
       if (input$cl_sel %in% c("Observed","Predicted")){
         col_range<-pretty(c(sel_data3[["Observed"]],sel_data3[["Predicted"]]))
       } else {
-        col_range<-pretty(sel_data3[[input$cl_sel]])
+        rg<-max(abs(sel_data3[[input$cl_sel]]))
+        col_range<-pretty(c(-rg,rg,n=7))
       }
     }
     
     m1<-mapview::mapview(Map,
                          zcol=input$cl_sel,
-                         at = col_range,
+                         at = if_else(grepl("Categorical",input$ep_sel),NULL,col_range),
                          burst=grepl("Categorical",input$ep_sel),
-                         na.color="gray")
+                         na.color="gray"#,
+                         #col.regions = if_else(input$cl_sel %in% c("Observed","Predicted"),mapview::mapviewColors("viridis"),mapview::mapviewColors("spectral"))
+                         )
     
     return(m1@map)
     
