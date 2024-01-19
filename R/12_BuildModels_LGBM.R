@@ -27,7 +27,7 @@ model_data<-read_rds(file.path("data","final","Model_building_finaltaxa_data.rds
 
 #model_data<-ingredients::select_sample(model_data,2000,seed=1234)
 
-for (equalization in c(0,-0.25,-0.5,-1,1,2,4)) {
+for (equalization in c(0)) { #,-0.25,-0.5,-1,1,2,4
   for (use_weights in c("wgtd","unwghtd")){
     for (ep in colnames(model_data)[grepl("^resp_",colnames(model_data))]) {
       for (ep_type in c("cat_","")){
@@ -260,6 +260,20 @@ for (equalization in c(0,-0.25,-0.5,-1,1,2,4)) {
     }
   }
 }
+
+fl<-list.files(file.path("data","models","tuning"),full.names = T)
+fl<-fl[grepl("Tune1",fl)]
+
+out<-map_dfr(fl,function(i){
+  ii<-readRDS(i)
+  out<-show_best(ii)
+  out$file<-basename(i)
+  return(out)
+})
+
+saveRDS(out,
+        file.path("data","models","fits",paste0("Tune_Performance.rds"))
+)
 
 if (F) {
   a1 %>%
