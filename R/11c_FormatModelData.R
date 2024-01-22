@@ -71,7 +71,8 @@ model_data<-tx_data %>%
     hb_Lake_Inf=Lake_Influence_Code,
     #hb_Wadeability=Wadeability,
     # Stressor
-    starts_with("nr_")
+    starts_with("nr_"),
+    starts_with("LDI_")
   ) %>% 
   group_by(gen_ProvSegmentID) %>% 
   mutate(case_weight=importance_weights(1/n())) %>% 

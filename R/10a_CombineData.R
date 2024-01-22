@@ -22,6 +22,10 @@ bio_pnt<- bio_dt %>%
   st_as_sf(coords=c("Longitude","Latitude"),crs=st_crs(4326),remove = T) %>% 
   st_transform(st_crs(3161))
 
+
+# bio_pnt<-bio_pnt %>% 
+#   filter(SampleEventID %in% readRDS("missing.rds"))
+
 # AEC region processing ---------------------------------------------------
 
 aec_region<-lapply(lu_master$stream_packages,function(x) file.path("data","raw","GIS",x))
@@ -124,7 +128,7 @@ sub_region_out<-future_lapply(sub_regions,function(sub_regions_1){
       bio_pnt_out<-bio_pnt_out %>% 
         st_join(sub_r$stream %>% 
                   filter(!Network_Line_Type %in% c("Shoreline Virtual Connector","Virtual Connector")),
-                join =nngeo::st_nn,k=1,maxdist=120,parallel =1) %>% 
+                join =nngeo::st_nn,k=1,maxdist=500,parallel =1) %>% 
         filter(!is.na(ProvReachID)) %>% 
         left_join(stream_joins_final,by="ProvReachID")
     }
