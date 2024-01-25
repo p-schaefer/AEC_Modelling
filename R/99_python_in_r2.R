@@ -47,7 +47,6 @@ distr.xgb<-import("xgboostlss.distributions")
 
 model_data0<-read_rds(file.path("data","final","Model_building_finaltaxa_data.rds")) %>% 
   filter(year(as.Date(gen_SampleDate))>1994)   %>% 
-  mutate(across(starts_with("cat_resp_"),~factor(.x))) %>% 
   # mutate(across(contains("_Perc_"),~inv.logit(.,adj))) %>%
   # mutate(across(contains("_Comm_"),~expm1(.))) %>% 
   mutate(across(starts_with("resp_"),
@@ -59,7 +58,8 @@ model_data0<-read_rds(file.path("data","final","Model_building_finaltaxa_data.rd
                   .x < quantile(.x[.x>0],0.8) ~ "60 - 80",
                   .x >= quantile(.x[.x>0],0.8) ~ "80 - 100"
                 ),
-                .names = "cat_{.col}"))
+                .names = "cat_{.col}")) %>% 
+  mutate(across(starts_with("cat_resp_"),~factor(.x)))
 
 resp<-model_data0 %>% select(starts_with("resp_")) %>% colnames()
 resp<-resp[!grepl("Perc|cat_",resp)]
