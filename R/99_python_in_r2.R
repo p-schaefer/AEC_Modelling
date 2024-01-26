@@ -22,8 +22,9 @@ if (F) {
   
   conda_install("AEC_Model","IPython",pip=T)
   
-  conda_install("AEC_Model","git+https://github.com/StatMixedML/XGBoostLSS.git",pip=T)
   conda_install("AEC_Model","git+https://github.com/dsgibbons/shap.git",pip=T)
+  
+  conda_install("AEC_Model","git+https://github.com/StatMixedML/XGBoostLSS.git",pip=T)
   
   conda_install("AEC_Model","git+https://github.com/StatMixedML/LightGBMLSS.git",pip=T)
   
@@ -274,8 +275,8 @@ for (ep in resp){
           geom_point()+
           geom_abline(slope=1,intercept=0)+
           geom_smooth(aes(x=Observed,y=Predicted),se=F,method="gam",colour="black")+
-          geom_smooth(aes(x=quant_0.95,y=Predicted),se=F,method="gam",colour="blue")+
-          geom_smooth(aes(x=quant_0.05,y=Predicted),se=F,method="gam",colour="blue")
+          geom_smooth(aes(x=Observed,y=quant_0.95),se=F,method="gam",colour="blue")+
+          geom_smooth(aes(x=Observed,y=quant_0.05),se=F,method="gam",colour="blue")
         
         rsq_vec(out$Observed,out$Predicted)
         rmse_vec(out$Observed,out$Predicted)
