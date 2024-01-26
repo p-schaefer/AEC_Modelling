@@ -21,6 +21,8 @@ if (F) {
   miniconda_update()
   
   conda_install("AEC_Model","IPython",pip=T)
+
+  conda_install("AEC_Model","shap",pip=T)
   
   conda_install("AEC_Model","git+https://github.com/dsgibbons/shap.git",pip=T)
   
@@ -42,7 +44,7 @@ use_condaenv("AEC_Model")
 xgb.model <- import("xgboostlss.model")
 #distr.lgb<-import("lightgbmlss.distributions")
 distr.xgb<-import("xgboostlss.distributions")
-
+#shap<-import("shap")
 
 # Prepare Data ------------------------------------------------------------
 
@@ -78,6 +80,8 @@ for (ep in resp){
                                             "nr_",
                                             "LDI_")),
                               -starts_with("LDI_Natural"),
+                              #-contains("lumped"),
+                              #-contains("_iFL"),
                               any_of(ep),
                               any_of(paste0("cat_",ep)),
                               any_of("case_weight")) %>% 
@@ -96,6 +100,7 @@ for (ep in resp){
       any_of(!!ep),
       new_role = "outcome"
     ) %>% 
+    #step_normalize(all_numeric_predictors()) %>% 
     step_mutate(across(starts_with(c("case_weight")),~as.numeric(.))) %>% 
     themis::step_upsample(!!paste0("cat_",ep),over_ratio  = 0.25)
   
@@ -210,7 +215,7 @@ for (ep in resp){
   # Define Cross-Validation -------------------------------------------------
   
   if (T){
-    opt_param<-readRDS(file.path("data","models","LSS",paste0("best_params_",ep,"_dart.rds")))
+    opt_param<-readRDS(file.path("data","models","LSS",paste0("best_params_",ep,"_gbtree.rds")))
     
     cros_v<-group_vfold_cv(model_data,
                            "gen_ProvSegmentID",
@@ -224,7 +229,8 @@ for (ep in resp){
       final_prep<-prep(recip_main,trn)
       
       tst<-testing(cros_v$splits[[i]]) %>% 
-        bake(object=final_prep)
+        bake(object=final_prep) #%>% 
+        #head(1)
       
       trn<-training(cros_v$splits[[i]]) %>% 
         bake(object=final_prep)
@@ -248,12 +254,20 @@ for (ep in resp){
         num_boost_round=opt_param$opt_rounds
       )
       
+      # xgb$plot(test_py,
+      #          parameter="concentration",
+      #          feature="LDI_HAiFLO_mean",
+      #          plot_type="Partial_Dependence"
+      #          
+      #          )
+      
       # Calculate quantiles from predicted distribution
       pred_quantiles = xgb$predict(test_py,
                                    pred_type="quantiles",
                                    n_samples=2000L,
                                    quantiles=c(0.05,0.25,0.5,0.75,0.95))
       
+      # xgb$predict(test_py, pred_type="parameters")
       # pred_quantiles = xgb$predict(test_py, pred_type="expectiles")
       
       out<-pred_quantiles %>% 
@@ -263,8 +277,19 @@ for (ep in resp){
                     rename_with(.cols=any_of(ep),~paste0("Observed")) %>% 
                     mutate(endpoint=ep,
                            cv_fold=i)
-        )
+        ) %>% 
+        mutate(gen_ProvSegmentID=testing(cros_v$splits[[i]])$gen_ProvSegmentID)
       if (F){
+        
+
+        explainer = shap$TreeExplainer(xgb$booster)
+        
+        # xgb$plot(
+        #   #train_py,
+        #   tst %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
+        #   parameter="concentration",
+        #   plot_type="Feature_Importance"
+        # )
         
         out %>% 
           mutate(in_90=Observed<=quant_0.95 & Observed>=quant_0.05) %>% 
@@ -280,6 +305,20 @@ for (ep in resp){
         
         rsq_vec(out$Observed,out$Predicted)
         rmse_vec(out$Observed,out$Predicted)
+        
+        sumry<-out %>% 
+          group_by(tx_Taxa,gen_ProvSegmentID) %>% 
+          summarise(Observed=median(Observed),
+                    Predicted=median(Predicted))
+        
+        m1<-sumry %>% 
+          filter(tx_Taxa=="Brook (speckled) Trout") %>% 
+          left_join(bind_rows(stm_lns),
+                    by=c("gen_ProvSegmentID"="ProvSegmentID")) %>% 
+          sf::st_as_sf()
+        
+        mapview::mapview(m1,zcol="Predicted")+mapview::mapview(m1,zcol="Observed")
+        
       }
       
       out_res[[i]]<-out
