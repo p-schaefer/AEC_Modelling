@@ -122,21 +122,25 @@ for (ep in resp){
   
   params_lightgbm = list(boosting= list("categorical",list("gbdt")),
                          feature_pre_filter= list("categorical",list("false")),
-                         learning_rate = list("float",list(low= 1e-12, high=30, log=TRUE)), 
-                         max_depth= list("int",list(low= 100L, high=5000L, log=FALSE)),
-                         num_leaves= list("int",list(low= 100L, high=25000L, log=FALSE)),           
+                         learning_rate = list("float",list(low= 1e-06, high=1, log=TRUE)), 
+                         max_depth= list("int",list(low= 500L, high=2000L, log=FALSE)),
+                         num_leaves= list("int",list(low= 1000L, high=5000L, log=FALSE)),           
                          min_data_in_leaf= list("int",list(low= 1L, high=100L, log=FALSE)),       
-                         min_gain_to_split= list("float",list(low= 1e-12, high=30, log=TRUE)),
-                         subsample= list("float",list(low= 0.3, high=0.7, log=FALSE)),
+                         min_gain_to_split= list("float",list(low= 1e-24, high=30, log=TRUE)),
+                         min_sum_hessian_in_leaf =list("float",list(low= 1e-24, high=30, log=TRUE)),
                          feature_fraction_bynode = list("float",list(low= 0.3, high=0.7, log=FALSE)),
                          baging_freq=list("none",list(1)),
                          bagging_fraction = list("float",list(low= 0.3, high=0.7, log=FALSE)),
                          max_cat_to_onehot = list("int",list(low= 2L, high=20L, log=FALSE)),
                          max_cat_threshold = list("int",list(low= 124L, high=2500L, log=FALSE)),
                          min_data_per_group = list("int",list(low= 2L, high=256L, log=FALSE)),
-                         cat_smooth = list("float",list(low= 0L, high=20L, log=FALSE)),
-                         cat_l2 = list("float",list(low= 0L, high=20L, log=FALSE)),
-                         histogram_pool_size = list("none",list(210000L))
+                         cat_smooth = list("float",list(low= 0L, high=10L, log=FALSE)),
+                         cat_l2 = list("float",list(low= 0L, high=10L, log=FALSE)),
+                         histogram_pool_size = list("none",list(-1))#,
+                         # lambda_l1=list("float",list(low= 1e-48, high=100, log=TRUE)),
+                         # lambda_l2=list("float",list(low= 1e-48, high=100, log=TRUE)),
+                         # path_smooth=list("float",list(low= 0L, high=10L, log=FALSE))
+                         
   )
   
   # Define Expectiles ------------------------------------------------------------
@@ -156,9 +160,9 @@ for (ep in resp){
   opt_param = xgb$hyper_opt(hp_dict=r_to_py(params_lightgbm),
                             train_set=train_py,
                             num_boost_round=r_to_py(2000L),        # Number of boosting iterations.
-                            nfold=r_to_py(5L),                    # Number of cv-folds.
+                            nfold=r_to_py(6L),                    # Number of cv-folds.
                             early_stopping_rounds=r_to_py(10L),   # Number of early-stopping rounds
-                            max_minutes=r_to_py(60L*24L*1L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
+                            max_minutes=r_to_py(60L*10L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
                             silence=r_to_py(FALSE)
   )
   
@@ -180,7 +184,7 @@ for (ep in resp){
     num_leaves= list("none",list(opt_param$num_leaves)),           
     min_data_in_leaf= list("none",list(opt_param$min_data_in_leaf)),       
     min_gain_to_split= list("none",list(opt_param$min_gain_to_split)),
-    subsample= list("none",list(opt_param$subsample)),
+    min_sum_hessian_in_leaf =list("none",list(opt_param$min_sum_hessian_in_leaf)),
     feature_fraction_bynode = list("none",list(opt_param$feature_fraction_bynode)),
     baging_freq=list("none",list(1)),
     bagging_fraction = list("none",list(opt_param$bagging_fraction)),
@@ -189,16 +193,19 @@ for (ep in resp){
     min_data_per_group = list("none",list(opt_param$min_data_per_group)),
     cat_smooth = list("none",list(opt_param$cat_smooth)),
     cat_l2 = list("none",list(opt_param$cat_l2)),
-    histogram_pool_size = list("none",list(210000L))
+    histogram_pool_size = list("none",list(-1))#,
+    # lambda_l1=list("none",list(opt_param$lambda_l1)),
+    # lambda_l2=list("none",list(opt_param$lambda_l2)),
+    # path_smooth=list("none",list(opt_param$path_smooth))
   )
   
   # Tune hyperparameters
   opt_param = xgb$hyper_opt(hp_dict=r_to_py(params_lightgbm),
                             train_set=train_py,
                             num_boost_round=r_to_py(opt_param$opt_rounds + 2000L),        # Number of boosting iterations.
-                            nfold=r_to_py(5L),                    # Number of cv-folds.
+                            nfold=r_to_py(6L),                    # Number of cv-folds.
                             early_stopping_rounds=r_to_py(10L),   # Number of early-stopping rounds
-                            max_minutes=r_to_py(60L*24L*0.5L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
+                            max_minutes=r_to_py(60L*5L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
                             silence=r_to_py(FALSE)
   )
   
@@ -217,7 +224,7 @@ for (ep in resp){
       
       cros_v<-group_vfold_cv(model_data,
                              "gen_ProvSegmentID",
-                             20)
+                             6)
       
       out_res<-list()
       for (i in 1:nrow(cros_v)){
@@ -307,7 +314,8 @@ for (ep in resp){
             geom_abline(slope=1,intercept=0)+
             geom_smooth(aes(x=Observed,y=Predicted),se=F,method="gam",colour="black")+
             geom_smooth(aes(x=Observed,y=quant_0.95),se=F,method="gam",colour="blue")+
-            geom_smooth(aes(x=Observed,y=quant_0.05),se=F,method="gam",colour="blue")
+            geom_smooth(aes(x=Observed,y=quant_0.05),se=F,method="gam",colour="blue")+
+            facet_wrap(~tx_Taxa,scales="free")
           
           rsq_vec(out$Observed,out$Predicted)
           rmse_vec(out$Observed,out$Predicted)
@@ -367,22 +375,25 @@ for (ep in resp){
       
       saveRDS(shap_values,file.path("data","models","LSS",paste0("best_params_SHAP_",ep,"_",ii,".rds")))
       
-      shap_values2 = xgb$booster$predict(final_data %>% 
-                                           select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% 
-                                           as.data.frame() %>%
-                                           r_to_py(),
-                                         num_iteration =-1L,
-                                         pred_contrib =T
-                                         )
-      
-      saveRDS(shap_values2,file.path("data","models","LSS",paste0("best_params_SHAP2_",ep,"_",ii,".rds")))
 
-      shap_values_interact<-explainer$shap_interaction_values(final_data %>% 
-                                          select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% 
-                                          as.data.frame() %>%
-                                          r_to_py()
-                                          )
-      saveRDS(shap_values_interact,file.path("data","models","LSS",paste0("best_params_SHAPinteraction_",ep,"_",ii,".rds")))
+      if (F) {
+        shap_values2 = xgb$booster$predict(final_data %>% 
+                                             select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% 
+                                             as.data.frame() %>%
+                                             r_to_py(),
+                                           num_iteration =-1L,
+                                           pred_contrib =T
+        )
+        
+        saveRDS(shap_values2,file.path("data","models","LSS",paste0("best_params_SHAP2_",ep,"_",ii,".rds")))
+        
+        shap_values_interact<-explainer$shap_interaction_values(final_data %>% 
+                                                                  select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% 
+                                                                  as.data.frame() %>%
+                                                                  r_to_py()
+        )
+        saveRDS(shap_values_interact,file.path("data","models","LSS",paste0("best_params_SHAPinteraction_",ep,"_",ii,".rds")))
+      }
 
     }
   }
