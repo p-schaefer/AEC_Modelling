@@ -8,6 +8,8 @@ td<-tempdir()
 
 aec_out<-readRDS(file.path("data","final","int_results.rds"))
 matched_points<-map_dfr(aec_out,~.x$bio_pnt_out) %>% 
+  dplyr::mutate(lon = sf::st_coordinates(.)[,1],
+                lat = sf::st_coordinates(.)[,2]) %>% 
   as_tibble() %>% 
   select(StreamName:SampleEventID,link_id,everything(),-geometry)
 

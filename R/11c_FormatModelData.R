@@ -69,7 +69,9 @@ model_data<-tx_data %>%
     hb_BFI_UCA=BFI_UCA,
     hb_UCA=Upstream_Catchment_Area,
     hb_Lake_Inf=Lake_Influence_Code,
-    #hb_Wadeability=Wadeability,
+    hb_Wadeability=Wadeability,
+    hb_lat=lat,
+    hb_lon=lon,
     # Stressor
     starts_with("nr_"),
     starts_with("LDI_")
