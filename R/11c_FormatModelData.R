@@ -62,7 +62,7 @@ model_data<-tx_data %>%
     # Habitat
     #hb_Temperature_Class=Temperature_Class,
     hb_Temperature=Temperature_30yr_MeanJuly,
-    hh_GDDair_UpstreamCatchmentMean=GDDair_UpstreamCatchmentMean,
+    hb_GDDair_UpstreamCatchmentMean=GDDair_UpstreamCatchmentMean,
     hb_Turbidity=Turbidity_percUpstreamChannel_TurbGeo,
     hb_Slope=Slope_ReachChannel_Percent,
     hb_BFI_RCA=BFI_RCA,

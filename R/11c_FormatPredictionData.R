@@ -25,7 +25,7 @@ int_data_out<-map2(int_data,
                      left_join(all_lc %>% 
                                  filter(grepl(gsub("_AEC_Core","",.y),region)),
                                by="link_id") %>% 
-                     fill(region,.direction="downup")) %>% 
+                     filter(!is.na(region))) %>% 
   bind_rows()
 
 model_data0<-read_rds(file.path("data","final","Model_building_finaltaxa_data.rds"))
@@ -41,7 +41,7 @@ pred_data<-int_data_out %>%
     # Habitat
     hb_Temperature_Class=Temperature_Class,
     hb_Temperature=Temperature_30yr_MeanJuly,
-    hh_GDDair_UpstreamCatchmentMean=GDDair_UpstreamCatchmentMean,
+    hb_GDDair_UpstreamCatchmentMean=GDDair_UpstreamCatchmentMean,
     hb_Turbidity=Turbidity_percUpstreamChannel_TurbGeo,
     hb_Slope=Slope_ReachChannel_Percent,
     hb_BFI_RCA=BFI_RCA,

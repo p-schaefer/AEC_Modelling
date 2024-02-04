@@ -66,10 +66,10 @@ model_data0<-read_rds(file.path("data","final","Model_building_finaltaxa_data.rd
 
 resp<-model_data0 %>% select(starts_with("resp_")) %>% colnames()
 resp<-resp[!grepl("Perc|cat_",resp)]
-#ep<-resp[[1]]
-
+resp<-resp[[2]]
 
 for (ep in resp){
+  print(ep)
   
   model_data <- model_data0 %>% 
     mutate(across(starts_with(c("case_weight")),~as.numeric(.))) %>% 
@@ -177,7 +177,7 @@ for (ep in resp){
                             num_boost_round=r_to_py(2000L),        # Number of boosting iterations.
                             nfold=r_to_py(6L),                    # Number of cv-folds.
                             early_stopping_rounds=r_to_py(20L),   # Number of early-stopping rounds
-                            max_minutes=r_to_py(60L*6L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
+                            max_minutes=r_to_py(60L*4L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
                             silence=r_to_py(FALSE)
   )
   
@@ -243,6 +243,7 @@ for (ep in resp){
       
       out_res<-list()
       for (i in 1:nrow(cros_v)){
+        print(i)
         xgb = lss.model$LightGBMLSS(
           distr.lgb$ZAGamma$ZAGamma(
             stabilization = "None",
@@ -253,7 +254,7 @@ for (ep in resp){
         
         trn<-training(cros_v$splits[[i]]) %>% 
           mutate(across(starts_with(c("case_weight")),~as.numeric(.))) %>% 
-          group_by(gen_ProvSegmentID,gen_link_id,gen_StreamName,across(starts_with("tx_"))) %>% 
+          group_by(gen_ProvReachID,gen_link_id,gen_StreamName,across(starts_with("tx_"))) %>% 
           summarise(across(where(is.numeric),~median(.x,na.rm=T)),
                     across(!where(is.numeric),~tail(.x,1)),
                     .groups="drop")
@@ -309,7 +310,7 @@ for (ep in resp){
                       mutate(endpoint=ep,
                              cv_fold=i)
           ) %>% 
-          mutate(gen_ProvSegmentID=testing(cros_v$splits[[i]])$gen_ProvSegmentID)
+          mutate(gen_ProvReachID=testing(cros_v$splits[[i]])$gen_ProvReachID)
         
         if (F){
           
@@ -322,7 +323,9 @@ for (ep in resp){
           #   parameter="concentration",
           #   plot_type="Feature_Importance"
           # )
-          
+          out<-out %>% 
+            rename(Observed=observed,
+                   Predicted=predicted)
           out %>% 
             mutate(in_90=Observed<=quant_0.95 & Observed>=quant_0.05) %>% 
             select(in_90) %>% 
@@ -331,23 +334,23 @@ for (ep in resp){
           ggplot(out,aes(x=Observed,y=Predicted,colour=tx_Taxa))+
             geom_point()+
             geom_abline(slope=1,intercept=0)+
-            geom_smooth(aes(x=Observed,y=Predicted),se=F,method="gam",colour="black")+
+            geom_smooth(aes(x=Observed,y=quant_0.5),se=F,method="gam",colour="black")+
             geom_smooth(aes(x=Observed,y=quant_0.75),se=F,method="gam",colour="blue")+
             geom_smooth(aes(x=Observed,y=quant_0.25),se=F,method="gam",colour="blue")+
             facet_wrap(~tx_Taxa,scales="free")
           
-          rsq_vec(out$Observed,out$quant_0.75)
-          rmse_vec(out$Observed,out$quant_0.75)
+          rsq_vec(out$Observed,out$Predicted)
+          rmse_vec(out$Observed,out$Predicted)
           
           sumry<-out %>%
-            group_by(tx_Taxa,gen_ProvSegmentID) %>%
+            group_by(tx_Taxa,gen_ProvReachID) %>%
             summarise(Observed=median(Observed),
                       Predicted=median(quant_0.75))
 
           m1<-sumry %>%
             filter(tx_Taxa=="Brook (speckled) Trout") %>%
             left_join(bind_rows(stm_lns),
-                      by=c("gen_ProvSegmentID"="ProvSegmentID")) %>%
+                      by=c("gen_ProvReachID"="gen_ProvReachID")) %>%
             sf::st_as_sf()
 
           mapview::mapview(m1,zcol="Predicted",at=0:10)+mapview::mapview(m1,zcol="Observed",at=0:10)
