@@ -35,8 +35,8 @@ fluidPage(
                   together with Flowing Waters Information System (FWIS) to develop predictive models of fish and
                   benthic invertebrate communities across Ontario."),
                 br(),
-                # p("Fish communities were represented as biomass (g/m^2) and density (individual/m^2). All taxa were included in a single model"),
-                # br(),
+                p("Results presented here are still highly preliminary."),
+                br(),
                 tags$a(href="https://github.com/p-schaefer/AEC_Modelling", 
                        "The code for the project is available on GitHub",
                        target="_blank"),
