@@ -14,7 +14,7 @@ inv.logit <- function(f,a) {
 
 model_data<-tx_data %>% 
   filter(!is.na(`name to use`)) %>% 
-  filter(!is.na(ProvSegmentID)) %>% 
+  filter(!is.na(ProvReachID)) %>% 
   mutate(
     tx_Repro_1=str_split(`Reproductive Guild`,": ",simplify = T)[,1],
     tx_Repro_2=str_split(`Reproductive Guild`,": ",simplify = T)[,2],
@@ -24,7 +24,7 @@ model_data<-tx_data %>%
   #   Lake_Influence_Code=as.numeric(as.factor(Lake_Influence_Code)),
   # ) %>% 
   select(# Taxa Info
-    gen_ProvSegmentID=ProvSegmentID,
+    gen_ProvReachID=ProvReachID,
     gen_link_id=link_id,
     gen_SampleEventID=SampleEventID,
     gen_StreamName=StreamName,
@@ -60,9 +60,10 @@ model_data<-tx_data %>%
     hb_lon=lon,
     # Stressor
     starts_with("nr_"),
+    starts_with("br_"),
     starts_with("LDI_")
   ) %>% 
-  group_by(gen_ProvSegmentID) %>% 
+  group_by(gen_ProvReachID) %>% 
   mutate(case_weight=importance_weights(1/n())) %>% 
   ungroup() %>% 
   select(case_weight,everything()) %>% 

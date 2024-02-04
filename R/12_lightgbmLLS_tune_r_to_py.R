@@ -73,7 +73,7 @@ for (ep in resp){
   
   model_data <- model_data0 %>% 
     mutate(across(starts_with(c("case_weight")),~as.numeric(.))) %>% 
-    group_by(gen_ProvSegmentID,gen_link_id,gen_StreamName,across(starts_with("tx_"))) %>% 
+    group_by(gen_ProvReachID,gen_link_id,gen_StreamName,across(starts_with("tx_"))) %>% 
     summarise(across(where(is.numeric),~median(.x,na.rm=T)),
               across(!where(is.numeric),~tail(.x,1)),
               .groups="drop")
@@ -82,6 +82,7 @@ for (ep in resp){
                        select(-starts_with("gen_")) %>% 
                        select(starts_with(c("tx_",
                                             "hb_",
+                                            "br_",
                                             "nr_",
                                             "LDI_")),
                               -starts_with("LDI_Natural"),
@@ -95,11 +96,15 @@ for (ep in resp){
     update_role(
       starts_with(c("tx_",
                     "hb_",
+                    "br_",
                     "nr_",
                     "LDI_")),
       new_role = "predictor"
     ) %>% 
-    step_nzv(all_predictors()) %>% 
+    step_nzv(all_predictors(),freq_cut =100/1) %>% 
+    step_lincomb(starts_with(c("br_",
+                               "nr_",
+                               "LDI_"))) %>% 
     step_unorder(all_factor_predictors()) %>% 
     update_role(
       any_of(!!ep),
@@ -111,6 +116,10 @@ for (ep in resp){
   
   final_prep<-prep(recip_main,
                    model_data )
+  
+  saveRDS(list(recip_main=recip_main,
+               final_prep=final_prep),
+          file.path("data","models","LSS",paste0("Final_Recipe_",ep,".rds")))
   
   final_data<- final_prep %>%
     juice()
@@ -126,30 +135,30 @@ for (ep in resp){
   # Prepare Parameters ------------------------------------------------------
   
   params_lightgbm = list(boosting= list("categorical",list("gbdt")),
-                         feature_pre_filter= list("categorical",list("false")),
-                         learning_rate = list("float",list(low= 1e-06, high=1, log=TRUE)), 
+                         feature_pre_filter= list("categorical",list(F)),
+                         learning_rate = list("float",list(low= 1e-6, high=0.5, log=TRUE)), 
                          max_depth= list("int",list(low= 500L, high=2000L, log=FALSE)),
                          num_leaves= list("int",list(low= 1000L, high=5000L, log=FALSE)),           
-                         min_data_in_leaf= list("int",list(low= 1L, high=100L, log=FALSE)),       
-                         min_gain_to_split= list("float",list(low= 1e-24, high=30, log=TRUE)),
-                         min_sum_hessian_in_leaf =list("float",list(low= 1e-24, high=30, log=TRUE)),
+                         min_data_in_leaf= list("int",list(low= 1L, high=50L, log=FALSE)),       
+                         min_gain_to_split= list("float",list(low= 1e-6, high=30, log=TRUE)),
+                         min_sum_hessian_in_leaf =list("float",list(low= 1e-6, high=30, log=TRUE)),
                          feature_fraction_bynode = list("float",list(low= 0.3, high=0.7, log=FALSE)),
-                         baging_freq=list("none",list(1)),
+                         baging_freq=list("none",list(1L)),
                          bin_construct_sample_cnt =list("none",list(2000000L)),
                          bagging_fraction = list("float",list(low= 0.3, high=0.7, log=FALSE)),
-                         max_cat_to_onehot = list("int",list(low= 2L, high=20L, log=FALSE)),
+                         max_cat_to_onehot = list("int",list(low= 2L, high=10L, log=FALSE)),
                          max_cat_threshold = list("int",list(low= 1500L, high=5000L, log=FALSE)),
-                         min_data_per_group = list("int",list(low= 2L, high=256L, log=FALSE)),
+                         min_data_per_group = list("int",list(low= 2L, high=50L, log=FALSE)),
                          cat_smooth = list("float",list(low= 0L, high=10L, log=FALSE)),
                          cat_l2 = list("float",list(low= 0L, high=10L, log=FALSE)),
-                         histogram_pool_size = list("none",list(-1))#,
+                         histogram_pool_size = list("none",list(-1L))#,
                          # lambda_l1=list("float",list(low= 1e-48, high=100, log=TRUE)),
                          # lambda_l2=list("float",list(low= 1e-48, high=100, log=TRUE)),
                          # path_smooth=list("float",list(low= 0L, high=10L, log=FALSE))
                          
   )
   
-  # Define Expectiles ------------------------------------------------------------
+  # Define Model ------------------------------------------------------------
   
   xgb = lss.model$LightGBMLSS(
     distr.lgb$ZAGamma$ZAGamma(
@@ -167,7 +176,7 @@ for (ep in resp){
                             train_set=train_py,
                             num_boost_round=r_to_py(2000L),        # Number of boosting iterations.
                             nfold=r_to_py(6L),                    # Number of cv-folds.
-                            early_stopping_rounds=r_to_py(15L),   # Number of early-stopping rounds
+                            early_stopping_rounds=r_to_py(20L),   # Number of early-stopping rounds
                             max_minutes=r_to_py(60L*6L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
                             silence=r_to_py(FALSE)
   )
@@ -177,14 +186,13 @@ for (ep in resp){
   saveRDS(opt_param,file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_gbtree.rds")))
   
   
-  params_xgb = list(
+  params_lightgbm = list(
     boosting = list("categorical",list("dart")),
-    sample_type = list("categorical",list("weighted")),
+    xgboost_dart_mode = list("categorical",list(T,F)),
     rate_drop= list("float",list(low= 0, high=0.3, log=FALSE)),
     skip_drop= list("float",list(low= 0.3, high=0.7, log=FALSE)),
-    max_drop= list("none",list(-1)),
-    boosting= list("categorical",list("gbdt")),
-    feature_pre_filter= list("categorical",list("false")),
+    max_drop= list("none",list(-1L)),
+    feature_pre_filter= list("none",list(opt_param$feature_pre_filter)),
     learning_rate = list("none",list(opt_param$learning_rate)), 
     max_depth= list("none",list(opt_param$max_depth)),
     num_leaves= list("none",list(opt_param$num_leaves)),           
@@ -192,15 +200,15 @@ for (ep in resp){
     min_gain_to_split= list("none",list(opt_param$min_gain_to_split)),
     min_sum_hessian_in_leaf =list("none",list(opt_param$min_sum_hessian_in_leaf)),
     feature_fraction_bynode = list("none",list(opt_param$feature_fraction_bynode)),
-    baging_freq=list("none",list(1)),
-    bin_construct_sample_cnt =list("none",list(2000000L)),
+    baging_freq=list("none",list(opt_param$baging_freq)),
+    bin_construct_sample_cnt =list("none",list(opt_param$bin_construct_sample_cnt)),
     bagging_fraction = list("none",list(opt_param$bagging_fraction)),
     max_cat_to_onehot = list("none",list(opt_param$max_cat_to_onehot)),
     max_cat_threshold = list("none",list(opt_param$max_cat_threshold)),
     min_data_per_group = list("none",list(opt_param$min_data_per_group)),
     cat_smooth = list("none",list(opt_param$cat_smooth)),
     cat_l2 = list("none",list(opt_param$cat_l2)),
-    histogram_pool_size = list("none",list(-1))#,
+    histogram_pool_size = list("none",list(opt_param$histogram_pool_size))#,
     # lambda_l1=list("none",list(opt_param$lambda_l1)),
     # lambda_l2=list("none",list(opt_param$lambda_l2)),
     # path_smooth=list("none",list(opt_param$path_smooth))
@@ -211,7 +219,7 @@ for (ep in resp){
                             train_set=train_py,
                             num_boost_round=r_to_py(opt_param$opt_rounds + 2000L),        # Number of boosting iterations.
                             nfold=r_to_py(6L),                    # Number of cv-folds.
-                            early_stopping_rounds=r_to_py(15L),   # Number of early-stopping rounds
+                            early_stopping_rounds=r_to_py(20L),   # Number of early-stopping rounds
                             max_minutes=r_to_py(60L*3L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
                             silence=r_to_py(FALSE)
   )
@@ -224,13 +232,13 @@ for (ep in resp){
   
   # Define Cross-Validation -------------------------------------------------
   
-  if (T){
+  if (F){
     
     for (ii in c("gbtree","dart")){
       opt_param<-readRDS(file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_",ii,".rds")))
       
       cros_v<-group_vfold_cv(model_data0,
-                             "gen_ProvSegmentID",
+                             "gen_ProvReachID",
                              20)
       
       out_res<-list()
