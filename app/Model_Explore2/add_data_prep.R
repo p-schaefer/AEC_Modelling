@@ -1,4 +1,5 @@
 library(tidyverse)
+library(sf)
 
 booster<-"dart"
 ep<-"resp_Comm_Biomass"
@@ -89,7 +90,7 @@ saveRDS(pred_names,file.path("app","Model_Explore2","data",paste0("pred_names.rd
 
 # Save Shap Values --------------------------------------------------------
 
-shap_out<-map_dfr(c("resp_Comm_Biomass"), #,"resp_Comm_Abundance"
+shap_out<-map_dfr(c("resp_Comm_Biomass","resp_Comm_Abundance"), #
         function(x){
           shap<-readRDS(file.path("data","models","LSS",paste0("Shap_",x,"_",booster,".rds")))
           
@@ -116,7 +117,7 @@ write_csv(shap_out,file.path("app","Model_Explore2","data",paste0("shap.csv")))
 
 # Save Out of sample predictions ------------------------------------------
 
-out_res<-map_dfr(c("resp_Comm_Biomass"),#,"resp_Comm_Abundance"
+out_res<-map_dfr(c("resp_Comm_Biomass","resp_Comm_Abundance"),#
     ~readRDS(file.path("data","models","LSS",paste0("OOB_Pred_",.x,"_",booster,".rds"))) %>% 
       select(contains(c("quant_","predicted","observed","endpoint","tx_Taxa","gen_ProvReachID")))
     )

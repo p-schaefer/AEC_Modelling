@@ -21,7 +21,7 @@ fluidPage(
       ),
       column(
         width=12,
-        selectInput("sel_region","Region",regions,multiple=F,selected = "w03_Lake_Ontario_West"),
+        selectInput("sel_region","Region",regions,multiple=T,selected = "w03_Lake_Ontario_West"),
         selectInput("sel_taxa","Taxa",taxa,multiple=F,selected = "Brook (speckled) Trout"),
         selectInput("sel_ep","Endpoint",ep,multiple=F)
       )
@@ -32,10 +32,10 @@ fluidPage(
         tabItem(tabName = "home",
                 h3("Ontario Aquatic Ecosystem Classification Biotic Modeling"),
                 p("The goal of this project is to use data from Ontario’s Aquatic Ecosystem Classification (AEC)
-                  together with Flowing Waters Information System (FWIS) to develop predictive models of fish and
-                  benthic invertebrate communities across Ontario."),
+                  together with Flowing Waters Information System (FWIS) to develop predictive models of fish 
+                  communities across Ontario."),
                 br(),
-                p("Results presented here are still highly preliminary."),
+                p("Results presented here are highly preliminary."),
                 br(),
                 tags$a(href="https://github.com/p-schaefer/AEC_Modelling", 
                        "The code for the project is available on GitHub",
@@ -83,7 +83,7 @@ fluidPage(
                   p("The figure below shows Observed vs Predicted values. The solid black line is fit to the 50th percentile of
                      each observations predicted conditional distribition, and the blue lines are fit to the 25th and 75th percentiles.
                     "),
-                  plotly::plotlyOutput("predperf_out",  height = "750px")
+                  plotly::plotlyOutput("predperf_out",  height = "750px",  width = "750px")
                 )
         ),
         # predimp_tab tab content
@@ -100,7 +100,7 @@ fluidPage(
                 fluidPage(
                   h3("Predictor Response Surfaces"),
                   p("The figure below shows the predicted effect of a predictor variable on the presence/absence and mean. 
-                    The predicted effects can be colour by a third variable to identify interactions among predictors"),
+                    The predicted effects can be colour by a separate variable to identify interactions among predictors"),
                   fluidRow(
                     column(4,offset = 1,selectInput("shap_pred_sel","Predictor",pred_names,multiple=F)),
                     column(4,offset = 1,selectInput("shap_col_sel","Colour",pred_names,multiple=F))

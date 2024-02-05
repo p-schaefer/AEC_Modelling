@@ -66,7 +66,7 @@ model_data0<-read_rds(file.path("data","final","Model_building_finaltaxa_data.rd
 
 resp<-model_data0 %>% select(starts_with("resp_")) %>% colnames()
 resp<-resp[!grepl("Perc|cat_",resp)]
-resp<-resp[[2]]
+#resp<-resp[[2]]
 
 for (ep in resp){
   print(ep)
@@ -86,7 +86,10 @@ for (ep in resp){
                                             "nr_",
                                             "LDI_")),
                               -starts_with("LDI_Natural"),
+                              -contains("lat"),
+                              -contains("lon"),
                               -contains("lumped"),
+                              -contains("_SD"),
                               -contains("_iFL"),
                               any_of(ep),
                               any_of(paste0("cat_",ep)),
@@ -177,7 +180,7 @@ for (ep in resp){
                             num_boost_round=r_to_py(2000L),        # Number of boosting iterations.
                             nfold=r_to_py(6L),                    # Number of cv-folds.
                             early_stopping_rounds=r_to_py(20L),   # Number of early-stopping rounds
-                            max_minutes=r_to_py(60L*4L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
+                            max_minutes=r_to_py(60L*12L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
                             silence=r_to_py(FALSE)
   )
   
@@ -220,7 +223,7 @@ for (ep in resp){
                             num_boost_round=r_to_py(opt_param$opt_rounds + 2000L),        # Number of boosting iterations.
                             nfold=r_to_py(6L),                    # Number of cv-folds.
                             early_stopping_rounds=r_to_py(20L),   # Number of early-stopping rounds
-                            max_minutes=r_to_py(60L*3L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
+                            max_minutes=r_to_py(60L*6L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
                             silence=r_to_py(FALSE)
   )
   

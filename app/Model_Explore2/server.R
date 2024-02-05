@@ -24,6 +24,8 @@ function(input, output, session) {
       req(input$sel_region)
       req(input$sel_taxa)
       req(input$sel_ep)
+      
+      validate(need(length(input$sel_region)<4,"Select up to 3 regions"))
 
       sel_w<-str_split(input$sel_region,"_",2,simplify = T)[,1]
       data_object$sel_strms<-bind_rows(strm[grepl(paste(sel_w,collapse = "|"),names(strm))]) %>% 
@@ -59,9 +61,7 @@ function(input, output, session) {
   # map_bio_tab tab content --
   
   output$map_bio <- leaflet::renderLeaflet({
-    req(input$sel_region)
-    req(input$sel_taxa)
-    req(input$sel_ep)
+    req(data_object$sel_modelpredictions)
 
     Predicted<-data_object$sel_strms %>% 
       left_join(data_object$sel_modelpredictions,
@@ -72,23 +72,23 @@ function(input, output, session) {
       sf::st_as_sf()
     
     Observed<-Predicted %>% select(`log-scale`=observed)
-    Predicted50<-Predicted %>% select(log=P50)
-    Predicted75<-Predicted %>% select(log=p75)
+    Predicted50<-Predicted %>% select(`log-scale`=P50)
+    Predicted75<-Predicted %>% select(`log-scale`=p75)
     
-    rng<-pretty(range(c(Predicted75$log,Observed$`log-scale`),na.rm=T),n=8)
+    rng<-pretty(range(c(Predicted75$`log-scale`,Observed$`log-scale`),na.rm=T),n=8)
     
     mv<-mapview::mapview(Observed,
                      zcol=c("log-scale"),
                      at=(rng))+
       mapview::mapview(Predicted50,
-                       zcol=c("log"),
+                       zcol=c("log-scale"),
                        at=(rng),
-                       legend =F,
+                       legend =T,
                        hide =T)+
       mapview::mapview(Predicted75,
-                       zcol=c("log"),
+                       zcol=c("log-scale"),
                        at=(rng),
-                       legend =F,
+                       legend =T,
                        hide =T)
     
     mv@map
@@ -97,10 +97,8 @@ function(input, output, session) {
   # map_pred_tab tab content --
   
   output$map_pred <- leaflet::renderLeaflet({
-    req(input$sel_region)
-    req(input$sel_taxa)
-    req(input$sel_ep)
-    
+    req(data_object$sel_modelpredictors)
+
     Predictors<-data_object$sel_strms %>% 
       left_join(data_object$sel_modelpredictors,
                 by=c("ProvReachID"="gen_ProvReachID"))%>% 
@@ -118,9 +116,7 @@ function(input, output, session) {
   
   # predperf_tab tab content --
   output$predperf_out<-plotly::renderPlotly({
-    req(input$sel_region)
-    req(input$sel_taxa)
-    req(input$sel_ep)
+    req(data_object$sel_modelOOSpredictions)
     
     ttl<-paste(
       input$sel_taxa,
@@ -131,12 +127,12 @@ function(input, output, session) {
     
     sub_data<-data_object$sel_modelOOSpredictions
     
-    rng<-range(c(sub_data$observed,sub_data$quant_0.25),na.rm=T)
+    rng<-range(c(sub_data$observed,sub_data$quant_0.75),na.rm=T)
     
     rng<-range(pretty(rng))
     
     plt<-ggplot(sub_data,
-                aes(x=observed,y=predicted))+
+                aes(x=observed,y=quant_0.5))+
       geom_point()+
       geom_abline(slope=1,intercept=0)+
       geom_smooth(aes(x=observed,y=quant_0.5),se=F,method="gam",colour="black")+
@@ -156,10 +152,8 @@ function(input, output, session) {
   # predimp_tab tab content --
   
   output$predimp_out<-plotly::renderPlotly({
-    req(input$sel_region)
-    req(input$sel_taxa)
-    req(input$sel_ep)
-    
+    req(data_object$sel_modelShap)
+
     pred_imp<-data_object$sel_modelShap %>% 
       select(shape_param,any_of(pred_names)) %>% 
       group_by(shape_param) %>% 
@@ -179,9 +173,7 @@ function(input, output, session) {
   # predsurf_tab tab content --
   
   output$predsurf_out<-plotly::renderPlotly({
-    req(input$sel_region)
-    req(input$sel_taxa)
-    req(input$sel_ep)
+    req(data_object$sel_modelShap)
     req(input$shap_pred_sel)
     req(input$shap_col_sel)
     
