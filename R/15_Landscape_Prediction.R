@@ -54,6 +54,10 @@ for (ep in c("resp_Comm_Biomass","resp_Comm_Abundance")){ #
                                n_samples=1000L,
                                quantiles=c(0.05,0.25,0.5,0.75,0.95))
   
+  pred_params = xgb$predict(pred_data_final %>%   r_to_py(),
+                            pred_type="parameters")
+  
+  
   pred_samples = xgb$predict(pred_data_final %>%   r_to_py(),
                                pred_type="samples",
                                n_samples=1000L) %>% 
@@ -62,6 +66,7 @@ for (ep in c("resp_Comm_Biomass","resp_Comm_Abundance")){ #
   
   fin_data<-pred_quantiles %>% 
     mutate(predicted=pred_samples) %>% 
+    bind_cols(pred_params) %>% 
     rename_with(~paste0(ep,"_",.x))
   
   out_landscape[[ep]]<-fin_data

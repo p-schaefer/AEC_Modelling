@@ -76,7 +76,7 @@ for (ep in resp){
     
     cros_v<-group_vfold_cv(model_data0,
                            "gen_ProvReachID",
-                           50)
+                           100)
     
     out_res<-list()
     for (i in 1:nrow(cros_v)){
@@ -122,14 +122,18 @@ for (ep in resp){
                                    n_samples=2000L,
                                    quantiles=c(0.05,0.25,0.5,0.75,0.95))
       
+      pred_params = xgb$predict(tst %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
+                                   pred_type="parameters")
+      
       pred_samples = xgb$predict(tst %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
                                  pred_type="samples",
-                                 n_samples=1000L) %>% 
+                                 n_samples=2000L) %>% 
         rowMeans() %>% 
         unlist()
       
       out<-pred_quantiles %>% 
         mutate(predicted=pred_samples) %>% 
+        bind_cols(pred_params) %>% 
         bind_cols(testing(cros_v$splits[[i]]) %>%
                     select(any_of(ep),tx_Taxa,everything()) %>%
                     rename_with(.cols=any_of(ep),~paste0("observed")) %>% 

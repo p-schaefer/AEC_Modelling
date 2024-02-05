@@ -19,7 +19,8 @@ AEC_list<-list(
   LakeErie="https://www.gisapplication.lrc.gov.on.ca/fmedatadownload/Packages/AEC_Core_Package01_LakeErie.zip",
   LakeHuronSouth="https://www.gisapplication.lrc.gov.on.ca/fmedatadownload/Packages/AEC_Core_Package04_LakeHuronSouth.zip",
   OttawaStLawrenceRivers="https://www.gisapplication.lrc.gov.on.ca/fmedatadownload/Packages/AEC_Core_Package03_OttawaStLawrenceRivers.zip",
-  LakeHuronNorth="https://www.gisapplication.lrc.gov.on.ca/fmedatadownload/Packages/AEC_Core_Package05_LakeHuronNorth.zip"
+  LakeHuronNorth="https://www.gisapplication.lrc.gov.on.ca/fmedatadownload/Packages/AEC_Core_Package05_LakeHuronNorth.zip",
+  LakeSuperior="https://www.gisapplication.lrc.gov.on.ca/fmedatadownload/Packages/AEC_Core_Package06_LakeSuperior.zip"
 )
 
 

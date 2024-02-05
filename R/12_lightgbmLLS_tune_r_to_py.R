@@ -82,7 +82,7 @@ for (ep in resp){
                        select(-starts_with("gen_")) %>% 
                        select(starts_with(c("tx_",
                                             "hb_",
-                                            "br_",
+                                            #"br_",
                                             "nr_",
                                             "LDI_")),
                               -starts_with("LDI_Natural"),
@@ -99,12 +99,12 @@ for (ep in resp){
     update_role(
       starts_with(c("tx_",
                     "hb_",
-                    "br_",
+                    #"br_",
                     "nr_",
                     "LDI_")),
       new_role = "predictor"
     ) %>% 
-    step_nzv(all_predictors(),freq_cut =100/1) %>% 
+    step_nzv(all_predictors(),freq_cut =500/1) %>% 
     step_lincomb(starts_with(c("br_",
                                "nr_",
                                "LDI_"))) %>% 
@@ -114,8 +114,8 @@ for (ep in resp){
       new_role = "outcome"
     ) %>% 
     #step_normalize(all_numeric_predictors()) %>% 
-    step_mutate(across(starts_with(c("case_weight")),~as.numeric(.))) #%>% 
-    #themis::step_upsample(!!paste0("cat_",ep),over_ratio  = 0.25)
+    step_mutate(across(starts_with(c("case_weight")),~as.numeric(.))) %>% 
+    themis::step_upsample(!!paste0("cat_",ep),over_ratio  = 0.1)
   
   final_prep<-prep(recip_main,
                    model_data )
@@ -235,7 +235,7 @@ for (ep in resp){
   
   # Define Cross-Validation -------------------------------------------------
   
-  if (F){
+  if (T){
     
     for (ii in c("gbtree","dart")){
       opt_param<-readRDS(file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_",ii,".rds")))

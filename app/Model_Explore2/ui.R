@@ -19,12 +19,34 @@ fluidPage(
         menuItem("Predictor Importance", tabName = "predimp_tab"),
         menuItem("Predictor Response", tabName = "predsurf_tab")
       ),
+      #box(
+      #width=12,
+      selectInput("sel_region","Region (up to 4)",regions,multiple=T,selected = "w03_Lake_Ontario_West"),
+      selectInput("sel_taxa","Taxa",taxa,multiple=F,selected = "Brook (speckled) Trout"),
+      selectInput("sel_ep","Endpoint",ep,multiple=F),
+      #),
+      br(),
+      br(),
+      br(),
+      br(),
+      br(),
+      br(),
+      br(),
+      br(),
+      br(),
+      br(),
+      br(),
+      br(),
+      br(),
+      br(),
+      br(),
       column(
-        width=12,
-        selectInput("sel_region","Region",regions,multiple=T,selected = "w03_Lake_Ontario_West"),
-        selectInput("sel_taxa","Taxa",taxa,multiple=F,selected = "Brook (speckled) Trout"),
-        selectInput("sel_ep","Endpoint",ep,multiple=F)
+        width=10,offset=1,
+        tags$a(href="https://buymeacoffee.com/ecopulse", 
+               "Buy me a coffee",
+               target="_blank")
       )
+      
     ),
     dashboardBody(
       tabItems(
@@ -100,7 +122,11 @@ fluidPage(
                 fluidPage(
                   h3("Predictor Response Surfaces"),
                   p("The figure below shows the predicted effect of a predictor variable on the presence/absence and mean. 
-                    The predicted effects can be colour by a separate variable to identify interactions among predictors"),
+                    The predicted effects can be colour by a separate variable to identify interactions among predictors.
+                    A positive effect on the SHAP score of the mean suggests that predictor value is increasing the mean prediction,
+                    whereas a positive effect on the SHAP score of the presence/absence suggests that the predictore values is increasing
+                    the likelihood of a 0.
+                    "),
                   fluidRow(
                     column(4,offset = 1,selectInput("shap_pred_sel","Predictor",pred_names,multiple=F)),
                     column(4,offset = 1,selectInput("shap_col_sel","Colour",pred_names,multiple=F))

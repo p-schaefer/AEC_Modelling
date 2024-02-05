@@ -25,7 +25,7 @@ function(input, output, session) {
       req(input$sel_taxa)
       req(input$sel_ep)
       
-      validate(need(length(input$sel_region)<4,"Select up to 3 regions"))
+      validate(need(length(input$sel_region)<5,"Select up to 4 regions"))
 
       sel_w<-str_split(input$sel_region,"_",2,simplify = T)[,1]
       data_object$sel_strms<-bind_rows(strm[grepl(paste(sel_w,collapse = "|"),names(strm))]) %>% 
@@ -122,7 +122,7 @@ function(input, output, session) {
       input$sel_taxa,
       case_when(input$sel_ep=="resp_Comm_Biomass"~ "Biomass (g/100m^2)",
                 T ~ "Density (individuals/100m^2)"),
-      input$sel_region
+      paste(input$sel_region)
     )
     
     sub_data<-data_object$sel_modelOOSpredictions
