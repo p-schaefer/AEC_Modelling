@@ -1,0 +1,43 @@
+﻿Category,Name,Desctiption,Weighting,Source
+Taxonomic and Ecological Information,tx_Taxa,Species Name,none,FWIS / SOSMART
+Taxonomic and Ecological Information,tx_Family,Family Name,none,FWIS / SOSMART
+Taxonomic and Ecological Information,tx_Tolerance,Tolerant / Intolerant / Intermediate,none,FWIS / SOSMART
+Taxonomic and Ecological Information,tx_Trophic_Class,invertivore / carnivore / detritivore / planktivore / herbivore,none,FWIS / SOSMART
+Taxonomic and Ecological Information,tx_Thermal_Regime,coldwater / coolwater / warmwater,none,FWIS / SOSMART
+Taxonomic and Ecological Information,tx_General_Habitat,lacustrine / riverine / estuarine / marine,none,FWIS / SOSMART
+Taxonomic and Ecological Information,tx_Environment,benthic / benthopelagic / pelagic,none,FWIS / SOSMART
+Taxonomic and Ecological Information,tx_Repro_1,Guarders / Nonguarders,none,FWIS / SOSMART
+Taxonomic and Ecological Information,tx_Repro_2,Brood hiders / Nest spawners / Open substratum spawners / Substratum choosers,none,FWIS / SOSMART
+Taxonomic and Ecological Information,tx_Repro_3,Ariadnophils / Litho-pelagophils / Lithophils / Phytophils / Polyphils / Speleophils,none,FWIS / SOSMART
+Aquatic Ecosystem Classification,hb_Temperature,See AEC Documentation,none,Ontario Aquatic Ecosystem Classification
+Aquatic Ecosystem Classification,hb_GDDair_UpstreamCatchmentMean,See AEC Documentation,none,Ontario Aquatic Ecosystem Classification
+Aquatic Ecosystem Classification,hb_Turbidity,See AEC Documentation,none,Ontario Aquatic Ecosystem Classification
+Aquatic Ecosystem Classification,hb_Slope,See AEC Documentation,none,Ontario Aquatic Ecosystem Classification
+Aquatic Ecosystem Classification,hb_BFI_RCA,See AEC Documentation,none,Ontario Aquatic Ecosystem Classification
+Aquatic Ecosystem Classification,hb_BFI_UCA,See AEC Documentation,none,Ontario Aquatic Ecosystem Classification
+Aquatic Ecosystem Classification,hb_UCA,See AEC Documentation,none,Ontario Aquatic Ecosystem Classification
+Aquatic Ecosystem Classification,hb_Temperature_Class,See AEC Documentation,none,Ontario Aquatic Ecosystem Classification
+Aquatic Ecosystem Classification,hb_Lake_Inf,See AEC Documentation,none,Ontario Aquatic Ecosystem Classification
+Aquatic Ecosystem Classification,hb_Wadeability,See AEC Documentation,none,Ontario Aquatic Ecosystem Classification
+Broad Landcover Categories,br_Agricultural_HAiFLS_prop,"OLCC: 16, 28",HAiFLS,Ontario Landcover Compilation V2 (OLCC)
+Broad Landcover Categories,br_Agricultural_HAiFLO_prop,"OLCC: 16, 28",HAIFLO,Ontario Landcover Compilation V2 (OLCC)
+Broad Landcover Categories,br_Natural_HAiFLS_prop,"OLCC: 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 17, 19, 20, 21, 22, 23, 24, 26",HAiFLS,Ontario Landcover Compilation V2 (OLCC)
+Broad Landcover Categories,br_Natural_HAiFLO_prop,"OLCC: 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 17, 19, 20, 21, 22, 23, 24, 26",HAIFLO,Ontario Landcover Compilation V2 (OLCC)
+Broad Landcover Categories,br_NonNatural_HAiFLS_prop,"OLCC: 18, 25",HAiFLS,Ontario Landcover Compilation V2 (OLCC)
+Broad Landcover Categories,br_NonNatural_HAiFLO_prop,"OLCC: 18, 25",HAIFLO,Ontario Landcover Compilation V2 (OLCC)
+Broad Landcover Categories,br_Urban_HAiFLS_prop,OLCC: 27,HAiFLS,Ontario Landcover Compilation V2 (OLCC)
+Broad Landcover Categories,br_Urban_HAiFLO_prop,OLCC: 27,HAIFLO,Ontario Landcover Compilation V2 (OLCC)
+Specific Landcover Categories,nr_BroadleafForest_HAiFLS_prop,OLCC: 13,HAiFLS,Ontario Landcover Compilation V2 (OLCC)
+Specific Landcover Categories,nr_BroadleafForest_HAiFLO_prop,OLCC: 13,HAIFLO,Ontario Landcover Compilation V2 (OLCC)
+Specific Landcover Categories,nr_ConiferousForest_HAiFLS_prop,OLCC: 15,HAiFLS,Ontario Landcover Compilation V2 (OLCC)
+Specific Landcover Categories,nr_ConiferousForest_HAiFLO_prop,OLCC: 15,HAIFLO,Ontario Landcover Compilation V2 (OLCC)
+Specific Landcover Categories,nr_MixedAgriculture_HAiFLS_prop,OLCC: 28,HAiFLS,Ontario Landcover Compilation V2 (OLCC)
+Specific Landcover Categories,nr_MixedAgriculture_HAiFLO_prop,OLCC: 28,HAIFLO,Ontario Landcover Compilation V2 (OLCC)
+Specific Landcover Categories,nr_MixedForest_HAiFLS_prop,"OLCC: 11, 12, 14, 16, 17",HAiFLS,Ontario Landcover Compilation V2 (OLCC)
+Specific Landcover Categories,nr_MixedForest_HAiFLO_prop,"OLCC: 11, 12, 14, 16, 17",HAIFLO,Ontario Landcover Compilation V2 (OLCC)
+Specific Landcover Categories,nr_Water_HAiFLS_prop,"OLCC: 1, 2",HAiFLS,Ontario Landcover Compilation V2 (OLCC)
+Specific Landcover Categories,nr_Water_HAiFLO_prop,"OLCC: 1, 2",HAIFLO,Ontario Landcover Compilation V2 (OLCC)
+Specific Landcover Categories,nr_Wetland_HAiFLS_prop,"OLCC: 5, 6, 7, 8",HAiFLS,Ontario Landcover Compilation V2 (OLCC)
+Specific Landcover Categories,nr_Wetland_HAiFLO_prop,"OLCC: 5, 6, 7, 8",HAIFLO,Ontario Landcover Compilation V2 (OLCC)
+Landscape Disturbance Index,LDI_HAiFLS_mean,Calculated based on the relative disturbance of different landcover categories ,HAiFLS,Ontario Landcover Compilation V2 (OLCC)
+Landscape Disturbance Index,LDI_HAiFLO_mean,Calculated based on the relative disturbance of different landcover categories ,HAIFLO,Ontario Landcover Compilation V2 (OLCC)
