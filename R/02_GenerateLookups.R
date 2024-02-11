@@ -34,6 +34,57 @@ GIS_Pred<-list(landcover=file.path("/vsizip","data","raw","GIS","OntarioLandCove
                )
 
 master_lu$GIS_Pred<-GIS_Pred
+
+
+# Clean Predictor Table ---------------------------------------------------
+
+tibble::tribble(
+  ~Predictor,
+  "tx_Taxa",
+  "tx_Family",
+  "tx_Tolerance",
+  "tx_Trophic_Class",
+  "tx_Thermal_Regime",
+  "tx_General_Habitat",
+  "tx_Environment",
+  "tx_Repro_1",
+  "tx_Repro_2",
+  "tx_Repro_3",
+  "hb_Temperature",
+  "hb_GDDair_UpstreamCatchmentMean",
+  "hb_Turbidity",
+  "hb_Slope",
+  "hb_BFI_RCA",
+  "hb_BFI_UCA",
+  "hb_UCA",
+  "hb_Temperature_Class",
+  "hb_Lake_Inf",
+  "hb_Wadeability",
+  "br_Agricultural_HAiFLS_prop",
+  "br_Agricultural_HAiFLO_prop",
+  "br_Natural_HAiFLS_prop",
+  "br_Natural_HAiFLO_prop",
+  "br_NonNatural_HAiFLS_prop",
+  "br_NonNatural_HAiFLO_prop",
+  "br_Urban_HAiFLS_prop",
+  "br_Urban_HAiFLO_prop",
+  "nr_BroadleafForest_HAiFLS_prop",
+  "nr_BroadleafForest_HAiFLO_prop",
+  "nr_ConiferousForest_HAiFLS_prop",
+  "nr_ConiferousForest_HAiFLO_prop",
+  "nr_MixedAgriculture_HAiFLS_prop",
+  "nr_MixedAgriculture_HAiFLO_prop",
+  "nr_MixedForest_HAiFLS_prop",
+  "nr_MixedForest_HAiFLO_prop",
+  "nr_Water_HAiFLS_prop",
+  "nr_Water_HAiFLO_prop",
+  "nr_Wetland_HAiFLS_prop",
+  "nr_Wetland_HAiFLO_prop",
+  "LDI_HAiFLS_mean",
+  "LDI_HAiFLO_mean",
+)
+
+
 # Write Lookup File -------------------------------------------------------
 
 saveRDS(master_lu,file.path("data","lookups.rds"))

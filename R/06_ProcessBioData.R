@@ -14,6 +14,13 @@ colnames(lookup_tbl)[colnames(lookup_tbl)=="OMNR.Code"]<-"SpeciesCode"
 
 raw_tbl<-read.csv(file.path("data","raw","Bio","tblFishSummaryOfTotalCatches.csv"))
 
+raw_tbl<-raw_tbl %>% 
+  filter( #one of these filters
+    OSAPSE==1, #the sample event was associated with at least one OSAP project and the sample event itself used site boundaries that were defined as per OSAP
+    #ProjSDFSiteBoundaryOSAPUsed==1,
+    #SESDFSiteBoundaryOSAPUsed==1
+  )
+
 # Setup Sample Event table ------------------------------------------------
 
 SampleEventID<-raw_tbl[!is.na(raw_tbl$UsableArea) & raw_tbl$UsableArea>0,

@@ -8,7 +8,7 @@ library(ihydro)
 
 lu_master<-readRDS(file.path("data","lookups.rds"))
 
-plan(multisession(workers=8))
+plan(multisession(workers=2))
 
 fl<-list.files(file.path("data","Processed","ihydro"),full.names = T)
 

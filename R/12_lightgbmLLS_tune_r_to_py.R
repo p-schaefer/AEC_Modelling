@@ -66,7 +66,7 @@ model_data0<-read_rds(file.path("data","final","Model_building_finaltaxa_data.rd
 
 resp<-model_data0 %>% select(starts_with("resp_")) %>% colnames()
 resp<-resp[!grepl("Perc|cat_",resp)]
-#resp<-resp[[2]]
+#ep<-resp[[1]]
 
 for (ep in resp){
   print(ep)
@@ -82,7 +82,7 @@ for (ep in resp){
                        select(-starts_with("gen_")) %>% 
                        select(starts_with(c("tx_",
                                             "hb_",
-                                            #"br_",
+                                            "br_",
                                             "nr_",
                                             "LDI_")),
                               -starts_with("LDI_Natural"),
@@ -99,23 +99,21 @@ for (ep in resp){
     update_role(
       starts_with(c("tx_",
                     "hb_",
-                    #"br_",
+                    "br_",
                     "nr_",
                     "LDI_")),
       new_role = "predictor"
     ) %>% 
     step_nzv(all_predictors(),freq_cut =500/1) %>% 
-    step_lincomb(starts_with(c("br_",
-                               "nr_",
-                               "LDI_"))) %>% 
+    step_lincomb(starts_with(c("br_","nr_"))) %>% 
     step_unorder(all_factor_predictors()) %>% 
     update_role(
       any_of(!!ep),
       new_role = "outcome"
     ) %>% 
     #step_normalize(all_numeric_predictors()) %>% 
-    step_mutate(across(starts_with(c("case_weight")),~as.numeric(.))) %>% 
-    themis::step_upsample(!!paste0("cat_",ep),over_ratio  = 0.1)
+    step_mutate(across(starts_with(c("case_weight")),~as.numeric(.))) #%>% 
+    #themis::step_upsample(!!paste0("cat_",ep),over_ratio  = 0.1)
   
   final_prep<-prep(recip_main,
                    model_data )
@@ -223,7 +221,7 @@ for (ep in resp){
                             num_boost_round=r_to_py(opt_param$opt_rounds + 2000L),        # Number of boosting iterations.
                             nfold=r_to_py(6L),                    # Number of cv-folds.
                             early_stopping_rounds=r_to_py(20L),   # Number of early-stopping rounds
-                            max_minutes=r_to_py(60L*6L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
+                            max_minutes=r_to_py(60L*12L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
                             silence=r_to_py(FALSE)
   )
   
@@ -337,7 +335,7 @@ for (ep in resp){
           ggplot(out,aes(x=Observed,y=Predicted,colour=tx_Taxa))+
             geom_point()+
             geom_abline(slope=1,intercept=0)+
-            geom_smooth(aes(x=Observed,y=quant_0.5),se=F,method="gam",colour="black")+
+            geom_smooth(aes(x=Observed,y=Predicted),se=F,method="gam",colour="black")+
             geom_smooth(aes(x=Observed,y=quant_0.75),se=F,method="gam",colour="blue")+
             geom_smooth(aes(x=Observed,y=quant_0.25),se=F,method="gam",colour="blue")+
             facet_wrap(~tx_Taxa,scales="free")

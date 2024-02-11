@@ -98,6 +98,11 @@ for (ep in resp){
       final_prep<-prep(recip_main,trn)
       
       tst<-testing(cros_v$splits[[i]]) %>% 
+        mutate(across(starts_with(c("case_weight")),~as.numeric(.))) %>% 
+        group_by(gen_ProvReachID,gen_link_id,gen_StreamName,across(starts_with("tx_"))) %>% 
+        summarise(across(where(is.numeric),~median(.x,na.rm=T)),
+                  across(!where(is.numeric),~tail(.x,1)),
+                  .groups="drop") %>% 
         bake(object=final_prep) 
       
       trn<-trn %>% 
@@ -120,7 +125,7 @@ for (ep in resp){
       pred_quantiles = xgb$predict(tst %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
                                    pred_type="quantiles",
                                    n_samples=2000L,
-                                   quantiles=c(0.05,0.25,0.5,0.75,0.95))
+                                   quantiles=c(0.05,0.16,0.25,0.33,0.5,0.66,0.75,0.84,0.95))
       
       pred_params = xgb$predict(tst %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
                                    pred_type="parameters")

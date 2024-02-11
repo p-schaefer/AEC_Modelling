@@ -75,7 +75,8 @@ model_data<-tx_data %>%
     # Stressor
     starts_with("nr_"),
     starts_with("br_"),
-    starts_with("LDI_")
+    starts_with("LDI_"),
+    -starts_with("LDI_Natural")
   ) %>% 
   group_by(gen_ProvReachID) %>% 
   mutate(case_weight=importance_weights(1/n())) %>% 

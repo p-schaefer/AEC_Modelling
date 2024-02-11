@@ -24,6 +24,13 @@ AEC_list<-list(
 )
 
 
+# Barriers ----------------------------------------------------------------
+
+barrier_list<-list(
+  dams="https://cabd-web.azurewebsites.net/cabd-api/features/dams?format=geopackage&filter=province_territory_code%3Ain%3Aon&filter=passability_status_code%3Ain%3A4%2C1%2C2%2C3&filter=operating_status_code%3Ain%3A1%2C2%2C3%2C4%2C99%2C5&filter=ownership_type%3Ain%3AIndigenous%2CMunicipal%2CFederal%2CPrivate%2COther%2CUnknown%2CCharity%2F+Non-profit%2CProvincial%2F+Territorial&filter=use_code%3Ain%3A1%2C6%2C2%2C3%2C4%2C5%2C7%2C8%2C9%2C99%2C11%2C10&filter=size_class_code%3Ain%3A1%2C2%2C3%2C99&filter=height_m%3Agte%3A0&filter=height_m%3Alte%3A999&filter=construction_year%3Agte%3A1819&filter=construction_year%3Alte%3A2024",
+  waterfalls="https://cabd-web.azurewebsites.net/cabd-api/features/waterfalls?format=geopackage&filter=province_territory_code%3Ain%3Aon&filter=passability_status_code%3Ain%3A4%2C1%2C2%2C3"
+)
+
 # Land Cover --------------------------------------------------------------
 # Only Ontario_Landcover_compilation used for now
 

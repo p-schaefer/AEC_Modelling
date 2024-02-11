@@ -8,7 +8,7 @@ td<-tempdir()
 
 n_cores<-availableCores(logical = F)-1
 
-plan(multisession(workers=8))
+plan(multisession(workers=2))
 
 
 # Bio Data ----------------------------------------------------------------
