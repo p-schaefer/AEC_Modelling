@@ -2,73 +2,97 @@ library(shinydashboard)
 library(tidyverse)
 library(sf)
 
-strm<-readRDS("data/AEC_Streams.rds")
-pred_names<-readRDS("data/pred_names.rds")
+fp<-file.path("data",paste0("Model_datas.gpkg"))
+con <- DBI::dbConnect(RSQLite::SQLite(), fp)
+
+regions<-tbl(con,"Region_names") %>% collect() %>% pull(1)
+taxa<-tbl(con,"Taxa_names") %>% collect() %>% pull(1)
+pred_names<-tbl(con,"Predictor_names") %>% collect() %>% pull(1)
+ep<-list(Biomass = "resp_Comm_Biomass",
+         Density = "resp_Comm_Abundance")
+
+DBI::dbDisconnect(con)
 
 # Define server logic required to draw a histogram
 function(input, output, session) {
   
   # Setup Data --------------------------------------------------------------
   
-  data_object<-reactiveValues(
-    sel_strms=NULL,
-    sel_modelpredictions=NULL,
-    sel_modelOOSpredictions=NULL,
-    sel_modelpredictors=NULL,
-    sel_modelShap=NULL
-  )
+  # data_object<-reactiveValues(
+  #   sel_strms=NULL,
+  #   sel_modelpredictions=NULL,
+  #   sel_modelOOSpredictions=NULL,
+  #   sel_modelpredictors=NULL,
+  #   sel_modelShap=NULL
+  # )
   
-  observeEvent(
-    c(input$sel_region,input$sel_taxa,input$sel_ep),
-    {
-      req(input$sel_region)
-      req(input$sel_taxa)
-      req(input$sel_ep)
-      
-      validate(need(length(input$sel_region)<5,"Select up to 4 regions"))
-
-      sel_w<-str_split(input$sel_region,"_",2,simplify = T)[,1]
-      data_object$sel_strms<-bind_rows(strm[grepl(paste(sel_w,collapse = "|"),names(strm))]) %>% 
-        unnest(cols = c(stream))
-      
-      data_object$sel_modelpredictions<-data.table::fread("data/Model_predictions.csv") %>% 
-        filter(tx_Taxa == input$sel_taxa) %>% 
-        filter(gen_Region %in% input$sel_region) %>% 
-        select(gen_ProvReachID,contains(input$sel_ep))
-      
-      data_object$sel_modelOOSpredictions<-data.table::fread("data/OOS_Pred.csv") %>% 
-        filter(tx_Taxa == input$sel_taxa) %>% 
-        filter(gen_ProvReachID %in% data_object$sel_strms$ProvReachID) %>% 
-        filter(endpoint == (input$sel_ep))
-      
-      data_object$sel_modelpredictors<-data.table::fread("data/Predictor_data.csv") %>% 
-        filter(gen_Region %in% input$sel_region) %>% 
-        select(-contains("resp_"))
-      
-      data_object$sel_modelShap<-data.table::fread("data/shap.csv") %>% 
-        filter(endpoint == (input$sel_ep)) %>% 
-        filter(sel_tx_Taxa == input$sel_taxa) %>% 
-        filter(sel_gen_ProvReachID %in% data_object$sel_strms$ProvReachID) %>% 
-        select(-contains("resp_"),-endpoint)
-    }
-  )
+  # observeEvent(
+  #   c(input$sel_region,input$sel_taxa,input$sel_ep),
+  #   {
+  # req(input$sel_region)
+  # req(input$sel_taxa)
+  # req(input$sel_ep)
+  # 
+  #     validate(need(length(input$sel_region)<5,"Select up to 4 regions"))
+  # 
+  #     sel_w<-str_split(input$sel_region,"_",2,simplify = T)[,1]
+  #     data_object$sel_strms<-bind_rows(strm[grepl(paste(sel_w,collapse = "|"),names(strm))]) %>% 
+  #       unnest(cols = c(stream))
+  #     
+  #     data_object$sel_modelpredictions<-data.table::fread("data/Model_predictions.csv") %>% 
+  #       filter(tx_Taxa == input$sel_taxa) %>% 
+  #       filter(gen_Region %in% input$sel_region) %>% 
+  #       select(gen_ProvReachID,contains(input$sel_ep))
+  #     
+  #     data_object$sel_modelOOSpredictions<-data.table::fread("data/OOS_Pred.csv") %>% 
+  #       filter(tx_Taxa == input$sel_taxa) %>% 
+  #       filter(gen_ProvReachID %in% data_object$sel_strms$ProvReachID) %>% 
+  #       filter(endpoint == (input$sel_ep))
+  #     
+  #     data_object$sel_modelpredictors<-data.table::fread("data/Predictor_data.csv") %>% 
+  #       filter(gen_Region %in% input$sel_region) %>% 
+  #       select(-contains("resp_"))
+  #     
+  #     data_object$sel_modelShap<-data.table::fread("data/shap.csv") %>% 
+  #       filter(endpoint == (input$sel_ep)) %>% 
+  #       filter(sel_tx_Taxa == input$sel_taxa) %>% 
+  #       filter(sel_gen_ProvReachID %in% data_object$sel_strms$ProvReachID) %>% 
+  #       select(-contains("resp_"),-endpoint)
+  #   }
+  # )
   
   # Setup Selectors ---------------------------------------------------------
   
   
   # Tab Contents ------------------------------------------------------------
-
+  
   # map_bio_tab tab content --
   
   output$map_bio <- leaflet::renderLeaflet({
-    req(data_object$sel_modelpredictions)
-
-    Predicted<-data_object$sel_strms %>% 
-      left_join(data_object$sel_modelpredictions,
+    req(input$sel_region)
+    req(input$sel_taxa)
+    req(input$sel_ep)
+    validate(need(length(input$sel_region)<5,"Select up to 4 regions for mapping"))
+    
+    con <- DBI::dbConnect(RSQLite::SQLite(), fp)
+    
+    sel_strms<-sf::read_sf(fp,
+                           query=paste0("SELECT * FROM AEC_Streams WHERE AEC_Region_sub IN ('",paste(input$sel_region,collapse="', '"),"')"))
+    
+    sel_modelpredictions<-tbl(con,"Model_Predictions") %>% 
+      filter(tx_Taxa == local(input$sel_taxa)) %>%
+      filter(gen_Region %in% local(input$sel_region)) %>%
+      select(gen_ProvReachID,contains(input$sel_ep)) %>% 
+      collect()
+    
+    DBI::dbDisconnect(con)
+    
+    Predicted<-sel_strms %>% 
+      left_join(sel_modelpredictions,
                 by=c("ProvReachID"="gen_ProvReachID")) %>% 
       #mutate(across(contains(c("quant_","observed","predicted")),~expm1(.x))) %>% 
       rename_with(~gsub(paste0(input$sel_ep,"_"),"",.x)) %>% 
-      select(observed,P50=quant_0.5,p75=quant_0.75,Shape) %>% 
+      select(observed,P50=quant_0.5,p75=quant_0.75,geom) %>% 
       sf::st_as_sf()
     
     Observed<-Predicted %>% select(`log-scale`=observed)
@@ -78,12 +102,12 @@ function(input, output, session) {
     rng<-pretty(range(c(Predicted75$`log-scale`,Observed$`log-scale`),na.rm=T),n=8)
     
     mv<-mapview::mapview(Observed,
-                     zcol=c("log-scale"),
-                     at=(rng))+
+                         zcol=c("log-scale"),
+                         at=(rng))+
       mapview::mapview(Predicted50,
                        zcol=c("log-scale"),
                        at=(rng),
-                       legend =T,
+                       legend =F,
                        hide =T)+
       mapview::mapview(Predicted75,
                        zcol=c("log-scale"),
@@ -97,16 +121,30 @@ function(input, output, session) {
   # map_pred_tab tab content --
   
   output$map_pred <- leaflet::renderLeaflet({
-    req(data_object$sel_modelpredictors)
-
-    Predictors<-data_object$sel_strms %>% 
-      left_join(data_object$sel_modelpredictors,
+    req(input$sel_region)
+    req(input$sel_taxa)
+    req(input$sel_ep)
+    validate(need(length(input$sel_region)<5,"Select up to 4 regions for mapping"))
+    con <- DBI::dbConnect(RSQLite::SQLite(), fp)
+    
+    sel_strms<-sf::read_sf(fp,
+                           query=paste0("SELECT * FROM AEC_Streams WHERE AEC_Region_sub IN ('",paste(input$sel_region,collapse="', '"),"')"))
+    
+    sel_modelpredictors<-tbl(con,"Predictor_Data") %>% 
+      filter(gen_Region %in% local(input$sel_region)) %>%
+      select(gen_ProvReachID,any_of(local(input$mapsel_pred))) %>% 
+      collect()
+    
+    DBI::dbDisconnect(con)
+    
+    Predictors<-sel_strms %>% 
+      left_join(sel_modelpredictors,
                 by=c("ProvReachID"="gen_ProvReachID"))%>% 
-      select(ProvReachID,Network_Line_Type, starts_with("hb_"),any_of(input$mapsel_pred),Shape) %>% 
+      select(ProvReachID,Network_Line_Type,any_of(input$mapsel_pred), geom) %>% 
       sf::st_as_sf()
     
     rng<-pretty(range(Predictors[[input$mapsel_pred]],na.rm=T),n=8)
-
+    
     mv<-mapview::mapview(Predictors,
                          zcol=c(input$mapsel_pred),
                          at=rng)
@@ -116,7 +154,23 @@ function(input, output, session) {
   
   # predperf_tab tab content --
   output$predperf_out<-plotly::renderPlotly({
-    req(data_object$sel_modelOOSpredictions)
+    req(input$sel_region)
+    req(input$sel_taxa)
+    req(input$sel_ep)
+    #validate(need(length(input$sel_region)<5,"Select up to 4 regions"))
+    con <- DBI::dbConnect(RSQLite::SQLite(), fp)
+    
+    sel_ProvReachID<-sf::read_sf(fp,
+                                 query=paste0("SELECT * FROM AEC_Streams WHERE AEC_Region_sub IN ('",paste(input$sel_region,collapse="', '"),"')")) %>% 
+      pull(ProvReachID)
+    
+    sel_modelOOSpredictions<-tbl(con,"OOS_Predictions") %>% 
+      filter(tx_Taxa == local(input$sel_taxa)) %>% 
+      filter(gen_ProvReachID %in% local(sel_ProvReachID)) %>%
+      filter(endpoint == local(input$sel_ep)) %>% 
+      collect()
+    
+    DBI::dbDisconnect(con)
     
     ttl<-paste(
       input$sel_taxa,
@@ -125,13 +179,11 @@ function(input, output, session) {
       paste(input$sel_region)
     )
     
-    sub_data<-data_object$sel_modelOOSpredictions
-    
-    rng<-range(c(sub_data$observed,sub_data$quant_0.75),na.rm=T)
+    rng<-range(c(sel_modelOOSpredictions$observed,sel_modelOOSpredictions$quant_0.75),na.rm=T)
     
     rng<-range(pretty(rng))
     
-    plt<-ggplot(sub_data,
+    plt<-ggplot(sel_modelOOSpredictions,
                 aes(x=observed,y=quant_0.5))+
       geom_point()+
       geom_abline(slope=1,intercept=0)+
@@ -152,14 +204,30 @@ function(input, output, session) {
   # predimp_tab tab content --
   
   output$predimp_out<-plotly::renderPlotly({
-    req(data_object$sel_modelShap)
-
-    pred_imp<-data_object$sel_modelShap %>% 
-      select(shape_param,any_of(pred_names)) %>% 
+    req(input$sel_region)
+    req(input$sel_taxa)
+    req(input$sel_ep)
+    #validate(need(length(input$sel_region)<5,"Select up to 4 regions"))
+    con <- DBI::dbConnect(RSQLite::SQLite(), fp)
+    
+    sel_ProvReachID<-sf::read_sf(fp,
+                                 query=paste0("SELECT * FROM AEC_Streams WHERE AEC_Region_sub IN ('",paste(input$sel_region,collapse="', '"),"')")) %>% 
+      pull(ProvReachID)
+    
+    sel_modelShap<-tbl(con,"SHAP_scores")%>% 
+      filter(endpoint == local(input$sel_ep)) %>%
+      filter(sel_tx_Taxa == local(input$sel_taxa)) %>%
+      filter(sel_gen_ProvReachID %in% local(sel_ProvReachID)) %>%
+      select(shape_param,any_of(local(pred_names))) %>% 
       group_by(shape_param) %>% 
-      summarise(across(everything(),~mean(abs(.x)))) %>% 
-      pivot_longer(c(everything(),-shape_param),names_to = "Predictors", values_to = "Importance") 
-
+      summarise(across(everything(),~mean(abs(.x),na.rm=T))) %>% 
+      collect() %>% 
+      pivot_longer(c(everything(),-shape_param),names_to = "Predictors", values_to = "Importance")
+    
+    DBI::dbDisconnect(con)
+    
+    pred_imp<-sel_modelShap
+    
     plt<-ggplot(pred_imp,aes(x=Importance,y=Predictors))+
       geom_point()+
       facet_wrap(~shape_param,scales="free_x")+
@@ -173,26 +241,36 @@ function(input, output, session) {
   # predsurf_tab tab content --
   
   output$predsurf_out<-plotly::renderPlotly({
-    req(data_object$sel_modelShap)
+    req(input$sel_region)
+    req(input$sel_taxa)
+    req(input$sel_ep)
     req(input$shap_pred_sel)
     req(input$shap_col_sel)
+    #validate(need(length(input$sel_region)<5,"Select up to 4 regions"))
+    con <- DBI::dbConnect(RSQLite::SQLite(), fp)
     
-    sub_data<-data_object$sel_modelShap %>% 
-      select(all_of(input$shap_pred_sel),shape_param) %>% 
-      setNames(c("y","shape_param")) %>% 
-      bind_cols(
-        data_object$sel_modelShap %>% 
-          select(all_of(paste0("sel_",input$shap_pred_sel))) %>% 
-          setNames("x")
-      )%>% 
-      bind_cols(
-        data_object$sel_modelShap %>% 
-          select(all_of(paste0("sel_",input$shap_col_sel))) %>% 
-          setNames("colour") 
-      ) 
+    sel_ProvReachID<-sf::read_sf(fp,
+                                 query=paste0("SELECT * FROM AEC_Streams WHERE AEC_Region_sub IN ('",paste(input$sel_region,collapse="', '"),"')")) %>% 
+      pull(ProvReachID)
+    
+    sel_modelShap<-tbl(con,"SHAP_scores")%>% 
+      filter(endpoint == local(input$sel_ep)) %>%
+      filter(sel_tx_Taxa == local(input$sel_taxa)) %>%
+      filter(sel_gen_ProvReachID %in% local(sel_ProvReachID)) %>% 
+      select(shape_param,
+             all_of(local(input$shap_pred_sel)),
+             all_of(local(paste0("sel_",input$shap_pred_sel))),
+             all_of(local(paste0("sel_",input$shap_col_sel)))) %>% 
+      collect() %>% 
+      setNames(c("shape_param","y","x","colour")) 
+    
+      
+    DBI::dbDisconnect(con)
+    
+    if (!"colour" %in% colnames(sel_modelShap)) sel_modelShap$colour<-sel_modelShap$x
     
     
-    plt<-ggplot(sub_data,aes(x=x,y=y,colour=colour))+
+    plt<-ggplot(sel_modelShap,aes(x=x,y=y,colour=colour))+
       geom_point()+
       facet_wrap(~shape_param,scales="free")+
       geom_hline(yintercept = 0,linetype="dashed")+
@@ -209,5 +287,5 @@ function(input, output, session) {
   })
   
   
-
+  
 }

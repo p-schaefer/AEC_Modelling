@@ -1,10 +1,17 @@
 library(shinydashboard)
+library(dplyr)
+library(dbplyr)
 
-regions<-readRDS("data/regions.rds")
-taxa<-readRDS("data/taxa.rds")
-pred_names<-readRDS("data/pred_names.rds")
+fp<-file.path("data",paste0("Model_datas.gpkg"))
+con <- DBI::dbConnect(RSQLite::SQLite(), fp)
+
+regions<-tbl(con,"Region_names") %>% collect() %>% pull(1)
+taxa<-tbl(con,"Taxa_names") %>% collect() %>% pull(1)
+pred_names<-tbl(con,"Predictor_names") %>% collect() %>% pull(1)
 ep<-list(Biomass = "resp_Comm_Biomass",
          Density = "resp_Comm_Abundance")
+
+DBI::dbDisconnect(con)
 
 fluidPage(
   
@@ -21,7 +28,7 @@ fluidPage(
       ),
       #box(
       #width=12,
-      selectInput("sel_region","Region (up to 4)",regions,multiple=T,selected = "w03_Lake_Ontario_West"),
+      selectInput("sel_region","Region (up to 4 for mapping)",regions,multiple=T,selected = "w03_Lake_Ontario_West"),
       selectInput("sel_taxa","Taxa",taxa,multiple=F,selected = "Brook (speckled) Trout"),
       selectInput("sel_ep","Endpoint",ep,multiple=F),
       #),

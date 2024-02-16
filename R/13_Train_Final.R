@@ -27,9 +27,16 @@ model_data0<-read_rds(file.path("data","final","Model_building_finaltaxa_data.rd
                 .names = "cat_{.col}")) %>% 
   mutate(across(starts_with("cat_resp_"),~factor(.x)))
 
+model_data1 <- model_data0 %>% 
+  mutate(across(starts_with(c("case_weight")),~as.numeric(.))) %>%
+  group_by(gen_ProvReachID,gen_link_id,gen_StreamName,across(starts_with("tx_"))) %>%
+  summarise(across(where(is.numeric),~median(.x,na.rm=T)),
+            across(!where(is.numeric),~tail(.x,1)),
+            .groups="drop")
+
 resp<-model_data0 %>% select(starts_with("resp_")) %>% colnames()
 resp<-resp[!grepl("Perc|cat_",resp)]
-#resp<-resp[[1]]
+#ep<-resp[[1]]
 
 booster<-"dart"
 
@@ -74,7 +81,7 @@ for (ep in resp){
   if (T){
     # OOS Predictions -------------------------------------------------------------
     
-    cros_v<-group_vfold_cv(model_data0,
+    cros_v<-group_vfold_cv(model_data1,
                            "gen_ProvReachID",
                            100)
     
@@ -88,21 +95,21 @@ for (ep in resp){
         )
       )
       
-      trn<-training(cros_v$splits[[i]]) %>% 
-        mutate(across(starts_with(c("case_weight")),~as.numeric(.))) %>% 
-        group_by(gen_ProvReachID,gen_link_id,gen_StreamName,across(starts_with("tx_"))) %>% 
-        summarise(across(where(is.numeric),~median(.x,na.rm=T)),
-                  across(!where(is.numeric),~tail(.x,1)),
-                  .groups="drop")
+      trn<-training(cros_v$splits[[i]]) #%>% 
+      # mutate(across(starts_with(c("case_weight")),~as.numeric(.))) %>% 
+      # group_by(gen_ProvReachID,gen_link_id,gen_StreamName,across(starts_with("tx_"))) %>% 
+      # summarise(across(where(is.numeric),~median(.x,na.rm=T)),
+      #           across(!where(is.numeric),~tail(.x,1)),
+      #           .groups="drop")
       
       final_prep<-prep(recip_main,trn)
       
       tst<-testing(cros_v$splits[[i]]) %>% 
-        mutate(across(starts_with(c("case_weight")),~as.numeric(.))) %>% 
-        group_by(gen_ProvReachID,gen_link_id,gen_StreamName,across(starts_with("tx_"))) %>% 
-        summarise(across(where(is.numeric),~median(.x,na.rm=T)),
-                  across(!where(is.numeric),~tail(.x,1)),
-                  .groups="drop") %>% 
+        # mutate(across(starts_with(c("case_weight")),~as.numeric(.))) %>% 
+        # group_by(gen_ProvReachID,gen_link_id,gen_StreamName,across(starts_with("tx_"))) %>% 
+        # summarise(across(where(is.numeric),~median(.x,na.rm=T)),
+        #           across(!where(is.numeric),~tail(.x,1)),
+        #           .groups="drop") %>% 
         bake(object=final_prep) 
       
       trn<-trn %>% 
@@ -128,7 +135,7 @@ for (ep in resp){
                                    quantiles=c(0.05,0.16,0.25,0.33,0.5,0.66,0.75,0.84,0.95))
       
       pred_params = xgb$predict(tst %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
-                                   pred_type="parameters")
+                                pred_type="parameters")
       
       pred_samples = xgb$predict(tst %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
                                  pred_type="samples",
@@ -140,12 +147,13 @@ for (ep in resp){
         mutate(predicted=pred_samples) %>% 
         bind_cols(pred_params) %>% 
         bind_cols(testing(cros_v$splits[[i]]) %>%
-                    select(any_of(ep),tx_Taxa,everything()) %>%
                     rename_with(.cols=any_of(ep),~paste0("observed")) %>% 
                     mutate(endpoint=ep,
                            cv_fold=i)
         ) %>% 
-        mutate(gen_ProvReachID=testing(cros_v$splits[[i]])$gen_ProvReachID)
+        select(cv_fold,endpoint,tx_Taxa,any_of(ep),observed,predicted,any_of(colnames(pred_quantiles)),any_of(colnames(pred_params)),
+               starts_with("tx_"),starts_with("gen_"),everything(),-starts_with("cat_resp")) 
+        
       
       out_res[[i]]<-out
     }
