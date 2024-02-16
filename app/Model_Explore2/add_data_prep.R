@@ -6,6 +6,15 @@ ep<-"resp_Comm_Biomass"
 
 fp<-file.path("app","Model_Explore2","data",paste0("Model_datas.gpkg"))
 
+# int_f <- function(x, ct1, rt1, gt1, ct2, rt2, gt2) {
+#   #browser()
+#   f1 <- gamlss.dist::dZAGA(x,ct1/rt1,1/rt1,gt1)
+#   f2 <- gamlss.dist::dZAGA(x,ct2/rt1,1/rt2,gt2)
+#   pmin(f1, f2)
+# }
+# 
+# integrate(int_f, 0, 1, ct1=ct1[1], rt1=rt1[1], gt1=gt1[1], ct2=ct1[2], rt2=rt1[2], gt2=gt1[2])
+
 # Setup Stream Lines ------------------------------------------------------
 lu_master<-readRDS(file.path("data","lookups.rds"))
 aec_region<-lapply(lu_master$stream_packages,function(x) file.path("data","raw","GIS",x))
@@ -92,6 +101,14 @@ preds<-out_final %>%
     resp_Comm_Abundance_quant_0.33_refdiff=resp_Comm_Abundance_quant_0.33_ref-resp_Comm_Abundance_quant_0.33,
     resp_Comm_Abundance_quant_0.25_refdiff=resp_Comm_Abundance_quant_0.25_ref-resp_Comm_Abundance_quant_0.25,
     resp_Comm_Abundance_quant_0.05_refdiff=resp_Comm_Abundance_quant_0.05_ref-resp_Comm_Abundance_quant_0.05,
+    resp_Comm_Biomass_predicted_refdiff=resp_Comm_Biomass_predicted_ref-resp_Comm_Biomass_predicted,
+    resp_Comm_Biomass_quant_0.95_refdiff=resp_Comm_Biomass_quant_0.95_ref-resp_Comm_Biomass_quant_0.95,
+    resp_Comm_Biomass_quant_0.75_refdiff=resp_Comm_Biomass_quant_0.75_ref-resp_Comm_Biomass_quant_0.75,
+    resp_Comm_Biomass_quant_0.66_refdiff=resp_Comm_Biomass_quant_0.66_ref-resp_Comm_Biomass_quant_0.66,
+    resp_Comm_Biomass_quant_0.5_refdiff=resp_Comm_Biomass_quant_0.5_ref-resp_Comm_Biomass_quant_0.5,
+    resp_Comm_Biomass_quant_0.33_refdiff=resp_Comm_Biomass_quant_0.33_ref-resp_Comm_Biomass_quant_0.33,
+    resp_Comm_Biomass_quant_0.25_refdiff=resp_Comm_Biomass_quant_0.25_ref-resp_Comm_Biomass_quant_0.25,
+    resp_Comm_Biomass_quant_0.05_refdiff=resp_Comm_Biomass_quant_0.05_ref-resp_Comm_Biomass_quant_0.05,
   ) %>% 
   left_join(
     model_data0 %>% 

@@ -86,9 +86,8 @@ fluidPage(
                 fluidPage(
                   h3("Observed and Predicted Fish Distributions"),
                   p("The map below shows the locations of observed and predicted fish biomass and densities. When multiple observations
-                  are present on a segment, the mean is shown. By default, the observed values are shown, and model predictions can be
-                  shown from the layers menu. Predictions can be shown from the 50th and 75th percentiles of the expected distribution
-                  for each reach."),
+                  are present on a segment, the median is shown. By default, the observed values are shown, and model predictions can be
+                  shown from the layers menu."),
                   leaflet::leafletOutput("map_bio", height = "750px")
                 )
         ),

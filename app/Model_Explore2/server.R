@@ -16,54 +16,6 @@ DBI::dbDisconnect(con)
 # Define server logic required to draw a histogram
 function(input, output, session) {
   
-  # Setup Data --------------------------------------------------------------
-  
-  # data_object<-reactiveValues(
-  #   sel_strms=NULL,
-  #   sel_modelpredictions=NULL,
-  #   sel_modelOOSpredictions=NULL,
-  #   sel_modelpredictors=NULL,
-  #   sel_modelShap=NULL
-  # )
-  
-  # observeEvent(
-  #   c(input$sel_region,input$sel_taxa,input$sel_ep),
-  #   {
-  # req(input$sel_region)
-  # req(input$sel_taxa)
-  # req(input$sel_ep)
-  # 
-  #     validate(need(length(input$sel_region)<5,"Select up to 4 regions"))
-  # 
-  #     sel_w<-str_split(input$sel_region,"_",2,simplify = T)[,1]
-  #     data_object$sel_strms<-bind_rows(strm[grepl(paste(sel_w,collapse = "|"),names(strm))]) %>% 
-  #       unnest(cols = c(stream))
-  #     
-  #     data_object$sel_modelpredictions<-data.table::fread("data/Model_predictions.csv") %>% 
-  #       filter(tx_Taxa == input$sel_taxa) %>% 
-  #       filter(gen_Region %in% input$sel_region) %>% 
-  #       select(gen_ProvReachID,contains(input$sel_ep))
-  #     
-  #     data_object$sel_modelOOSpredictions<-data.table::fread("data/OOS_Pred.csv") %>% 
-  #       filter(tx_Taxa == input$sel_taxa) %>% 
-  #       filter(gen_ProvReachID %in% data_object$sel_strms$ProvReachID) %>% 
-  #       filter(endpoint == (input$sel_ep))
-  #     
-  #     data_object$sel_modelpredictors<-data.table::fread("data/Predictor_data.csv") %>% 
-  #       filter(gen_Region %in% input$sel_region) %>% 
-  #       select(-contains("resp_"))
-  #     
-  #     data_object$sel_modelShap<-data.table::fread("data/shap.csv") %>% 
-  #       filter(endpoint == (input$sel_ep)) %>% 
-  #       filter(sel_tx_Taxa == input$sel_taxa) %>% 
-  #       filter(sel_gen_ProvReachID %in% data_object$sel_strms$ProvReachID) %>% 
-  #       select(-contains("resp_"),-endpoint)
-  #   }
-  # )
-  
-  # Setup Selectors ---------------------------------------------------------
-  
-  
   # Tab Contents ------------------------------------------------------------
   
   # map_bio_tab tab content --
@@ -73,7 +25,7 @@ function(input, output, session) {
     req(input$sel_taxa)
     req(input$sel_ep)
     validate(need(length(input$sel_region)<5,"Select up to 4 regions for mapping"))
-    
+    #browser()
     con <- DBI::dbConnect(RSQLite::SQLite(), fp)
     
     sel_strms<-sf::read_sf(fp,
@@ -92,26 +44,41 @@ function(input, output, session) {
                 by=c("ProvReachID"="gen_ProvReachID")) %>% 
       #mutate(across(contains(c("quant_","observed","predicted")),~expm1(.x))) %>% 
       rename_with(~gsub(paste0(input$sel_ep,"_"),"",.x)) %>% 
-      select(observed,P50=quant_0.5,p75=quant_0.75,geom) %>% 
+      select(observed,
+             P50=quant_0.5,
+             p66=quant_0.66,
+             p66_ref=quant_0.66_ref,
+             p66_refdiff=quant_0.66_refdiff,
+             geom) %>% 
       sf::st_as_sf()
     
     Observed<-Predicted %>% select(`log-scale`=observed)
-    Predicted50<-Predicted %>% select(`log-scale`=P50)
-    Predicted75<-Predicted %>% select(`log-scale`=p75)
+    RefPredicted<-Predicted %>% select(`log-scale`=p66_ref)
+    RefDifference<-Predicted %>% select(`log-scale`=p66_refdiff)
+    Predicted<-Predicted %>% select(`log-scale`=p66)
     
-    rng<-pretty(range(c(Predicted75$`log-scale`,Observed$`log-scale`),na.rm=T),n=8)
+    rng<-pretty(range(c(Predicted$`log-scale`,Observed$`log-scale`,RefPredicted$`log-scale`),na.rm=T),n=8)
+    
+    mx<-max(abs(RefDifference$`log-scale`),na.rm=T)
+    
+    rng2<-pretty(c(-mx,mx),n=5)
     
     mv<-mapview::mapview(Observed,
                          zcol=c("log-scale"),
                          at=(rng))+
-      mapview::mapview(Predicted50,
+      mapview::mapview(Predicted,
                        zcol=c("log-scale"),
                        at=(rng),
-                       legend =F,
+                       legend =T,
                        hide =T)+
-      mapview::mapview(Predicted75,
+      mapview::mapview(RefPredicted,
                        zcol=c("log-scale"),
                        at=(rng),
+                       legend =T,
+                       hide =T)+
+      mapview::mapview(RefDifference,
+                       zcol=c("log-scale"),
+                       at=(rng2),
                        legend =T,
                        hide =T)
     
@@ -175,8 +142,7 @@ function(input, output, session) {
     ttl<-paste(
       input$sel_taxa,
       case_when(input$sel_ep=="resp_Comm_Biomass"~ "Biomass (g/100m^2)",
-                T ~ "Density (individuals/100m^2)"),
-      paste(input$sel_region)
+                T ~ "Density (individuals/100m^2)")
     )
     
     rng<-range(c(sel_modelOOSpredictions$observed,sel_modelOOSpredictions$quant_0.75),na.rm=T)
