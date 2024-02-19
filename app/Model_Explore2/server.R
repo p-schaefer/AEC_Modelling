@@ -25,7 +25,6 @@ function(input, output, session) {
     req(input$sel_taxa)
     req(input$sel_ep)
     validate(need(length(input$sel_region)<5,"Select up to 4 regions for mapping"))
-    #browser()
     con <- DBI::dbConnect(RSQLite::SQLite(), fp)
     
     sel_strms<-sf::read_sf(fp,
@@ -34,7 +33,7 @@ function(input, output, session) {
     sel_modelpredictions<-tbl(con,"Model_Predictions") %>% 
       filter(tx_Taxa == local(input$sel_taxa)) %>%
       filter(gen_Region %in% local(input$sel_region)) %>%
-      select(gen_ProvReachID,contains(input$sel_ep)) %>% 
+      select(gen_ProvReachID,contains(input$sel_ep),contains(pred_names)) %>% 
       collect()
     
     DBI::dbDisconnect(con)
@@ -46,22 +45,30 @@ function(input, output, session) {
       rename_with(~gsub(paste0(input$sel_ep,"_"),"",.x)) %>% 
       select(observed,
              P50=quant_0.5,
-             p66=quant_0.66,
-             p66_ref=quant_0.66_ref,
-             p66_refdiff=quant_0.66_refdiff,
+             p75=quant_0.75,
+             p75_ref=quant_0.75_ref,
+             p75_refdiff=quant_0.75_refdiff,
+             contains(pred_names),
              geom) %>% 
       sf::st_as_sf()
     
-    Observed<-Predicted %>% select(`log-scale`=observed)
-    RefPredicted<-Predicted %>% select(`log-scale`=p66_ref)
-    RefDifference<-Predicted %>% select(`log-scale`=p66_refdiff)
-    Predicted<-Predicted %>% select(`log-scale`=p66)
+    Observed<-Predicted %>%
+      select(`log-scale`=observed)
+    RefPredicted<-Predicted %>% 
+      select(`log-scale`=p75_ref,any_of(paste0(pred_names,"_ref"))) %>%
+      rename_with(.cols=any_of(paste0(pred_names,"_ref")),~gsub("_ref","",.x))
+    RefDifference<-Predicted %>% 
+      select(`log-scale`=p75_refdiff)
+    Predicted<-Predicted %>% 
+      select(`log-scale`=p75,any_of(paste0(pred_names,"_obs"))) %>% 
+      rename_with(.cols=any_of(paste0(pred_names,"_obs")),~gsub("_obs","",.x))
     
     rng<-pretty(range(c(Predicted$`log-scale`,Observed$`log-scale`,RefPredicted$`log-scale`),na.rm=T),n=8)
     
     mx<-max(abs(RefDifference$`log-scale`),na.rm=T)
     
-    rng2<-pretty(c(-mx,mx),n=5)
+    rng2<-pretty(c(-mx,mx),n=8)
+    rng2<-rng2[rng2!=0]
     
     mv<-mapview::mapview(Observed,
                          zcol=c("log-scale"),

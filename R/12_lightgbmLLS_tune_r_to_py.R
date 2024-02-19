@@ -82,9 +82,10 @@ for (ep in resp){
                        select(-starts_with("gen_")) %>% 
                        select(starts_with(c("tx_",
                                             "hb_",
-                                            "br_",
-                                            "nr_",
-                                            "LDI_")),
+                                            #"br_",
+                                            #"nr_",
+                                            "LDI_"
+                                            )),
                               -starts_with("LDI_Natural"),
                               -contains("lat"),
                               -contains("lon"),
@@ -99,13 +100,13 @@ for (ep in resp){
     update_role(
       starts_with(c("tx_",
                     "hb_",
-                    "br_",
-                    "nr_",
+                    #"br_",
+                    #"nr_",
                     "LDI_")),
       new_role = "predictor"
     ) %>% 
     step_nzv(all_predictors(),freq_cut =500/1) %>% 
-    step_lincomb(starts_with(c("br_","nr_"))) %>% 
+    #step_lincomb(starts_with(c("br_","nr_"))) %>% 
     step_unorder(all_factor_predictors()) %>% 
     update_role(
       any_of(!!ep),
@@ -178,7 +179,7 @@ for (ep in resp){
                             num_boost_round=r_to_py(2000L),        # Number of boosting iterations.
                             nfold=r_to_py(6L),                    # Number of cv-folds.
                             early_stopping_rounds=r_to_py(20L),   # Number of early-stopping rounds
-                            max_minutes=r_to_py(60L*12L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
+                            max_minutes=r_to_py(60L*6L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
                             silence=r_to_py(FALSE)
   )
   
@@ -221,7 +222,7 @@ for (ep in resp){
                             num_boost_round=r_to_py(opt_param$opt_rounds + 2000L),        # Number of boosting iterations.
                             nfold=r_to_py(6L),                    # Number of cv-folds.
                             early_stopping_rounds=r_to_py(20L),   # Number of early-stopping rounds
-                            max_minutes=r_to_py(60L*12L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
+                            max_minutes=r_to_py(60L*6L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
                             silence=r_to_py(FALSE)
   )
   

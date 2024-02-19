@@ -55,16 +55,16 @@ for (ep in c("resp_Comm_Biomass","resp_Comm_Abundance")){ #
   xgb<-xgb$load_model(r_to_py(file.path("data","models","LSS",paste0("Final_Model_",ep,"_",booster,".txt"))))
   
   # Get Predictions ---------------------------------------------------------
-  pred_quantiles = xgb$predict(pred_data_final %>%   r_to_py(),
+  pred_quantiles = xgb$predict(pred_data_final %>% r_to_py(),
                                pred_type="quantiles",
                                n_samples=1000L,
                                quantiles=c(0.05,0.16,0.25,0.33,0.5,0.66,0.75,0.84,0.95))
   
-  pred_params = xgb$predict(pred_data_final %>%   r_to_py(),
+  pred_params = xgb$predict(pred_data_final %>% r_to_py(),
                             pred_type="parameters")
   
   
-  pred_samples = xgb$predict(pred_data_final %>%   r_to_py(),
+  pred_samples = xgb$predict(pred_data_final %>% r_to_py(),
                                pred_type="samples",
                                n_samples=1000L) %>% 
     rowMeans() %>% 
@@ -110,7 +110,7 @@ out_final<-bind_cols(out_landscape) %>%
 saveRDS(out_final,file.path("data","models","LSS",paste0("Landscape_Predictions_",booster,".rds")))
 
 out_Reffinal<-bind_cols(out_Reflandscape) %>% 
-  bind_cols(pred_data_fin) %>% 
+  bind_cols(pred_refdata_fin) %>% 
   select(-starts_with("cat_resp"))%>% 
   mutate(pred_type="reference")%>% 
   select(pred_type,everything())

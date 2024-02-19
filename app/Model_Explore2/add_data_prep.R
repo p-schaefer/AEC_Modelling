@@ -54,7 +54,7 @@ sf::write_sf(sub_regions,
              fp,
              layer="AEC_Streams",
              append = F,
-             delete_layer = F,
+             delete_layer = T,
              delete_dsn = F)
 
 con <- DBI::dbConnect(RSQLite::SQLite(), fp)
@@ -71,56 +71,6 @@ t1<-dplyr::copy_to(df=pred_data_fin %>%
                      distinct(),
                    con,
                    "Predictor_Data",
-                   overwrite =T,
-                   temporary =F,
-                   analyze=T,
-                   in_transaction=T)
-
-
-# Write Model Predictions -------------------------------------------------
-
-out_final<-readRDS(file.path("data","models","LSS",paste0("Landscape_Predictions_",booster,".rds")))
-out_final_ref<-readRDS(file.path("data","models","LSS",paste0("Landscape_RefPredictions_",booster,".rds")))
-
-model_data0<-read_rds(file.path("data","final","Model_building_finaltaxa_data.rds")) %>% 
-  filter(year(as.Date(gen_SampleDate))>1994) 
-
-preds<-out_final %>% 
-  select(tx_Taxa,gen_Region,gen_ProvReachID,contains(c("resp_"))) %>% 
-  left_join(
-    out_final_ref %>% 
-      select(tx_Taxa,gen_Region,gen_ProvReachID,contains(c("resp_"))) %>% 
-      rename_with(.cols=contains("resp_"),~paste0(.x,"_ref"))
-  ) %>% 
-  mutate(
-    resp_Comm_Abundance_predicted_refdiff=resp_Comm_Abundance_predicted_ref-resp_Comm_Abundance_predicted,
-    resp_Comm_Abundance_quant_0.95_refdiff=resp_Comm_Abundance_quant_0.95_ref-resp_Comm_Abundance_quant_0.95,
-    resp_Comm_Abundance_quant_0.75_refdiff=resp_Comm_Abundance_quant_0.75_ref-resp_Comm_Abundance_quant_0.75,
-    resp_Comm_Abundance_quant_0.66_refdiff=resp_Comm_Abundance_quant_0.66_ref-resp_Comm_Abundance_quant_0.66,
-    resp_Comm_Abundance_quant_0.5_refdiff=resp_Comm_Abundance_quant_0.5_ref-resp_Comm_Abundance_quant_0.5,
-    resp_Comm_Abundance_quant_0.33_refdiff=resp_Comm_Abundance_quant_0.33_ref-resp_Comm_Abundance_quant_0.33,
-    resp_Comm_Abundance_quant_0.25_refdiff=resp_Comm_Abundance_quant_0.25_ref-resp_Comm_Abundance_quant_0.25,
-    resp_Comm_Abundance_quant_0.05_refdiff=resp_Comm_Abundance_quant_0.05_ref-resp_Comm_Abundance_quant_0.05,
-    resp_Comm_Biomass_predicted_refdiff=resp_Comm_Biomass_predicted_ref-resp_Comm_Biomass_predicted,
-    resp_Comm_Biomass_quant_0.95_refdiff=resp_Comm_Biomass_quant_0.95_ref-resp_Comm_Biomass_quant_0.95,
-    resp_Comm_Biomass_quant_0.75_refdiff=resp_Comm_Biomass_quant_0.75_ref-resp_Comm_Biomass_quant_0.75,
-    resp_Comm_Biomass_quant_0.66_refdiff=resp_Comm_Biomass_quant_0.66_ref-resp_Comm_Biomass_quant_0.66,
-    resp_Comm_Biomass_quant_0.5_refdiff=resp_Comm_Biomass_quant_0.5_ref-resp_Comm_Biomass_quant_0.5,
-    resp_Comm_Biomass_quant_0.33_refdiff=resp_Comm_Biomass_quant_0.33_ref-resp_Comm_Biomass_quant_0.33,
-    resp_Comm_Biomass_quant_0.25_refdiff=resp_Comm_Biomass_quant_0.25_ref-resp_Comm_Biomass_quant_0.25,
-    resp_Comm_Biomass_quant_0.05_refdiff=resp_Comm_Biomass_quant_0.05_ref-resp_Comm_Biomass_quant_0.05,
-  ) %>% 
-  left_join(
-    model_data0 %>% 
-      select(tx_Taxa,gen_ProvReachID,contains(c("resp_Comm"))) %>% 
-      group_by(tx_Taxa,gen_ProvReachID) %>% 
-      summarise(across(everything(),~median(.x,na.rm=T))) %>% 
-      rename_with(.cols=contains(c("resp_Comm")),~paste0(.x,"_observed"))
-  )
-
-t1<-dplyr::copy_to(df=preds,
-                   con,
-                   "Model_Predictions",
                    overwrite =T,
                    temporary =F,
                    analyze=T,
@@ -174,6 +124,58 @@ t1<-dplyr::copy_to(df=tibble(pred_names=pred_names),
                    temporary =F,
                    analyze=T,
                    in_transaction=T)
+# Write Model Predictions -------------------------------------------------
+
+out_final<-readRDS(file.path("data","models","LSS",paste0("Landscape_Predictions_",booster,".rds")))
+out_final_ref<-readRDS(file.path("data","models","LSS",paste0("Landscape_RefPredictions_",booster,".rds")))
+
+model_data0<-read_rds(file.path("data","final","Model_building_finaltaxa_data.rds")) %>% 
+  filter(year(as.Date(gen_SampleDate))>1994) 
+
+preds<-out_final %>% 
+  select(tx_Taxa,gen_Region,gen_ProvReachID,contains(c("resp_")),any_of(pred_names)) %>% 
+  rename_with(.cols=any_of(pred_names),~paste0(.x,"_obs")) %>% 
+  left_join(
+    out_final_ref %>% 
+      select(tx_Taxa,gen_Region,gen_ProvReachID,contains(c("resp_")),any_of(pred_names)) %>% 
+      rename_with(.cols=contains("resp_"),~paste0(.x,"_ref")) %>% 
+      rename_with(.cols=any_of(pred_names),~paste0(.x,"_ref")) 
+  ) %>% 
+  mutate(
+    resp_Comm_Abundance_predicted_refdiff=resp_Comm_Abundance_predicted-resp_Comm_Abundance_predicted_ref,
+    resp_Comm_Abundance_quant_0.95_refdiff=resp_Comm_Abundance_quant_0.95-resp_Comm_Abundance_quant_0.95_ref,
+    resp_Comm_Abundance_quant_0.75_refdiff=resp_Comm_Abundance_quant_0.75-resp_Comm_Abundance_quant_0.75_ref,
+    resp_Comm_Abundance_quant_0.66_refdiff=resp_Comm_Abundance_quant_0.66-resp_Comm_Abundance_quant_0.66_ref,
+    resp_Comm_Abundance_quant_0.5_refdiff=resp_Comm_Abundance_quant_0.5-resp_Comm_Abundance_quant_0.5_ref,
+    resp_Comm_Abundance_quant_0.33_refdiff=resp_Comm_Abundance_quant_0.33-resp_Comm_Abundance_quant_0.33_ref,
+    resp_Comm_Abundance_quant_0.25_refdiff=resp_Comm_Abundance_quant_0.25-resp_Comm_Abundance_quant_0.25_ref,
+    resp_Comm_Abundance_quant_0.05_refdiff=resp_Comm_Abundance_quant_0.05/resp_Comm_Abundance_quant_0.05_ref,
+    resp_Comm_Biomass_predicted_refdiff=resp_Comm_Biomass_predicted-resp_Comm_Biomass_predicted_ref,
+    resp_Comm_Biomass_quant_0.95_refdiff=resp_Comm_Biomass_quant_0.95-resp_Comm_Biomass_quant_0.95_ref,
+    resp_Comm_Biomass_quant_0.75_refdiff=resp_Comm_Biomass_quant_0.75-resp_Comm_Biomass_quant_0.75_ref,
+    resp_Comm_Biomass_quant_0.66_refdiff=resp_Comm_Biomass_quant_0.66-resp_Comm_Biomass_quant_0.66_ref,
+    resp_Comm_Biomass_quant_0.5_refdiff=resp_Comm_Biomass_quant_0.5-resp_Comm_Biomass_quant_0.5_ref,
+    resp_Comm_Biomass_quant_0.33_refdiff=resp_Comm_Biomass_quant_0.33-resp_Comm_Biomass_quant_0.33_ref,
+    resp_Comm_Biomass_quant_0.25_refdiff=resp_Comm_Biomass_quant_0.25-resp_Comm_Biomass_quant_0.25_ref,
+    resp_Comm_Biomass_quant_0.05_refdiff=resp_Comm_Biomass_quant_0.05-resp_Comm_Biomass_quant_0.05_ref,
+  ) %>% 
+  left_join(
+    model_data0 %>% 
+      select(tx_Taxa,gen_ProvReachID,contains(c("resp_Comm"))) %>% 
+      group_by(tx_Taxa,gen_ProvReachID) %>% 
+      summarise(across(everything(),~median(.x,na.rm=T))) %>% 
+      rename_with(.cols=contains(c("resp_Comm")),~paste0(.x,"_observed"))
+  )
+
+t1<-dplyr::copy_to(df=preds,
+                   con,
+                   "Model_Predictions",
+                   overwrite =T,
+                   temporary =F,
+                   analyze=T,
+                   in_transaction=T)
+
+
 # Save Shap Values --------------------------------------------------------
 
 shap_out<-map_dfr(c("resp_Comm_Biomass","resp_Comm_Abundance"), #
