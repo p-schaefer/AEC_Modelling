@@ -107,7 +107,7 @@ ref_pred_data<-int_data_out %>%
   mutate(across(starts_with("br_") & ends_with("_HAiFLS_prop"),~.x/sum(c_across(starts_with("br_") & ends_with("_HAiFLS_prop"))))) %>% 
   mutate(across(starts_with("br_") & ends_with("_iFLO_prop"),~.x/sum(c_across(starts_with("br_") & ends_with("_iFLO_prop"))))) %>% 
   mutate(across(starts_with("br_") & ends_with("_iFLS_prop"),~.x/sum(c_across(starts_with("br_") & ends_with("_iFLS_prop"))))) %>% 
-  mutate(across(starts_with("br_") & ends_with("_lumped_prop"),~.x/sum(c_across(starts_with("nr_") & ends_with("_lumped_prop"))))) %>% 
+  mutate(across(starts_with("br_") & ends_with("_lumped_prop"),~.x/sum(c_across(starts_with("br_") & ends_with("_lumped_prop"))))) %>% 
   mutate(across(starts_with("nr_") & ends_with("_HAiFLO_prop"),~.x/sum(c_across(starts_with("nr_") & ends_with("_HAiFLO_prop"))))) %>% 
   mutate(across(starts_with("nr_") & ends_with("_HAiFLS_prop"),~.x/sum(c_across(starts_with("nr_") & ends_with("_HAiFLS_prop"))))) %>% 
   mutate(across(starts_with("nr_") & ends_with("_iFLO_prop"),~.x/sum(c_across(starts_with("nr_") & ends_with("_iFLO_prop"))))) %>% 
