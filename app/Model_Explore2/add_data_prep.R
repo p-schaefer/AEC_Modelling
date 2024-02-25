@@ -227,4 +227,12 @@ t1<-dplyr::copy_to(df=out_res,
                    analyze=T,
                    in_transaction=T)
 
+s1<-RSQLite::dbSendQuery(con, "CREATE INDEX Predictor_Data_idx ON Predictor_Data (gen_Region);")
+s2<-RSQLite::dbSendQuery(con, "CREATE INDEX Model_Predictions_idx ON Model_Predictions (tx_Taxa,gen_Region);")
+s3<-RSQLite::dbSendQuery(con, "CREATE INDEX OOS_Predictions_idx ON OOS_Predictions (gen_ProvReachID);")
+s4<-RSQLite::dbSendQuery(con, "CREATE INDEX SHAP_scores_idx ON SHAP_scores (endpoint,sel_tx_Taxa,sel_gen_ProvReachID);")
+s5<-RSQLite::dbSendQuery(con, "CREATE INDEX AEC_Streams_idx ON AEC_Streams (AEC_Region_sub);")
+s6<-RSQLite::dbSendQuery(con, "pragma vacuum;")
+s7<-RSQLite::dbSendQuery(con, "pragma optimize;")
+
 DBI::dbDisconnect(con)

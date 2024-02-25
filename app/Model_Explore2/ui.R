@@ -8,8 +8,8 @@ con <- DBI::dbConnect(RSQLite::SQLite(), fp)
 regions<-tbl(con,"Region_names") %>% collect() %>% pull(1)
 taxa<-tbl(con,"Taxa_names") %>% collect() %>% pull(1)
 pred_names<-tbl(con,"Predictor_names") %>% collect() %>% pull(1)
-ep<-list(Biomass = "resp_Comm_Biomass",
-         Density = "resp_Comm_Abundance")
+ep<-list(Density = "resp_Comm_Abundance",
+         Biomass = "resp_Comm_Biomass")
 
 DBI::dbDisconnect(con)
 
@@ -62,7 +62,15 @@ fluidPage(
                 h3("Ontario Aquatic Ecosystem Classification Biotic Modeling"),
                 p("The goal of this project is to use data from Ontario’s Aquatic Ecosystem Classification (AEC)
                   together with Flowing Waters Information System (FWIS) to develop predictive models of fish 
-                  communities across Ontario."),
+                  communities across Ontario. The biomass and density of 16 fish taxa are modeled using AEC
+                  variables, as well as landcover summaries from the Ontario Landcover Compilation (OLC). Landcover
+                  types were summarized into different groups, as well as a Landscape Disturbance Index (LDI), which
+                  quantifies the potential impacts of different landcover types to aquartic ecosystems. Predictions 
+                  of current populations are available across all tributaries to the Great Lakes and St. Lawrence River.
+                  Predictions to simulated 'Reference' landscapes are available as well. Reference landscapes were
+                  approximated by removing urban and agricultural landcovers, and proportionally increasing all natural
+                  landcovers in the catchment to account for those removed. Additionally, the LDI was set to nearly 0 for
+                  urban and agiculture landcovers in the simulated 'reference' landscapes."),
                 br(),
                 p("Results presented here are highly preliminary."),
                 br(),
@@ -88,6 +96,16 @@ fluidPage(
                   p("The map below shows the locations of observed and predicted fish biomass and densities. When multiple observations
                   are present on a segment, the median is shown. By default, the observed values are shown, and model predictions can be
                   shown from the layers menu."),
+                  p("Predictions of observed populations are available across all tributaries to the Great Lakes and St. Lawrence River.
+                  Predictions to simulated 'Reference' landscapes are available as well. Reference landscapes were
+                  approximated by removing urban and agricultural landcovers, and proportionally increasing all natural
+                  landcovers in the catchment to account for those removed. Additionally, the LDI was set to nearly 0 for
+                  urban and agiculture landcovers in the simulated 'reference' landscapes. Finally, the difference between observed
+                  and reference communities are mapped, and expressed as (Current - Reference; i.e., positive values indicate
+                  present day predictions are higher than simulated reference, and negative values indicate present day predictions are
+                  lower than simulated reference). Selecting a stream segment with either the 'Current' or 'Reference' layers selected
+                  will show the predictor values associated with that segment for the 'Current' or 'Reference' predictions respectively.
+                  All values are shown on the log-scale."),
                   leaflet::leafletOutput("map_bio", height = "750px")
                 )
         ),
@@ -95,7 +113,7 @@ fluidPage(
         tabItem(tabName = "map_pred_tab",
                 fluidPage(
                   h3("Distributions of Predictor Variables"),
-                  p("The map below shows the spatial distributions of predictors used in the model."),
+                  p("The map below shows the spatial distributions of predictors used to model the current distributions."),
                   column(
                     width=6,
                     offset=1,
@@ -110,7 +128,7 @@ fluidPage(
                   h3("Model Performance"),
                   p("The figure below shows Observed vs Predicted values. The solid black line is fit to the 50th percentile of
                      each observations predicted conditional distribition, and the blue lines are fit to the 25th and 75th percentiles.
-                    "),
+                     All values are shown on the log-scale."),
                   plotly::plotlyOutput("predperf_out",  height = "750px",  width = "750px")
                 )
         ),
@@ -127,12 +145,11 @@ fluidPage(
         tabItem(tabName = "predsurf_tab",
                 fluidPage(
                   h3("Predictor Response Surfaces"),
-                  p("The figure below shows the predicted effect of a predictor variable on the presence/absence and mean. 
+                  p("The figure below shows the effect of a predictor variable on the presence/absence and mean predicted outcome. 
                     The predicted effects can be colour by a separate variable to identify interactions among predictors.
                     A positive effect on the SHAP score of the mean suggests that predictor value is increasing the mean prediction,
                     whereas a positive effect on the SHAP score of the presence/absence suggests that the predictore values is increasing
-                    the likelihood of a 0.
-                    "),
+                    the likelihood of a 0."),
                   fluidRow(
                     column(4,offset = 1,selectInput("shap_pred_sel","Predictor",pred_names,multiple=F)),
                     column(4,offset = 1,selectInput("shap_col_sel","Colour",pred_names,multiple=F))

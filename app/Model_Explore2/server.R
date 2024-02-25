@@ -53,38 +53,40 @@ function(input, output, session) {
       sf::st_as_sf()
     
     Observed<-Predicted %>%
-      select(`log-scale`=observed)
-    RefPredicted<-Predicted %>% 
-      select(`log-scale`=p75_ref,any_of(paste0(pred_names,"_ref"))) %>%
+      select(`Segment Median`=observed)
+    Reference<-Predicted %>%
+      select(`Predicted`=p75_ref,any_of(paste0(pred_names,"_ref"))) %>%
       rename_with(.cols=any_of(paste0(pred_names,"_ref")),~gsub("_ref","",.x))
-    RefDifference<-Predicted %>% 
-      select(`log-scale`=p75_refdiff)
-    Predicted<-Predicted %>% 
-      select(`log-scale`=p75,any_of(paste0(pred_names,"_obs"))) %>% 
+    Difference<-Predicted %>%
+      select(`(Current - Reference)`=p75_refdiff)
+    Current<-Predicted %>% 
+      select(`Predicted`=p75,any_of(paste0(pred_names,"_obs"))) %>% 
       rename_with(.cols=any_of(paste0(pred_names,"_obs")),~gsub("_obs","",.x))
     
-    rng<-pretty(range(c(Predicted$`log-scale`,Observed$`log-scale`,RefPredicted$`log-scale`),na.rm=T),n=8)
+    rng<-pretty(range(c(Current$`Predicted`,Observed$`Segment Median`,Reference$`Predicted`),na.rm=T),n=8)
     
-    mx<-max(abs(RefDifference$`log-scale`),na.rm=T)
+    mx<-max(abs(Difference$`(Current - Reference)`),na.rm=T)
     
     rng2<-pretty(c(-mx,mx),n=8)
     rng2<-rng2[rng2!=0]
+    # rng2<-c(rng2,0.1,-0.1)
+    # rng2<-sort(rng2)
     
     mv<-mapview::mapview(Observed,
-                         zcol=c("log-scale"),
+                         zcol=c("Segment Median"),
                          at=(rng))+
-      mapview::mapview(Predicted,
-                       zcol=c("log-scale"),
+      mapview::mapview(Current,
+                       zcol=c("Predicted"),
                        at=(rng),
                        legend =T,
                        hide =T)+
-      mapview::mapview(RefPredicted,
-                       zcol=c("log-scale"),
+      mapview::mapview(Reference,
+                       zcol=c("Predicted"),
                        at=(rng),
                        legend =T,
                        hide =T)+
-      mapview::mapview(RefDifference,
-                       zcol=c("log-scale"),
+      mapview::mapview(Difference,
+                       zcol=c("(Current - Reference)"),
                        at=(rng2),
                        legend =T,
                        hide =T)
@@ -237,7 +239,7 @@ function(input, output, session) {
       collect() %>% 
       setNames(c("shape_param","y","x","colour")) 
     
-      
+    
     DBI::dbDisconnect(con)
     
     if (!"colour" %in% colnames(sel_modelShap)) sel_modelShap$colour<-sel_modelShap$x
