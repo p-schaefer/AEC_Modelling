@@ -180,11 +180,14 @@ t1<-dplyr::copy_to(df=preds,
 
 shap_out<-map_dfr(c("resp_Comm_Biomass","resp_Comm_Abundance"), #
         function(x){
-          shap<-readRDS(file.path("data","models","LSS",paste0("Shap_",x,"_",booster,".rds")))
+          shap<-readRDS(file.path("data","models","LSS",paste0("Shap_",x,"_",booster,"_Current.rds")))
+          shap_ref<-readRDS(file.path("data","models","LSS",paste0("Shap_",x,"_",booster,"_Reference.rds")))
           
           out<-list(
-            Mean=shap$concentration*shap$rate,
-            `Presence/Absence`=shap$gate
+            `Current Mean`=shap$concentration*(1/shap$rate),
+            `Current Presence/Absence`=1-shap$gate,
+            `Reference Mean`=shap_ref$concentration*(1/shap_ref$rate),
+            `Reference Presence/Absence`=1-shap_ref$gate
           )
           
           out$Mean[is.infinite(out$Mean)]<-NA_real_

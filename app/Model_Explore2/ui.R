@@ -92,21 +92,32 @@ fluidPage(
         ),# map_bio_tab tab content
         tabItem(tabName = "map_bio_tab",
                 fluidPage(
-                  h3("Observed and Predicted Fish Distributions"),
-                  p("The map below shows the locations of observed and predicted fish biomass and densities. When multiple observations
-                  are present on a segment, the median is shown. By default, the observed values are shown, and model predictions can be
-                  shown from the layers menu."),
-                  p("Predictions of observed populations are available across all tributaries to the Great Lakes and St. Lawrence River.
-                  Predictions to simulated 'Reference' landscapes are available as well. Reference landscapes were
-                  approximated by removing urban and agricultural landcovers, and proportionally increasing all natural
-                  landcovers in the catchment to account for those removed. Additionally, the LDI was set to nearly 0 for
-                  urban and agiculture landcovers in the simulated 'reference' landscapes. Finally, the difference between observed
-                  and reference communities are mapped, and expressed as (Current - Reference; i.e., positive values indicate
-                  present day predictions are higher than simulated reference, and negative values indicate present day predictions are
-                  lower than simulated reference). Selecting a stream segment with either the 'Current' or 'Reference' layers selected
-                  will show the predictor values associated with that segment for the 'Current' or 'Reference' predictions respectively.
-                  All values are shown on the log-scale."),
-                  leaflet::leafletOutput("map_bio", height = "750px")
+                  column(width=12,
+                         shinydashboard::box(
+                           collapsed = T,collapsible =T,width=12,
+                           title = "Observed and Predicted Fish Distributions",
+                           p("The map below shows the locations of observed and predicted fish biomass and densities. When multiple observations
+                              are present on a segment, the median is shown. By default, the observed values are shown, and model predictions can be
+                              shown from the layers menu."),
+                           p("Predictions of observed populations are available across all tributaries to the Great Lakes and St. Lawrence River.
+                              Predictions to simulated 'Reference' landscapes are available as well. Reference landscapes were
+                              approximated by removing urban and agricultural landcovers, and proportionally increasing all natural
+                              landcovers in the catchment to account for those removed. Additionally, the LDI was set to nearly 0 for
+                              urban and agiculture landcovers in the simulated 'reference' landscapes. Finally, the difference between observed
+                              and reference communities are mapped, and expressed as (Current - Reference; i.e., positive values indicate
+                              present day predictions are higher than simulated reference, and negative values indicate present day predictions are
+                              lower than simulated reference). Selecting a stream segment with either the 'Current' or 'Reference' layers selected
+                              will show the predictor values associated with that segment for the 'Current' or 'Reference' predictions respectively.
+                              All values are shown on the log-scale."),
+                           p("Selecting a reach in the Current or Reference predicted layers will present a 'SHAP Breakdown' figure 
+                              showing the contributions of each predictor variable to the final predicted outcome. Once a reach is selected,
+                              that reach will also be highlighted in the 'Predictor Response' tab.")
+                         ),
+                         fluidRow(
+                           column(width=6,leaflet::leafletOutput("map_bio", height = "800px")),
+                           column(width=6,shiny::plotOutput("SHAP_breakdown", height = "800px"))
+                         )
+                  )
                 )
         ),
         # map_pred_tab tab content
@@ -129,7 +140,7 @@ fluidPage(
                   p("The figure below shows Observed vs Predicted values. The solid black line is fit to the 50th percentile of
                      each observations predicted conditional distribition, and the blue lines are fit to the 25th and 75th percentiles.
                      All values are shown on the log-scale."),
-                  plotly::plotlyOutput("predperf_out",  height = "750px",  width = "750px")
+                  plotly::plotlyOutput("predperf_out",  height = "750px")
                 )
         ),
         # predimp_tab tab content
@@ -148,8 +159,8 @@ fluidPage(
                   p("The figure below shows the effect of a predictor variable on the presence/absence and mean predicted outcome. 
                     The predicted effects can be colour by a separate variable to identify interactions among predictors.
                     A positive effect on the SHAP score of the mean suggests that predictor value is increasing the mean prediction,
-                    whereas a positive effect on the SHAP score of the presence/absence suggests that the predictore values is increasing
-                    the likelihood of a 0."),
+                    whereas a positive effect on the SHAP score of the presence/absence suggests that the predictor values is increasing
+                    the likelihood of a presence."),
                   fluidRow(
                     column(4,offset = 1,selectInput("shap_pred_sel","Predictor",pred_names,multiple=F)),
                     column(4,offset = 1,selectInput("shap_col_sel","Colour",pred_names,multiple=F))
