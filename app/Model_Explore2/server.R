@@ -287,7 +287,7 @@ function(input, output, session) {
   })
   
   # predperf_tab ------------------------------------------------------------
-  output$predperf_out<-plotly::renderPlotly({
+  output$predperf_out<-shiny::renderPlot({
     req(input$sel_region)
     req(input$sel_taxa)
     req(input$sel_ep)
@@ -334,12 +334,12 @@ function(input, output, session) {
            title=ttl)
     
     shinyWidgets::closeSweetAlert()
-    plotly::ggplotly(plt)
+    plt
     
   })
   
   # predimp_tab -------------------------------------------------------------
-  output$predimp_out<-plotly::renderPlotly({
+  output$predimp_out<-shiny::renderPlot({
     req(input$sel_region)
     req(input$sel_taxa)
     req(input$sel_ep)
@@ -372,12 +372,12 @@ function(input, output, session) {
     
     shinyWidgets::closeSweetAlert()
     
-    plotly::ggplotly(plt)
-    
+    plt
+  
   })
   
   # predsurf_tab ------------------------------------------------------------
-  output$predsurf_out<-plotly::renderPlotly({
+  output$predsurf_out<-shiny::renderPlot({
     req(input$sel_region)
     req(input$sel_taxa)
     req(input$sel_ep)
@@ -435,7 +435,7 @@ function(input, output, session) {
     
     shinyWidgets::closeSweetAlert()
     
-    plotly::ggplotly(plt)
+    plt
     
   })
   

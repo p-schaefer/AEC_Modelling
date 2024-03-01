@@ -142,7 +142,7 @@ fluidPage(
                   p("The figure below shows Observed vs Predicted values. The solid black line is fit to the 50th percentile of
                      each observations predicted conditional distribition, and the blue lines are fit to the 25th and 75th percentiles.
                      All values are shown on the log-scale."),
-                  plotly::plotlyOutput("predperf_out",  height = "750px")
+                  shiny::plotOutput("predperf_out",  height = "750px")
                 )
         ),
         # predimp_tab tab content
@@ -151,7 +151,7 @@ fluidPage(
                   h3("Predictor Importance"),
                   p("The figure below shows the relative importance of each predictor in describing whether or not taxa are
                     present or absent from a sample, as well as the mean."),
-                  plotly::plotlyOutput("predimp_out",  height = "750px")
+                  shiny::plotOutput("predimp_out",  height = "750px")
                 )
         ),
         # predsurf_tab tab content
@@ -167,7 +167,7 @@ fluidPage(
                     column(4,offset = 1,selectInput("shap_pred_sel","Predictor",pred_names,multiple=F)),
                     column(4,offset = 1,selectInput("shap_col_sel","Colour",pred_names,multiple=F))
                   ),
-                  plotly::plotlyOutput("predsurf_out",  height = "750px")
+                  shiny::plotOutput("predsurf_out",  height = "750px")
                 )
         )
       )
