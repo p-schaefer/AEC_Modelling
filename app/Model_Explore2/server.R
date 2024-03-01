@@ -28,10 +28,14 @@ loading_message<-function(session){
 # Define server logic required to draw a histogram
 function(input, output, session) {
   
+  sel_strms<-reactive(
+    sf::read_sf(fp,
+                query=paste0("SELECT * FROM AEC_Streams WHERE AEC_Region_sub IN ('",paste(input$sel_region,collapse="', '"),"')"))
+  )
+  
   # Tab Contents ------------------------------------------------------------
   
-  # map_bio_tab tab content --
-  
+  # map_bio_tab -------------------------------------------------------------
   output$map_bio <- leaflet::renderLeaflet({
     req(input$sel_region)
     req(input$sel_taxa)
@@ -42,9 +46,6 @@ function(input, output, session) {
     
     con <- DBI::dbConnect(RSQLite::SQLite(), fp)
     
-    sel_strms<-sf::read_sf(fp,
-                           query=paste0("SELECT * FROM AEC_Streams WHERE AEC_Region_sub IN ('",paste(input$sel_region,collapse="', '"),"')"))
-    
     sel_modelpredictions<-tbl(con,"Model_Predictions") %>% 
       filter(tx_Taxa == local(input$sel_taxa)) %>%
       filter(gen_Region %in% local(input$sel_region)) %>%
@@ -53,7 +54,7 @@ function(input, output, session) {
     
     DBI::dbDisconnect(con)
     
-    Predicted<-sel_strms %>% 
+    Predicted<-sel_strms() %>% 
       left_join(sel_modelpredictions,
                 by=c("ProvReachID"="gen_ProvReachID")) %>% 
       #mutate(across(contains(c("quant_","observed","predicted")),~expm1(.x))) %>% 
@@ -88,70 +89,107 @@ function(input, output, session) {
     
     #browser()
     
-    mv <- tmap::tm_shape(Observed)+
-      tmap::tm_lines(col="Segment Median",
-                     breaks =rng,
-                     lwd=1.75,
-                     palette="viridis",
-                     popup.vars=c("ProvReachID","Segment Median"),
-                     group="Observed",
-                     id="ProvReachID")+
-      tmap::tm_shape(Current)+
-      tmap::tm_lines(col="Predicted",
-                     breaks =rng, 
-                     lwd=1.75,
-                     palette="viridis",
-                     popup.vars=colnames(Current)[colnames(Current)!="geom"],
-                     group="Predicted - Current",
-                     id="ProvReachID")+
-      tmap::tm_shape(Reference)+
-      tmap::tm_lines(col="Predicted",
-                     breaks =rng, 
-                     lwd=1.75,
-                     palette="viridis",
-                     popup.vars=colnames(Reference)[colnames(Reference)!="geom"],
-                     group="Predicted - Reference",
-                     id="ProvReachID")+
-      tmap::tm_shape(Difference)+
-      tmap::tm_lines(col="(Current - Reference)",
-                     breaks =rng2, 
-                     lwd=1.75,
-                     midpoint = 0,
-                     #palette="viridis",
-                     popup.vars=c("ProvReachID","(Current - Reference)"),
-                     group="Predicted - (Current - Reference)",
-                     id="ProvReachID")
+    # mv <- tmap::tm_shape(Observed)+
+    #   tmap::tm_lines(col="Segment Median",
+    #                  breaks =rng,
+    #                  lwd=1.75,
+    #                  palette="viridis",
+    #                  popup.vars=c("ProvReachID","Segment Median"),
+    #                  group="Observed",
+    #                  id="ProvReachID")+
+    #   tmap::tm_shape(Current)+
+    #   tmap::tm_lines(col="Predicted",
+    #                  breaks =rng, 
+    #                  lwd=1.75,
+    #                  palette="viridis",
+    #                  popup.vars=colnames(Current)[colnames(Current)!="geom"],
+    #                  group="Predicted - Current",
+    #                  id="ProvReachID")+
+    #   tmap::tm_shape(Reference)+
+    #   tmap::tm_lines(col="Predicted",
+    #                  breaks =rng, 
+    #                  lwd=1.75,
+    #                  palette="viridis",
+    #                  popup.vars=colnames(Reference)[colnames(Reference)!="geom"],
+    #                  group="Predicted - Reference",
+    #                  id="ProvReachID")+
+    #   tmap::tm_shape(Difference)+
+    #   tmap::tm_lines(col="(Current - Reference)",
+    #                  breaks =rng2, 
+    #                  lwd=1.75,
+    #                  midpoint = 0,
+    #                  #palette="viridis",
+    #                  popup.vars=c("ProvReachID","(Current - Reference)"),
+    #                  group="Predicted - (Current - Reference)",
+    #                  id="ProvReachID")
+    # 
+    # mv<-mv %>% 
+    #   tmap::tmap_leaflet(in.shiny = TRUE) %>% 
+    #   leaflet::hideGroup(c("Predicted - Current","Predicted - Reference","Predicted - (Current - Reference)"))
     
-    mv<-mv %>% 
-      tmap::tmap_leaflet(in.shiny = TRUE) %>% 
-      leaflet::hideGroup(c("Predicted - Current","Predicted - Reference","Predicted - (Current - Reference)"))
+    #browser()
     
+    # col.bins <-rng
+    # col.pal <- leaflet::colorBin("viridis", bins = col.bins, na.color = "grey")
+    # 
     # mv<-leaflet::leaflet() %>%
-    #   leaflet::addPolylines(data=Observed)
-    # mv<-mapview::mapview(Observed,
-    #                      zcol=c("Segment Median"),
-    #                      at=(rng))+
-    #   mapview::mapview(Current,
-    #                    zcol=c("Predicted"),
-    #                    at=(rng),
-    #                    legend =T,
-    #                    hide =T)+
-    #   mapview::mapview(Reference,
-    #                    zcol=c("Predicted"),
-    #                    at=(rng),
-    #                    legend =T,
-    #                    hide =T)+
-    #   mapview::mapview(Difference,
-    #                    zcol=c("(Current - Reference)"),
-    #                    at=(rng2),
-    #                    legend =T,
-    #                    hide =T)
+    #   #leaflet::addTiles() %>%
+    #   #leaflet::addProviderTiles(leaflet::providers$Esri.WorldImagery, group ="ESRI") %>% 
+    #   leaflet::addPolylines(data=Observed,
+    #                         color=col.pal(Observed$`Segment Median`),
+    #                         #breaks =rng,
+    #                         #lwd=1.75,
+    #                         #palette="viridis",
+    #                         #popup=c("ProvReachID","Segment Median"),
+    #                         group="Observed",
+    #                         layerId="ProvReachID")
+    
+    mv<-mapview::mapview(Observed,
+                         layer.name="Observed",
+                         #layerId=Observed$ProvReachID,
+                         zcol=c("Segment Median"),
+                         at=(rng))+
+      mapview::mapview(Current,
+                       layer.name="Predicted - Current",
+                       #layerId=Current$ProvReachID,
+                       zcol=c("Predicted"),
+                       at=(rng),
+                       legend =T,
+                       hide =T)+
+      mapview::mapview(Reference,
+                       layer.name="Predicted - Reference",
+                       #layerId="ProvReachID",
+                       zcol=c("Predicted"),
+                       at=(rng),
+                       legend =T,
+                       hide =T)+
+      mapview::mapview(Difference,
+                       layer.name="Predicted - (Current - Reference)",
+                       #layerId=Difference$ProvReachID,
+                       zcol=c("(Current - Reference)"),
+                       at=(rng2),
+                       legend =T,
+                       hide =T)
     
     
     shinyWidgets::closeSweetAlert()    
     
-    return(mv)
+    return(mv@map)
   })
+  
+  
+  # map_bio_tab Observer ----------------------------------------------------
+  
+  sel_reach<-eventReactive(input$map_bio_shape_click,{
+
+    sel_reach<-sf::st_as_sf(tibble(lat=input$map_bio_shape_click$lat,long=input$map_bio_shape_click$lng),
+                            coords = c("long","lat"),
+                            crs="+proj=longlat +datum=WGS84")
+    
+    sel_reach<-suppressMessages(nngeo::st_nn(sel_reach,sel_strms(),k=1,maxdist=Inf,parallel =1,progress =F)[[1]])
+    sel_strms()$ProvReachID[sel_reach]
+  })
+  
   
   observeEvent(input$map_bio_shape_click,{
     
@@ -159,9 +197,9 @@ function(input, output, session) {
       validate(need(input$map_bio_shape_click$group %in% c("Predicted - Current","Predicted - Reference"),message="Select a stream line in the Current or Reference Layer to see the prediction breakdown"))
       
       loading_message(session)
-      
-      sel_reach<-input$map_bio_shape_click$id
-      sel_reach<-gsub(".1$","",sel_reach)
+
+      #sel_reach<-input$map_bio_shape_click$id
+      #sel_reach<-gsub("\\.\\d$|\\.\\d$","",sel_reach)
       sel_time<-case_when(
         input$map_bio_shape_click$group == "Predicted - Current" ~ c("Current Mean","Current Presence/Absence"),
         input$map_bio_shape_click$group == "Predicted - Reference" ~ c("Reference Mean","Reference Presence/Absence")
@@ -172,9 +210,11 @@ function(input, output, session) {
       sel_modelShap<-tbl(con,"SHAP_scores") %>% 
         filter(endpoint == local(input$sel_ep)) %>%
         filter(sel_tx_Taxa == local(input$sel_taxa)) %>%
-        filter(sel_gen_ProvReachID %in% local(sel_reach)) %>% 
+        filter(sel_gen_ProvReachID %in% local(sel_reach())) %>% 
         filter(shape_param %in% local(sel_time)) %>% 
         collect() 
+      
+      validate(need(nrow(sel_modelShap)>0,message="Virtual Stream Connector Selected"))
       
       reach_shap<-sel_modelShap %>% 
         select(-starts_with("sel_")) %>% 
@@ -201,9 +241,10 @@ function(input, output, session) {
         scale_x_continuous(breaks=scales::pretty_breaks(),labels=function(x) scales::comma(x)) +
         #scale_y_discrete(sec.axis = sec_axis(transform=~.,labels=reach_shap$Value, name="Values"))+
         xlab("SHAP Scores")+
-        ggtitle(paste("Reach: ",sel_reach))+
+        ggtitle(paste("Reach: ",sel_reach()))+
         theme_bw() +
-        facet_wrap(~shape_param,scales="free_x")
+        facet_wrap(~shape_param,scales="free_x")+
+        theme(legend.position="none")
       
       shinyWidgets::closeSweetAlert()
       pt
@@ -211,8 +252,7 @@ function(input, output, session) {
     
   })
   
-  # map_pred_tab tab content --
-  
+  # map_pred_tab ------------------------------------------------------------
   output$map_pred <- leaflet::renderLeaflet({
     req(input$sel_region)
     req(input$sel_taxa)
@@ -223,9 +263,6 @@ function(input, output, session) {
     
     con <- DBI::dbConnect(RSQLite::SQLite(), fp)
     
-    sel_strms<-sf::read_sf(fp,
-                           query=paste0("SELECT * FROM AEC_Streams WHERE AEC_Region_sub IN ('",paste(input$sel_region,collapse="', '"),"')"))
-    
     sel_modelpredictors<-tbl(con,"Predictor_Data") %>% 
       filter(gen_Region %in% local(input$sel_region)) %>%
       select(gen_ProvReachID,any_of(local(input$mapsel_pred))) %>% 
@@ -233,7 +270,7 @@ function(input, output, session) {
     
     DBI::dbDisconnect(con)
     
-    Predictors<-sel_strms %>% 
+    Predictors<-sel_strms() %>% 
       left_join(sel_modelpredictors,
                 by=c("ProvReachID"="gen_ProvReachID"))%>% 
       select(ProvReachID,Network_Line_Type,any_of(input$mapsel_pred), geom) %>% 
@@ -249,7 +286,7 @@ function(input, output, session) {
     mv@map
   })
   
-  # predperf_tab tab content --
+  # predperf_tab ------------------------------------------------------------
   output$predperf_out<-plotly::renderPlotly({
     req(input$sel_region)
     req(input$sel_taxa)
@@ -300,8 +337,8 @@ function(input, output, session) {
     plotly::ggplotly(plt)
     
   })
-  # predimp_tab tab content --
   
+  # predimp_tab -------------------------------------------------------------
   output$predimp_out<-plotly::renderPlotly({
     req(input$sel_region)
     req(input$sel_taxa)
@@ -339,8 +376,7 @@ function(input, output, session) {
     
   })
   
-  # predsurf_tab tab content --
-  
+  # predsurf_tab ------------------------------------------------------------
   output$predsurf_out<-plotly::renderPlotly({
     req(input$sel_region)
     req(input$sel_taxa)
@@ -351,8 +387,8 @@ function(input, output, session) {
     
     loading_message(session)
     
-    sel_reach<-input$map_bio_shape_click$id
-    sel_reach<-gsub(".1$","",sel_reach)
+    # sel_reach<-input$map_bio_shape_click$id
+    # sel_reach<-gsub("\\.\\d$|\\.\\d$","",sel_reach)
     
     sel_ProvReachID<-sf::read_sf(fp,
                                  query=paste0("SELECT * FROM AEC_Streams WHERE AEC_Region_sub IN ('",paste(input$sel_region,collapse="', '"),"')")) %>% 
@@ -387,10 +423,10 @@ function(input, output, session) {
       )+
       theme_bw()
     
-    if (length(sel_reach)>0){
+    if (length(sel_reach())>0){
       plt<-plt+
         geom_point(
-          data=filter(sel_modelShap,ProvReachID==sel_reach),
+          data=filter(sel_modelShap,ProvReachID==sel_reach()),
           shape=1,
           size=4,
           colour="darkred"

@@ -106,12 +106,14 @@ fluidPage(
                               urban and agiculture landcovers in the simulated 'reference' landscapes. Finally, the difference between observed
                               and reference communities are mapped, and expressed as (Current - Reference; i.e., positive values indicate
                               present day predictions are higher than simulated reference, and negative values indicate present day predictions are
-                              lower than simulated reference). Selecting a stream segment with either the 'Current' or 'Reference' layers selected
+                              lower than simulated reference)."),
+                           p("Selecting a stream segment with either the 'Current' or 'Reference' layers selected
                               will show the predictor values associated with that segment for the 'Current' or 'Reference' predictions respectively.
-                              All values are shown on the log-scale."),
-                           p("Selecting a reach in the Current or Reference predicted layers will present a 'SHAP Breakdown' figure 
-                              showing the contributions of each predictor variable to the final predicted outcome. Once a reach is selected,
-                              that reach will also be highlighted in the 'Predictor Response' tab.")
+                              Selecting a stream segment in the 'Current' or 'Reference' predicted layers will also present a 'SHAP Breakdown' figure 
+                              showing the contributions of each predictor variable to the final predicted outcome. A positive effect on the SHAP score
+                              of the mean suggests that predictor value is increasing the mean prediction,
+                              whereas a positive effect on the SHAP score of the presence/absence suggests that the predictor values is increasing
+                              the likelihood of a presence. Once a reach is selected, that reach will also be highlighted in the 'Predictor Response' tab.")
                          ),
                          fluidRow(
                            column(width=6,leaflet::leafletOutput("map_bio", height = "800px")),

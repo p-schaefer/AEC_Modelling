@@ -50,6 +50,10 @@ sub_regions<-map_dfr(sub_regions,.id="AEC_Region",~map_dfr(.x,.id="AEC_Region_su
 #sub_regions<-unlist(sub_regions,recursive = F)
 #saveRDS(sub_regions,file.path("app","Model_Explore2","data",paste0("AEC_Streams.rds")))
 
+sub_regions<-filter(sub_regions,Network_Line_Type!="Shoreline Virtual Connector")
+# sub_regions<-sf::st_simplify(sub_regions,T,150)
+sub_regions<-sf::st_transform(sub_regions,"+proj=longlat +datum=WGS84")
+
 sf::write_sf(sub_regions,
              fp,
              layer="AEC_Streams",
@@ -183,18 +187,24 @@ shap_out<-map_dfr(c("resp_Comm_Biomass","resp_Comm_Abundance"), #
           shap<-readRDS(file.path("data","models","LSS",paste0("Shap_",x,"_",booster,"_Current.rds")))
           shap_ref<-readRDS(file.path("data","models","LSS",paste0("Shap_",x,"_",booster,"_Reference.rds")))
           
+          #shap$rate<-1/shap$rate
+          shap$rate[is.infinite(shap$rate)]<-NA_real_
+          #shap_ref$rate<-1/shap_ref$rate
+          shap_ref$rate[is.infinite(shap_ref$rate)]<-NA_real_
+          
           out<-list(
-            `Current Mean`=shap$concentration*(1/shap$rate),
-            `Current Presence/Absence`=1-shap$gate,
-            `Reference Mean`=shap_ref$concentration*(1/shap_ref$rate),
-            `Reference Presence/Absence`=1-shap_ref$gate
+            `Current Mean`=shap$concentration*(shap$rate),
+            `Current Presence/Absence`=shap$gate*-1,
+            `Reference Mean`=shap_ref$concentration*(shap_ref$rate),
+            `Reference Presence/Absence`=shap_ref$gate*-1
           )
           
-          out$Mean[is.infinite(out$Mean)]<-NA_real_
+          out$`Current Mean`[is.na(out$`Current Mean`)]<-0
+          out$`Reference Mean`[is.na(out$`Reference Mean`)]<-0
           
           map2_dfr(out,names(out),
                    ~mutate(as.data.frame(.x),shape_param=.y) %>%
-                     select(-BIAS) %>% 
+                     select(-any_of("BIAS")) %>% 
                      mutate(endpoint=x) %>% 
                      bind_cols(
                        shap[["raw_data"]] %>% 
@@ -232,8 +242,8 @@ t1<-dplyr::copy_to(df=out_res,
 
 s1<-RSQLite::dbSendQuery(con, "CREATE INDEX Predictor_Data_idx ON Predictor_Data (gen_Region);")
 s2<-RSQLite::dbSendQuery(con, "CREATE INDEX Model_Predictions_idx ON Model_Predictions (tx_Taxa,gen_Region);")
-s3<-RSQLite::dbSendQuery(con, "CREATE INDEX OOS_Predictions_idx ON OOS_Predictions (gen_ProvReachID);")
-s4<-RSQLite::dbSendQuery(con, "CREATE INDEX SHAP_scores_idx ON SHAP_scores (endpoint,sel_tx_Taxa,sel_gen_ProvReachID);")
+s3<-RSQLite::dbSendQuery(con, "CREATE INDEX OOS_Predictions_idx ON OOS_Predictions (gen_ProvReachID,endpoint,tx_Taxa);")
+s4<-RSQLite::dbSendQuery(con, "CREATE INDEX SHAP_scores_idx ON SHAP_scores (endpoint,shape_param,sel_tx_Taxa,sel_gen_ProvReachID);")
 s5<-RSQLite::dbSendQuery(con, "CREATE INDEX AEC_Streams_idx ON AEC_Streams (AEC_Region_sub);")
 s6<-RSQLite::dbSendQuery(con, "pragma vacuum;")
 s7<-RSQLite::dbSendQuery(con, "pragma optimize;")
