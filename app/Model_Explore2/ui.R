@@ -162,7 +162,7 @@ fluidPage(
                     The predicted effects can be colour by a separate variable to identify interactions among predictors.
                     A positive effect on the SHAP score of the mean suggests that predictor value is increasing the mean prediction,
                     whereas a positive effect on the SHAP score of the presence/absence suggests that the predictor values is increasing
-                    the likelihood of a presence."),
+                    the likelihood of a presence. If a reach was selected in the 'Fish Map' tab, it will be highlighted with a red circle."),
                   fluidRow(
                     column(4,offset = 1,selectInput("shap_pred_sel","Predictor",pred_names,multiple=F)),
                     column(4,offset = 1,selectInput("shap_col_sel","Colour",pred_names,multiple=F))

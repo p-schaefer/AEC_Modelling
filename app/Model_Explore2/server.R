@@ -427,9 +427,9 @@ function(input, output, session) {
       plt<-plt+
         geom_point(
           data=filter(sel_modelShap,ProvReachID==sel_reach()),
-          shape=1,
-          size=4,
-          colour="darkred"
+          size=6,
+          stroke =4,
+          colour="red"
         )
     }
     
