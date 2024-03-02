@@ -46,7 +46,6 @@ fluidPage(
       br(),
       br(),
       br(),
-      br(),
       column(
         width=10,offset=1,
         tags$a(href="https://buymeacoffee.com/ecopulse", 
@@ -72,7 +71,7 @@ fluidPage(
                   landcovers in the catchment to account for those removed. Additionally, the LDI was set to nearly 0 for
                   urban and agiculture landcovers in the simulated 'reference' landscapes."),
                 br(),
-                p("Results presented here are highly preliminary."),
+                p("Results presented here are preliminary."),
                 br(),
                 tags$a(href="https://github.com/p-schaefer/AEC_Modelling", 
                        "The code for the project is available on GitHub",
@@ -88,6 +87,18 @@ fluidPage(
                 br(),
                 tags$a(href="https://github.com/StatMixedML/LightGBMLSS/blob/master/lightgbmlss/distributions/ZAGamma.py", 
                        "Models were fit to Zero-adjusted Gamma distributions",
+                       target="_blank"),
+                br(),
+                tags$a(href="https://geohub.lio.gov.on.ca/maps/mnrf::aquatic-ecosystem-classification-aec-for-ontario/about", 
+                       "Aquatic ecosystem classification (AEC) for Ontario",
+                       target="_blank"),
+                br(),
+                tags$a(href="https://geohub.lio.gov.on.ca/documents/7aa998fdf100434da27a41f1c637382c/about", 
+                       "Ontario Land Cover Compilation v.2.0",
+                       target="_blank"),
+                br(),
+                tags$a(href="https://github.com/p-schaefer/ihydro", 
+                       "Landscape data were processed using the ihydro R package",
                        target="_blank")
         ),# map_bio_tab tab content
         tabItem(tabName = "map_bio_tab",
