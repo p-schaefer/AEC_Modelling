@@ -181,7 +181,6 @@ function(input, output, session) {
   # map_bio_tab Observer ----------------------------------------------------
   
   sel_reach<-eventReactive(input$map_bio_shape_click,{
-
     sel_reach<-sf::st_as_sf(tibble(lat=input$map_bio_shape_click$lat,long=input$map_bio_shape_click$lng),
                             coords = c("long","lat"),
                             crs="+proj=longlat +datum=WGS84")
@@ -204,7 +203,7 @@ function(input, output, session) {
         input$map_bio_shape_click$group == "Predicted - Current" ~ c("Current Mean","Current Presence/Absence"),
         input$map_bio_shape_click$group == "Predicted - Reference" ~ c("Reference Mean","Reference Presence/Absence")
       )
-      
+
       con <- DBI::dbConnect(RSQLite::SQLite(), fp)
       
       sel_modelShap<-tbl(con,"SHAP_scores") %>% 
@@ -214,8 +213,11 @@ function(input, output, session) {
         filter(shape_param %in% local(sel_time)) %>% 
         collect() 
       
-      validate(need(nrow(sel_modelShap)>0,message="Virtual Stream Connector Selected"))
-      
+      if (nrow(sel_modelShap)==0){
+        shinyWidgets::closeSweetAlert()
+        validate(need(nrow(sel_modelShap)>0,message="Virtual Stream Connector Selected"))
+      }
+
       reach_shap<-sel_modelShap %>% 
         select(-starts_with("sel_")) %>% 
         pivot_longer(c(everything(),-shape_param,-endpoint),

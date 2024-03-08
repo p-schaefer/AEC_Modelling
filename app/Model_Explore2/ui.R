@@ -150,7 +150,8 @@ fluidPage(
         tabItem(tabName = "predperf_tab",
                 fluidPage(
                   h3("Model Performance"),
-                  p("The figure below shows Observed vs Predicted values. The solid black line is fit to the 50th percentile of
+                  p("The figure below shows Observed vs Predicted values. The data shown are filtered to the data selected on the side panel.
+                  The solid black line is fit to the 50th percentile of
                      each observations predicted conditional distribition, and the blue lines are fit to the 25th and 75th percentiles.
                      All values are shown on the log-scale."),
                   shiny::plotOutput("predperf_out",  height = "750px")
@@ -161,7 +162,7 @@ fluidPage(
                 fluidPage(
                   h3("Predictor Importance"),
                   p("The figure below shows the relative importance of each predictor in describing whether or not taxa are
-                    present or absent from a sample, as well as the mean."),
+                    present or absent from a sample, as well as the mean. The data shown are filtered to the data selected on the side panel."),
                   shiny::plotOutput("predimp_out",  height = "750px")
                 )
         ),
@@ -170,7 +171,7 @@ fluidPage(
                 fluidPage(
                   h3("Predictor Response Surfaces"),
                   p("The figure below shows the effect of a predictor variable on the presence/absence and mean predicted outcome. 
-                    The predicted effects can be colour by a separate variable to identify interactions among predictors.
+                    The data shown are filtered to the data selected on the side panel. The predicted effects can be colour by a separate variable to identify interactions among predictors.
                     A positive effect on the SHAP score of the mean suggests that predictor value is increasing the mean prediction,
                     whereas a positive effect on the SHAP score of the presence/absence suggests that the predictor values is increasing
                     the likelihood of a presence. If a reach was selected in the 'Fish Map' tab, it will be highlighted with a red circle."),
