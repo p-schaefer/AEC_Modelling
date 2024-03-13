@@ -1,6 +1,8 @@
 library(shinydashboard)
 library(tidyverse)
 library(sf)
+# Set the application-level cache
+shinyOptions(cache = cachem::cache_mem(max_size = 1000e6))
 
 fp<-file.path("data",paste0("Model_datas.gpkg"))
 con <- DBI::dbConnect(RSQLite::SQLite(), fp)
@@ -175,26 +177,41 @@ function(input, output, session) {
     shinyWidgets::closeSweetAlert()    
     
     return(mv@map)
-  })
+  }) %>% 
+    bindCache(input$sel_region,
+              input$sel_taxa,
+              input$sel_ep)
   
   
   # map_bio_tab Observer ----------------------------------------------------
   
-  sel_reach<-eventReactive(input$map_bio_shape_click,{
+  sel_reach<-reactive({
+    if (is.null(input$map_bio_shape_click)) return(NULL)
+    
     sel_reach<-sf::st_as_sf(tibble(lat=input$map_bio_shape_click$lat,long=input$map_bio_shape_click$lng),
                             coords = c("long","lat"),
                             crs="+proj=longlat +datum=WGS84")
     
     sel_reach<-suppressMessages(nngeo::st_nn(sel_reach,sel_strms(),k=1,maxdist=Inf,parallel =1,progress =F)[[1]])
-    sel_strms()$ProvReachID[sel_reach]
+    sel_reach$sel_reach<-sel_strms()$ProvReachID[sel_reach]
   })
+  
+  # observeEvent(input$map_bio_shape_click,{
+  #   browser()
+  #   sel_reach<-sf::st_as_sf(tibble(lat=input$map_bio_shape_click$lat,long=input$map_bio_shape_click$lng),
+  #                           coords = c("long","lat"),
+  #                           crs="+proj=longlat +datum=WGS84")
+  #   
+  #   sel_reach<-suppressMessages(nngeo::st_nn(sel_reach,sel_strms(),k=1,maxdist=Inf,parallel =1,progress =F)[[1]])
+  #   sel_reach$sel_reach<-sel_strms()$ProvReachID[sel_reach]
+  # })
   
   
   observeEvent(input$map_bio_shape_click,{
     
     output$SHAP_breakdown<-shiny::renderPlot({
       validate(need(input$map_bio_shape_click$group %in% c("Predicted - Current","Predicted - Reference"),message="Select a stream line in the Current or Reference Layer to see the prediction breakdown"))
-      
+
       loading_message(session)
 
       #sel_reach<-input$map_bio_shape_click$id
@@ -246,7 +263,8 @@ function(input, output, session) {
         ggtitle(paste("Reach: ",sel_reach()))+
         theme_bw() +
         facet_wrap(~shape_param,scales="free_x")+
-        theme(legend.position="none")
+        theme(legend.position="none") +
+        theme(text=element_text(size=18))
       
       shinyWidgets::closeSweetAlert()
       pt
@@ -286,7 +304,9 @@ function(input, output, session) {
     
     shinyWidgets::closeSweetAlert()
     mv@map
-  })
+  }) %>% 
+    bindCache(input$mapsel_pred,
+              input$sel_region)
   
   # predperf_tab ------------------------------------------------------------
   output$predperf_out<-shiny::renderPlot({
@@ -338,7 +358,10 @@ function(input, output, session) {
     shinyWidgets::closeSweetAlert()
     plt
     
-  })
+  }) %>% 
+    bindCache(input$sel_region,
+              input$sel_taxa,
+              input$sel_ep)
   
   # predimp_tab -------------------------------------------------------------
   output$predimp_out<-shiny::renderPlot({
@@ -370,13 +393,17 @@ function(input, output, session) {
       geom_point()+
       facet_wrap(~shape_param,scales="free_x")+
       xlab("Importance\n(mean absolute SHAP value)")+
-      theme_bw()
+      theme_bw()+
+      theme(text=element_text(size=21))
     
     shinyWidgets::closeSweetAlert()
     
     plt
   
-  })
+  }) %>% 
+    bindCache(input$sel_region,
+              input$sel_taxa,
+              input$sel_ep)
   
   # predsurf_tab ------------------------------------------------------------
   output$predsurf_out<-shiny::renderPlot({
@@ -386,7 +413,7 @@ function(input, output, session) {
     req(input$shap_pred_sel)
     req(input$shap_col_sel)
     con <- DBI::dbConnect(RSQLite::SQLite(), fp)
-    
+
     loading_message(session)
     
     # sel_reach<-input$map_bio_shape_click$id
@@ -423,7 +450,8 @@ function(input, output, session) {
         y="SHAP Score",
         colour=input$shap_col_sel
       )+
-      theme_bw()
+      theme_bw()+
+      theme(text=element_text(size=21))
     
     if (length(sel_reach())>0){
       plt<-plt+
@@ -439,8 +467,12 @@ function(input, output, session) {
     
     plt
     
-  })
-  
-  
-  
+  }) %>% 
+    bindCache(input$sel_region,
+              input$sel_taxa,
+              input$sel_ep,
+              input$shap_pred_sel,
+              input$shap_col_sel,
+              sel_reach())
+
 }

@@ -163,7 +163,7 @@ fluidPage(
                   h3("Predictor Importance"),
                   p("The figure below shows the relative importance of each predictor in describing whether or not taxa are
                     present or absent from a sample, as well as the mean. The data shown are filtered to the data selected on the side panel."),
-                  shiny::plotOutput("predimp_out",  height = "750px")
+                  shiny::plotOutput("predimp_out",  height = "1500px")
                 )
         ),
         # predsurf_tab tab content
