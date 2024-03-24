@@ -18,6 +18,7 @@ fluidPage(
   dashboardPage(
     dashboardHeader(title = "Fish Modeling"),
     dashboardSidebar(
+      p("1994 Filter"),
       sidebarMenu(
         menuItem("Welcome", tabName = "home"),
         menuItem("Fish Map", tabName = "map_bio_tab"),

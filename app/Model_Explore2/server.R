@@ -3,6 +3,7 @@ library(tidyverse)
 library(sf)
 # Set the application-level cache
 shinyOptions(cache = cachem::cache_mem(max_size = 1000e6))
+shinyOptions(cache = cachem::cache_disk("./cache"))
 
 fp<-file.path("data",paste0("Model_datas.gpkg"))
 con <- DBI::dbConnect(RSQLite::SQLite(), fp)
@@ -457,8 +458,8 @@ function(input, output, session) {
       plt<-plt+
         geom_point(
           data=filter(sel_modelShap,ProvReachID==sel_reach()),
-          size=6,
-          stroke =4,
+          size=5,
+          stroke =3,
           colour="red"
         )
     }
