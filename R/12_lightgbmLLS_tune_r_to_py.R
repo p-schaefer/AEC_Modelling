@@ -20,15 +20,17 @@ if (F) {
   
   miniconda_update()
   
-  conda_install("AEC_Model","IPython",pip=T)
+  # conda_install("AEC_Model","IPython",pip=T)
+  # 
+  # conda_install("AEC_Model","shap",pip=T)
   
-  conda_install("AEC_Model","shap",pip=T)
+  #conda_install("AEC_Model","git+https://github.com/dsgibbons/shap.git",pip=T)
   
-  conda_install("AEC_Model","git+https://github.com/dsgibbons/shap.git",pip=T)
+  #conda_install("AEC_Model","git+https://github.com/StatMixedML/XGBoostLSS.git",pip=T)
   
-  conda_install("AEC_Model","git+https://github.com/StatMixedML/XGBoostLSS.git",pip=T)
+  #conda_install("AEC_Model","git+https://github.com/StatMixedML/LightGBMLSS.git",pip=T)
   
-  conda_install("AEC_Model","git+https://github.com/StatMixedML/LightGBMLSS.git",pip=T)
+  conda_install("AEC_Model","git+https://github.com/p-schaefer/LightGBMLSS.git",pip=T)
   
 }
 
@@ -39,7 +41,8 @@ use_condaenv("AEC_Model")
 # xgb_data <- import("xgboostlss.datasets.data_loader")
 # xgb_model <- import("xgboostlss.model")
 # xgb_distr<-import("xgboostlss.distributions.Expectile")
-
+sel<-import("sklearn.model_selection")
+numpy<-import("numpy")
 lss.model <- import("lightgbmlss.model")
 #xgb.model <- import("xgboostlss.model")
 distr.lgb<-import("lightgbmlss.distributions")
@@ -49,7 +52,7 @@ shap<-import("shap")
 # Prepare Data ------------------------------------------------------------
 
 model_data0<-read_rds(file.path("data","final","Model_building_finaltaxa_data.rds")) %>% 
-  filter(year(as.Date(gen_SampleDate))>1994)   %>% 
+  #filter(year(as.Date(gen_SampleDate))>1994)   %>% 
   # mutate(across(contains("_Perc_"),~inv.logit(.,adj))) %>%
   # mutate(across(contains("_Comm_"),~expm1(.))) %>% 
   mutate(across(starts_with("resp_"),
@@ -85,16 +88,16 @@ for (ep in resp){
                                             "br_",
                                             "nr_",
                                             "LDI_"
-                                            )),
-                              -starts_with("LDI_Natural"),
-                              -contains("lat"),
-                              -contains("lon"),
-                              -contains("lumped"),
-                              -contains("_SD"),
-                              -contains("_iFL"),
-                              any_of(ep),
-                              any_of(paste0("cat_",ep)),
-                              any_of("case_weight")) %>% 
+                       )),
+                       -starts_with("LDI_Natural"),
+                       -contains("lat"),
+                       -contains("lon"),
+                       -contains("lumped"),
+                       -contains("_SD"),
+                       -contains("_iFL"),
+                       any_of(ep),
+                       any_of(paste0("cat_",ep)),
+                       any_of("case_weight")) %>% 
                        mutate(across(any_of("case_weight"),~as.numeric(.x)))
   ) %>% 
     update_role(
@@ -112,9 +115,10 @@ for (ep in resp){
       any_of(!!ep),
       new_role = "outcome"
     ) %>% 
-    #step_normalize(all_numeric_predictors()) %>% 
+    step_YeoJohnson(all_numeric_predictors()) %>% 
+    step_normalize(all_numeric_predictors()) %>% 
     step_mutate(across(starts_with(c("case_weight")),~as.numeric(.))) #%>% 
-    #themis::step_upsample(!!paste0("cat_",ep),over_ratio  = 0.1)
+  #themis::step_upsample(!!paste0("cat_",ep),over_ratio  = 0.1)
   
   final_prep<-prep(recip_main,
                    model_data )
@@ -126,10 +130,37 @@ for (ep in resp){
   final_data<- final_prep %>%
     juice()
   
+  # cros_v<-group_vfold_cv(model_data,
+  #                        "gen_ProvReachID",
+  #                        6) %>% 
+  #   tidy() %>% 
+  #   group_by(Data) %>% 
+  #   nest() %>% 
+  #   summarise(x=map(data,~split(.x$Row,.x$Fold))) %>% 
+  #   deframe()
+  # 
+  # cros_v<-cros_v[c("Analysis","Assessment")]
+  # 
+  # kf<-sel$GroupKFold(6L)
+  # 
+  # folds_generator <- py_run_string("folds = ((train_idx, test_idx) for train_idx, test_idx in kf.split(X,groups='gen_ProvReachID'))")
+  # 
+  # # define a generator function
+  # cros_v_generator <-function(train_idx,test_idx) {
+  #   value <- start
+  #   function() {
+  #     value <<- value + 1
+  #     value
+  #   }
+  # }
+  # 
+  # # convert the function to a python iterator
+  # iter <- py_iterator(sequence_generator(10))
   
   train_py = lss.model$Dataset(
     data=final_data %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
-    label=final_data %>% select(any_of(ep)) %>% as.matrix() %>% r_to_py()#,
+    label=final_data %>% select(any_of(ep)) %>% as.matrix() %>% r_to_py(),
+    group=table(as.numeric(model_data$gen_ProvReachID))
     #weight =final_data %>% select(any_of("case_weight")) %>% as.matrix() %>% r_to_py()
   )
   
@@ -138,7 +169,7 @@ for (ep in resp){
   
   params_lightgbm = list(boosting= list("categorical",list("gbdt")),
                          feature_pre_filter= list("categorical",list(F)),
-                         learning_rate = list("float",list(low= 1e-6, high=0.5, log=TRUE)), 
+                         learning_rate = list("float",list(low= 1e-4, high=0.1, log=TRUE)), 
                          max_depth= list("int",list(low= 500L, high=2000L, log=FALSE)),
                          num_leaves= list("int",list(low= 1000L, high=5000L, log=FALSE)),           
                          min_data_in_leaf= list("int",list(low= 1L, high=50L, log=FALSE)),       
@@ -170,13 +201,18 @@ for (ep in resp){
     )
   )
   
-
+  
   # Models ------------------------------------------------------------------
+  
+  folds_object = sel$GroupKFold(6L)
   
   # Tune hyperparameters
   opt_param = xgb$hyper_opt(hp_dict=r_to_py(params_lightgbm),
                             train_set=train_py,
                             num_boost_round=r_to_py(2000L),        # Number of boosting iterations.
+                            folds=folds_object,
+                            multivariate=r_to_py(TRUE),
+                            n_startup_trials=r_to_py(20L),
                             nfold=r_to_py(6L),                    # Number of cv-folds.
                             early_stopping_rounds=r_to_py(20L),   # Number of early-stopping rounds
                             max_minutes=r_to_py(60L*6L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
@@ -187,6 +223,8 @@ for (ep in resp){
   
   saveRDS(opt_param,file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_gbtree.rds")))
   
+  
+  # Add DART ----------------------------------------------------------------
   
   params_lightgbm = list(
     boosting = list("categorical",list("dart")),
@@ -220,21 +258,70 @@ for (ep in resp){
   opt_param = xgb$hyper_opt(hp_dict=r_to_py(params_lightgbm),
                             train_set=train_py,
                             num_boost_round=r_to_py(opt_param$opt_rounds + 2000L),        # Number of boosting iterations.
+                            folds=folds_object,
+                            multivariate=r_to_py(TRUE),
+                            n_startup_trials=r_to_py(10L),
                             nfold=r_to_py(6L),                    # Number of cv-folds.
                             early_stopping_rounds=r_to_py(20L),   # Number of early-stopping rounds
-                            max_minutes=r_to_py(60L*6L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
+                            max_minutes=r_to_py(60L*3L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
                             silence=r_to_py(FALSE)
   )
   
-  
-  
   saveRDS(opt_param,file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_dart.rds"))) 
+  
+  # Add linear_tree ----------------------------------------------------------------
+  
+  params_lightgbm = list(
+    boosting = list("categorical",list("dart")),
+    linear_tree= list("categorical",list(T)),
+    linear_lambda= list("float",list(low= 1e-6, high=10, log=TRUE)),
+    xgboost_dart_mode = list("none",list(opt_param$xgboost_dart_mode)),
+    rate_drop= list("none",list(opt_param$rate_drop)),
+    skip_drop= list("none",list(opt_param$skip_drop)),
+    max_drop= list("none",list(opt_param$max_drop)),
+    feature_pre_filter= list("none",list(opt_param$feature_pre_filter)),
+    learning_rate = list("none",list(opt_param$learning_rate)), 
+    max_depth= list("none",list(opt_param$max_depth)),
+    num_leaves= list("none",list(opt_param$num_leaves)),           
+    min_data_in_leaf= list("none",list(opt_param$min_data_in_leaf)),       
+    min_gain_to_split= list("none",list(opt_param$min_gain_to_split)),
+    min_sum_hessian_in_leaf =list("none",list(opt_param$min_sum_hessian_in_leaf)),
+    feature_fraction_bynode = list("none",list(opt_param$feature_fraction_bynode)),
+    baging_freq=list("none",list(opt_param$baging_freq)),
+    bin_construct_sample_cnt =list("none",list(opt_param$bin_construct_sample_cnt)),
+    bagging_fraction = list("none",list(opt_param$bagging_fraction)),
+    max_cat_to_onehot = list("none",list(opt_param$max_cat_to_onehot)),
+    max_cat_threshold = list("none",list(opt_param$max_cat_threshold)),
+    min_data_per_group = list("none",list(opt_param$min_data_per_group)),
+    cat_smooth = list("none",list(opt_param$cat_smooth)),
+    cat_l2 = list("none",list(opt_param$cat_l2)),
+    histogram_pool_size = list("none",list(opt_param$histogram_pool_size))#,
+    # lambda_l1=list("none",list(opt_param$lambda_l1)),
+    # lambda_l2=list("none",list(opt_param$lambda_l2)),
+    # path_smooth=list("none",list(opt_param$path_smooth))
+  )
+  
+  # Tune hyperparameters
+  opt_param = xgb$hyper_opt(hp_dict=r_to_py(params_lightgbm),
+                            train_set=train_py,
+                            num_boost_round=r_to_py(opt_param$opt_rounds),        # Number of boosting iterations.
+                            folds=folds_object,
+                            multivariate=r_to_py(TRUE),
+                            n_startup_trials=r_to_py(5L),
+                            nfold=r_to_py(6L),                    # Number of cv-folds.
+                            early_stopping_rounds=r_to_py(20L),   # Number of early-stopping rounds
+                            max_minutes=r_to_py(60L*2L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
+                            silence=r_to_py(FALSE)
+  )
+  
+  saveRDS(opt_param,file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_dart_ltree.rds"))) 
+  
   
   # validate CV -------------------------------------------------------------
   
   # Define Cross-Validation -------------------------------------------------
   
-  if (T){
+  if (F){
     
     for (ii in c("gbtree","dart")){
       opt_param<-readRDS(file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_",ii,".rds")))
@@ -254,32 +341,40 @@ for (ep in resp){
           )
         )
         
-        trn<-training(cros_v$splits[[i]]) %>% 
+        trn_raw<-training(cros_v$splits[[i]]) %>% 
           mutate(across(starts_with(c("case_weight")),~as.numeric(.))) %>% 
           group_by(gen_ProvReachID,gen_link_id,gen_StreamName,across(starts_with("tx_"))) %>% 
           summarise(across(where(is.numeric),~median(.x,na.rm=T)),
                     across(!where(is.numeric),~tail(.x,1)),
                     .groups="drop")
         
-        final_prep<-prep(recip_main,trn)
+        tst_raw<-testing(cros_v$splits[[i]]) %>% 
+          mutate(across(starts_with(c("case_weight")),~as.numeric(.))) %>% 
+          group_by(gen_ProvReachID,gen_link_id,gen_StreamName,across(starts_with("tx_"))) %>% 
+          summarise(across(where(is.numeric),~median(.x,na.rm=T)),
+                    across(!where(is.numeric),~tail(.x,1)),
+                    .groups="drop")
         
-        tst<-testing(cros_v$splits[[i]]) %>% 
+        final_prep<-prep(recip_main,trn_raw)
+        
+        tst<- tst_raw %>% 
           bake(object=final_prep) 
         
-        trn<-training(cros_v$splits[[i]]) %>% 
+        trn<-trn_raw %>% #training(cros_v$splits[[i]]) %>% 
           bake(object=final_prep)
         
         train_py = lss.model$Dataset(
           data=trn %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
-          label=trn %>% select(any_of(ep)) %>% as.matrix() %>% r_to_py(),
-          #weight = trn %>% select(any_of("case_weight")) %>% as.matrix() %>% r_to_py()
+          label=trn %>% select(any_of(ep)) %>% as.matrix() %>% r_to_py()#,
+          #group=table(as.numeric(trn_raw$gen_ProvReachID))%>% r_to_py(),
+          #weight = as.numeric(trn_raw$case_weight) %>% r_to_py()
         )
         
-        test_py = lss.model$Dataset(
-          data=tst %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
-          label=tst %>% select(any_of(ep)) %>% as.matrix() %>% r_to_py(),
-          #weight = tst %>% select(any_of("case_weight")) %>% as.matrix() %>% r_to_py()
-        )
+        # test_py = lss.model$Dataset(
+        #   data=tst %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
+        #   label=tst %>% select(any_of(ep)) %>% as.matrix() %>% r_to_py(),
+        #   #weight = tst %>% select(any_of("case_weight")) %>% as.matrix() %>% r_to_py()
+        # )
         
         
         xgb$train(
@@ -301,18 +396,24 @@ for (ep in resp){
                                      n_samples=2000L,
                                      quantiles=c(0.05,0.25,0.5,0.75,0.95))
         
+        pred_samples = xgb$predict(tst %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
+                                   pred_type="samples",
+                                   n_samples=2000L) %>% 
+          rowMeans() %>% 
+          unlist()
         # xgb$predict(test_py, pred_type="parameters")
         # pred_quantiles = xgb$predict(test_py, pred_type="expectiles")
         
         out<-pred_quantiles %>% 
-          rename_with(.cols=any_of(c("quant_0.5","expectile_0.5")),~paste0("Predicted")) %>% 
-          bind_cols(testing(cros_v$splits[[i]]) %>%
+          bind_cols(tibble(Predicted=pred_samples)) %>% 
+          #rename_with(.cols=any_of(c("quant_0.5","expectile_0.5")),~paste0("Predicted")) %>% 
+          bind_cols(tst_raw %>%
                       select(any_of(ep),tx_Taxa,everything()) %>%
                       rename_with(.cols=any_of(ep),~paste0("Observed")) %>% 
                       mutate(endpoint=ep,
                              cv_fold=i)
           ) %>% 
-          mutate(gen_ProvReachID=testing(cros_v$splits[[i]])$gen_ProvReachID)
+          mutate(gen_ProvReachID=tst_raw$gen_ProvReachID)
         
         if (F){
           
@@ -348,13 +449,13 @@ for (ep in resp){
             group_by(tx_Taxa,gen_ProvReachID) %>%
             summarise(Observed=median(Observed),
                       Predicted=median(quant_0.75))
-
+          
           m1<-sumry %>%
             filter(tx_Taxa=="Brook (speckled) Trout") %>%
             left_join(bind_rows(stm_lns),
                       by=c("gen_ProvReachID"="gen_ProvReachID")) %>%
             sf::st_as_sf()
-
+          
           mapview::mapview(m1,zcol="Predicted",at=0:10)+mapview::mapview(m1,zcol="Observed",at=0:10)
           
         }
@@ -368,7 +469,7 @@ for (ep in resp){
       saveRDS(out_res,file.path("data","models","LSS",paste0("best_params_OOB_Pred_",ep,"_",ii,".rds")))
       
       
-
+      
       if (F) {
         xgb = lss.model$LightGBMLSS(
           distr.lgb$ZAGamma$ZAGamma(
@@ -419,7 +520,7 @@ for (ep in resp){
         )
         saveRDS(shap_values_interact,file.path("data","models","LSS",paste0("best_params_SHAPinteraction_",ep,"_",ii,".rds")))
       }
-
+      
     }
   }
 }

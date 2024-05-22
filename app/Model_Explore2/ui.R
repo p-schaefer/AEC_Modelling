@@ -128,8 +128,8 @@ fluidPage(
                               the likelihood of a presence. Once a reach is selected, that reach will also be highlighted in the 'Predictor Response' tab.")
                          ),
                          fluidRow(
-                           column(width=6,leaflet::leafletOutput("map_bio", height = "800px")),
-                           column(width=6,shiny::plotOutput("SHAP_breakdown", height = "800px"))
+                           shinyjqui::jqui_resizable(box(width=9,leaflet::leafletOutput("map_bio", height = "800px"))),
+                           shinyjqui::jqui_resizable(box(width=3,shiny::plotOutput("SHAP_breakdown", height = "800px")))
                          )
                   )
                 )

@@ -10,6 +10,23 @@ inv.logit <- function(f,a) {
   zapsmall((a*(1+exp(f))+(exp(f)-1))/(2*a*(1+exp(f))))
 }
 
+
+# HACK TO CLEAN DATA BECAUSE I DON"T HAVE SPACE TO STORE INTERMEDI --------
+
+raw_tbl<-read.csv(file.path("data","raw","Bio","tblFishSummaryOfTotalCatches.csv"))
+
+raw_tbl<-raw_tbl %>% 
+  filter( 
+    #OSAPSE==1, #the sample event was associated with at least one OSAP project and the sample event itself used site boundaries that were defined as per OSAP
+    !is.na(TotalWeightPer100m2) # This makes sure only valid single taxa are included (i.e., Cyprid bulk samples will be excluded)
+  ) %>% 
+  select(SampleEventID,SpeciesCode,CommonName) %>% 
+  distinct()
+
+tx_data<-tx_data %>% 
+  filter(SpeciesCode %in% raw_tbl$SpeciesCode) %>% 
+  filter(SampleEventID %in% raw_tbl$SampleEventID)
+
 # Finalize Model Data -----------------------------------------------------
 
 model_data<-tx_data %>% 
@@ -82,7 +99,7 @@ taxa_prop <- model_data %>%
     mean_abund_perc=inv.logit(mean(resp_Perc_Abundance,na.rm=T),adj)*100
   ) %>% 
   arrange(desc(mean_abund_perc)) %>% 
-  filter(mean_abund_perc>0.10)
+  filter(mean_abund_perc>=0.09) # pushed to 9% for atlantic slmon
 
 model_data<-model_data %>% 
   filter(tx_Taxa %in% taxa_prop$tx_Taxa) %>% 

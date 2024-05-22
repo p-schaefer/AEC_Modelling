@@ -15,10 +15,9 @@ colnames(lookup_tbl)[colnames(lookup_tbl)=="OMNR.Code"]<-"SpeciesCode"
 raw_tbl<-read.csv(file.path("data","raw","Bio","tblFishSummaryOfTotalCatches.csv"))
 
 raw_tbl<-raw_tbl %>% 
-  filter( #one of these filters
+  filter( 
     OSAPSE==1, #the sample event was associated with at least one OSAP project and the sample event itself used site boundaries that were defined as per OSAP
-    #ProjSDFSiteBoundaryOSAPUsed==1,
-    #SESDFSiteBoundaryOSAPUsed==1
+    !is.na(TotalWeightPer100m2) # This makes sure only valid single taxa are included (i.e., Cyprid bulk samples will be excluded)
   )
 
 # Setup Sample Event table ------------------------------------------------
@@ -78,7 +77,7 @@ taxa_tbl1 <- atr_tbl %>%
   ungroup() %>% 
   mutate(Comm_Biomass=ifelse(Perc_Abundance>0 & Comm_Biomass==0,NA_real_,Comm_Biomass)) %>% 
   mutate(Perc_Biomass=ifelse(Perc_Abundance>0 & Perc_Biomass==0,NA_real_,Perc_Biomass))
-  
+
 
 # No Catch Table ----------------------------------------------------------
 
@@ -105,8 +104,8 @@ taxa_tbl<-taxa_tbl1 %>%
   left_join(lookup_tbl2,by="SpeciesCode") %>% 
   group_by(SampleEventID,SampleDate,`name to use`) %>% 
   reframe(across(where(is.numeric),~sum(.,na.rm=T)),
-            across(where(is.character),~head(.[!is.na(.)],1))
-            ) %>% 
+          across(where(is.character),~head(.[!is.na(.)],1))
+  ) %>% 
   ungroup() %>% 
   select(any_of(colnames(lookup_tbl2)),everything())
 

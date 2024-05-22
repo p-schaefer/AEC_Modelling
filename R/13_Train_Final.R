@@ -14,7 +14,7 @@ shap<-import("shap")
 # Load Data ---------------------------------------------------------------
 
 model_data0<-read_rds(file.path("data","final","Model_building_finaltaxa_data.rds")) %>% 
-  filter(year(as.Date(gen_SampleDate))>1994) %>% 
+  #filter(year(as.Date(gen_SampleDate))>1994) %>% 
   mutate(across(starts_with("resp_"),
                 ~case_when(
                   .x < quantile(.x[.x>0],0.01) ~ "0 - 1",
@@ -27,7 +27,7 @@ model_data0<-read_rds(file.path("data","final","Model_building_finaltaxa_data.rd
                 .names = "cat_{.col}")) %>% 
   mutate(across(starts_with("cat_resp_"),~factor(.x)))
 
-model_data1 <- model_data0 %>% 
+model_data_means <- model_data0 %>% 
   mutate(across(starts_with(c("case_weight")),~as.numeric(.))) %>%
   group_by(gen_ProvReachID,gen_link_id,gen_StreamName,across(starts_with("tx_"))) %>%
   summarise(across(where(is.numeric),~median(.x,na.rm=T)),
@@ -38,128 +38,124 @@ resp<-model_data0 %>% select(starts_with("resp_")) %>% colnames()
 resp<-resp[!grepl("Perc|cat_",resp)]
 #ep<-resp[[1]]
 
-booster<-"dart"
+booster_list<-c("gbtree","dart","dart_ltree")
+#booster<-"dart"
 
-for (ep in resp){
-  
-  # Prepare datasets --------------------------------------------------------
-  recip<-readRDS(file.path("data","models","LSS",paste0("Final_Recipe_",ep,".rds")))
-  
-  recip_main<-recip$recip_main
-  final_prep<-recip$final_prep
-  
-  train_data<- final_prep %>%
-    juice()
-  
-  train_py = lss.model$Dataset(
-    data=train_data %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
-    label=train_data %>% select(any_of(ep)) %>% as.matrix() %>% r_to_py()
-  )
-  
-  # Define Model ------------------------------------------------------------
-  xgb = lss.model$LightGBMLSS(
-    distr.lgb$ZAGamma$ZAGamma(
-      stabilization = "None",
-      response_fn = "exp",
-      loss_fn="nll"
+for (booster in booster_list) {
+  for (ep in resp){
+    
+    # Prepare datasets --------------------------------------------------------
+    recip<-readRDS(file.path("data","models","LSS",paste0("Final_Recipe_",ep,".rds")))
+    
+    recip_main<-recip$recip_main
+    final_prep<-recip$final_prep
+    
+    train_data<- final_prep %>%
+      juice()
+    
+    train_py = lss.model$Dataset(
+      data=train_data %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>% r_to_py(),
+      label=train_data %>% select(any_of(ep)) %>% as.matrix() %>% r_to_py()#,
+      #group=table(as.numeric(model_data_means$gen_ProvReachID))
     )
-  )
-  
-  # Load optimal hyperparameters --------------------------------------------
-  opt_param<-readRDS(file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_",booster,".rds")))
-  
-  xgb$train(
-    r_to_py(opt_param[names(opt_param)!="opt_rounds"]),
-    train_py,
-    num_boost_round=opt_param$opt_rounds
-  )
-  
-  # Save Model --------------------------------------------------------
-  
-  xgb$save_model(r_to_py(file.path("data","models","LSS",paste0("Final_Model_",ep,"_",booster,".txt"))))
-  
-  if (T){
-    # OOS Predictions -------------------------------------------------------------
     
-    cros_v<-group_vfold_cv(model_data1,
-                           "gen_ProvReachID",
-                           100)
+    # Define Model ------------------------------------------------------------
+    xgb = lss.model$LightGBMLSS(
+      distr.lgb$ZAGamma$ZAGamma(
+        stabilization = "None",
+        response_fn = "exp",
+        loss_fn="nll"
+      )
+    )
     
-    out_res<-list()
-    for (i in 1:nrow(cros_v)){
-      xgb = lss.model$LightGBMLSS(
-        distr.lgb$ZAGamma$ZAGamma(
-          stabilization = "None",
-          response_fn = "exp",
-          loss_fn="nll"
+    # Load optimal hyperparameters --------------------------------------------
+    opt_param<-readRDS(file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_",booster,".rds")))
+    
+    xgb$train(
+      r_to_py(opt_param[names(opt_param)!="opt_rounds"]),
+      train_py,
+      num_boost_round=opt_param$opt_rounds
+    )
+    
+    # Save Model --------------------------------------------------------
+    
+    xgb$save_model(r_to_py(file.path("data","models","LSS",paste0("Final_Model_",ep,"_",booster,".txt"))))
+    
+    if (booster=="dart_ltree"){
+      # OOS Predictions -------------------------------------------------------------
+      
+      cros_v<-group_vfold_cv(model_data_means,
+                             "gen_ProvReachID",
+                             20)
+      
+      out_res<-list()
+      for (i in 1:nrow(cros_v)){
+        xgb = lss.model$LightGBMLSS(
+          distr.lgb$ZAGamma$ZAGamma(
+            stabilization = "None",
+            response_fn = "exp",
+            loss_fn="nll"
+          )
         )
-      )
-      
-      trn<-training(cros_v$splits[[i]]) #%>% 
-      # mutate(across(starts_with(c("case_weight")),~as.numeric(.))) %>% 
-      # group_by(gen_ProvReachID,gen_link_id,gen_StreamName,across(starts_with("tx_"))) %>% 
-      # summarise(across(where(is.numeric),~median(.x,na.rm=T)),
-      #           across(!where(is.numeric),~tail(.x,1)),
-      #           .groups="drop")
-      
-      final_prep<-prep(recip_main,trn)
-      
-      tst<-testing(cros_v$splits[[i]]) %>% 
-        # mutate(across(starts_with(c("case_weight")),~as.numeric(.))) %>% 
-        # group_by(gen_ProvReachID,gen_link_id,gen_StreamName,across(starts_with("tx_"))) %>% 
-        # summarise(across(where(is.numeric),~median(.x,na.rm=T)),
-        #           across(!where(is.numeric),~tail(.x,1)),
-        #           .groups="drop") %>% 
-        bake(object=final_prep) 
-      
-      trn<-trn %>% 
-        bake(object=final_prep)
-      
-      train_py = lss.model$Dataset(
-        data=trn %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
-        label=trn %>% select(any_of(ep)) %>% as.matrix() %>% r_to_py(),
-        #weight = trn %>% select(any_of("case_weight")) %>% as.matrix() %>% r_to_py()
-      )
-      
-      xgb$train(
-        r_to_py(opt_param[names(opt_param)!="opt_rounds"]),
-        train_py,
-        num_boost_round=opt_param$opt_rounds
-      )
-      
-      
-      # Calculate quantiles from predicted distribution
-      pred_quantiles = xgb$predict(tst %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
-                                   pred_type="quantiles",
-                                   n_samples=2000L,
-                                   quantiles=c(0.05,0.16,0.25,0.33,0.5,0.66,0.75,0.84,0.95))
-      
-      pred_params = xgb$predict(tst %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
-                                pred_type="parameters")
-      
-      pred_samples = xgb$predict(tst %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
-                                 pred_type="samples",
-                                 n_samples=2000L) %>% 
-        rowMeans() %>% 
-        unlist()
-      
-      out<-pred_quantiles %>% 
-        mutate(predicted=pred_samples) %>% 
-        bind_cols(pred_params) %>% 
-        bind_cols(testing(cros_v$splits[[i]]) %>%
-                    rename_with(.cols=any_of(ep),~paste0("observed")) %>% 
-                    mutate(endpoint=ep,
-                           cv_fold=i)
-        ) %>% 
-        select(cv_fold,endpoint,tx_Taxa,any_of(ep),observed,predicted,any_of(colnames(pred_quantiles)),any_of(colnames(pred_params)),
-               starts_with("tx_"),starts_with("gen_"),everything(),-starts_with("cat_resp")) 
         
+        trn_raw<-training(cros_v$splits[[i]])
+        trn<-trn_raw 
+        
+        final_prep<-prep(recip_main,trn)
+        
+        tst<-testing(cros_v$splits[[i]]) %>% 
+          bake(object=final_prep) 
+        
+        trn<-trn %>% 
+          bake(object=final_prep)
+        
+        train_py = lss.model$Dataset(
+          data=trn %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
+          label=trn %>% select(any_of(ep)) %>% as.matrix() %>% r_to_py()#,
+          #group=table(as.numeric(trn_raw$gen_ProvReachID))
+          #weight = trn %>% select(any_of("case_weight")) %>% as.matrix() %>% r_to_py()
+        )
+        
+        xgb$train(
+          r_to_py(opt_param[names(opt_param)!="opt_rounds"]),
+          train_py,
+          num_boost_round=opt_param$opt_rounds
+        )
+        
+        
+        # Calculate quantiles from predicted distribution
+        pred_quantiles = xgb$predict(tst %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
+                                     pred_type="quantiles",
+                                     n_samples=2000L,
+                                     quantiles=c(0.05,0.16,0.25,0.33,0.5,0.66,0.75,0.84,0.95))
+        
+        pred_params = xgb$predict(tst %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
+                                  pred_type="parameters")
+        
+        pred_samples = xgb$predict(tst %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
+                                   pred_type="samples",
+                                   n_samples=2000L) %>% 
+          rowMeans() %>% 
+          unlist()
+        
+        out<-pred_quantiles %>% 
+          mutate(predicted=pred_samples) %>% 
+          bind_cols(pred_params) %>% 
+          bind_cols(testing(cros_v$splits[[i]]) %>%
+                      rename_with(.cols=any_of(ep),~paste0("observed")) %>% 
+                      mutate(endpoint=ep,
+                             cv_fold=i)
+          ) %>% 
+          select(cv_fold,endpoint,tx_Taxa,any_of(ep),observed,predicted,any_of(colnames(pred_quantiles)),any_of(colnames(pred_params)),
+                 starts_with("tx_"),starts_with("gen_"),everything(),-starts_with("cat_resp")) 
+        
+        
+        out_res[[i]]<-out
+      }
       
-      out_res[[i]]<-out
+      out_res<-bind_rows(out_res)
+      
+      saveRDS(out_res,file.path("data","models","LSS",paste0("OOB_Pred_",ep,"_",booster,".rds")))
     }
-    
-    out_res<-bind_rows(out_res)
-    
-    saveRDS(out_res,file.path("data","models","LSS",paste0("OOB_Pred_",ep,"_",booster,".rds")))
   }
 }

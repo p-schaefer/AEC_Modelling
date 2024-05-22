@@ -15,7 +15,7 @@ td<-tempdir()
 
 n_cores<-availableCores(logical = F)-1
 
-plan(multisession(workers=2))
+plan(multisession(workers=8))
 
 # AEC region processing ---------------------------------------------------
 
@@ -140,7 +140,7 @@ sub_regions_out<-map2(sub_regions,IH_regions,
                             a1<-ihydro::get_catchment(ihydro_out)
                           }
                           
-                          if (!file.exists(file.path("data","Processed","ihydro",paste0(aec_sub$boundary$WorkUnitName,"_DW.gpkg")))){
+                          if (F & !file.exists(file.path("data","Processed","ihydro",paste0(aec_sub$boundary$WorkUnitName,"_DW.gpkg")))){
                             ihydro_out<-prep_weights(
                               input=ihydro::as.ihydro(file.path("data","Processed","ihydro",paste0(aec_sub$boundary$WorkUnitName,".gpkg"))),
                               output_filename =file.path("data","Processed","ihydro",paste0(aec_sub$boundary$WorkUnitName,"_DW.gpkg")),

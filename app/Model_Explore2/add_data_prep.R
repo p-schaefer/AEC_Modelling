@@ -1,7 +1,8 @@
 library(tidyverse)
 library(sf)
 
-booster<-"dart"
+booster_shap<-"dart"
+booster_pred<-"dart_ltree"
 ep<-"resp_Comm_Biomass"
 
 fp<-file.path("app","Model_Explore2","data",paste0("Model_datas.gpkg"))
@@ -115,7 +116,7 @@ t1<-dplyr::copy_to(df=tibble(taxa=taxa),
 
 # Setup names of used predictor variables ---------------------------------
 
-shap<-readRDS(file.path("data","models","LSS",paste0("Shap_","resp_Comm_Biomass","_",booster,".rds")))
+shap<-readRDS(file.path("data","models","LSS",paste0("Shap_","resp_Comm_Biomass","_",booster_shap,".rds")))
 pred_names<-colnames(shap$concentration) %>% 
   .[.!="BIAS"] %>% 
   .[!grepl("tx_",.)]
@@ -130,8 +131,8 @@ t1<-dplyr::copy_to(df=tibble(pred_names=pred_names),
                    in_transaction=T)
 # Write Model Predictions -------------------------------------------------
 
-out_final<-readRDS(file.path("data","models","LSS",paste0("Landscape_Predictions_",booster,".rds")))
-out_final_ref<-readRDS(file.path("data","models","LSS",paste0("Landscape_RefPredictions_",booster,".rds")))
+out_final<-readRDS(file.path("data","models","LSS",paste0("Landscape_Predictions_",booster_pred,".rds")))
+out_final_ref<-readRDS(file.path("data","models","LSS",paste0("Landscape_RefPredictions_",booster_pred,".rds")))
 
 model_data0<-read_rds(file.path("data","final","Model_building_finaltaxa_data.rds")) %>% 
   filter(year(as.Date(gen_SampleDate))>1994) 
@@ -184,8 +185,8 @@ t1<-dplyr::copy_to(df=preds,
 
 shap_out<-map_dfr(c("resp_Comm_Biomass","resp_Comm_Abundance"), #
         function(x){
-          shap<-readRDS(file.path("data","models","LSS",paste0("Shap_",x,"_",booster,"_Current.rds")))
-          shap_ref<-readRDS(file.path("data","models","LSS",paste0("Shap_",x,"_",booster,"_Reference.rds")))
+          shap<-readRDS(file.path("data","models","LSS",paste0("Shap_",x,"_",booster_shap,"_Current.rds")))
+          shap_ref<-readRDS(file.path("data","models","LSS",paste0("Shap_",x,"_",booster_shap,"_Reference.rds")))
           
           #shap$rate<-1/shap$rate
           shap$rate[is.infinite(shap$rate)]<-NA_real_
@@ -205,11 +206,11 @@ shap_out<-map_dfr(c("resp_Comm_Biomass","resp_Comm_Abundance"), #
           map2_dfr(out,names(out),
                    ~mutate(as.data.frame(.x),shape_param=.y) %>%
                      select(-any_of("BIAS")) %>% 
-                     mutate(endpoint=x) %>% 
-                     bind_cols(
-                       shap[["raw_data"]] %>% 
-                         rename_with(~paste0("sel_",.x))
-                     )
+                     mutate(endpoint=x) #%>% 
+                     # bind_cols(
+                     #   shap[["raw_data"]] %>% 
+                     #     rename_with(~paste0("sel_",.x))
+                     # )
                    )
         })
 
@@ -228,7 +229,7 @@ t1<-dplyr::copy_to(df=shap_out,
 # Save Out of sample predictions ------------------------------------------
 
 out_res<-map_dfr(c("resp_Comm_Biomass","resp_Comm_Abundance"),#
-    ~readRDS(file.path("data","models","LSS",paste0("OOB_Pred_",.x,"_",booster,".rds"))) %>% 
+    ~readRDS(file.path("data","models","LSS",paste0("OOB_Pred_",.x,"_",booster_pred,".rds"))) %>% 
       select(contains(c("quant_","predicted","observed","endpoint","tx_Taxa","gen_ProvReachID")))
     )
 #write_csv(out_res,file.path("app","Model_Explore2","data",paste0("OOS_Pred.csv")))

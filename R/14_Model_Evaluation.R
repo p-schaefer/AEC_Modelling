@@ -14,25 +14,6 @@ shap<-import("shap")
 
 # Load Data ---------------------------------------------------------------
 
-# model_data0<-read_rds(file.path("data","final","Model_building_finaltaxa_data.rds")) %>%
-#   filter(year(as.Date(gen_SampleDate))>1994) %>% 
-#   mutate(across(starts_with(c("case_weight")),~as.numeric(.))) %>% 
-#   group_by(gen_ProvReachID,gen_link_id,gen_StreamName,across(starts_with("tx_"))) %>% 
-#   summarise(across(where(is.numeric),~median(.x,na.rm=T)),
-#             across(!where(is.numeric),~tail(.x,1)),
-#             .groups="drop") %>% 
-#   mutate(across(starts_with("resp_"),
-#                 ~case_when(
-#                   .x < quantile(.x[.x>0],0.01) ~ "0 - 1",
-#                   .x < quantile(.x[.x>0],0.2) ~ "1 - 20",
-#                   .x < quantile(.x[.x>0],0.4) ~ "20 - 40",
-#                   .x < quantile(.x[.x>0],0.6) ~ "40 - 60",
-#                   .x < quantile(.x[.x>0],0.8) ~ "60 - 80",
-#                   .x >= quantile(.x[.x>0],0.8) ~ "80 - 100"
-#                 ),
-#                 .names = "cat_{.col}")) %>% 
-#   mutate(across(starts_with("cat_resp_"),~factor(.x)))
-
 model_data0_fin<-read_rds(file.path("data","final","Prediction_finaltaxa_data.rds"))
 model_refdata0_fin<-read_rds(file.path("data","final","Prediction_ref_finaltaxa_data.rds")) 
 
