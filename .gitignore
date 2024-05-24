@@ -8,3 +8,6 @@ data/HW/
 data/Processed/
 data/models/tuning
 data/models/fits
+data/models/LSS
+data/final
+app/Model_Explore2/data
