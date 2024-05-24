@@ -5,7 +5,7 @@ library(sf)
 shinyOptions(cache = cachem::cache_mem(max_size = 1000e6))
 shinyOptions(cache = cachem::cache_disk("./cache"))
 
-fp<-file.path("data",paste0("Model_datas.gpkg"))
+fp<-file.path("data",paste0("Model_data_v2.gpkg"))
 con <- DBI::dbConnect(RSQLite::SQLite(), fp)
 
 regions<-tbl(con,"Region_names") %>% collect() %>% pull(1)
@@ -440,10 +440,19 @@ function(input, output, session) {
     
     if (!"colour" %in% colnames(sel_modelShap)) sel_modelShap$colour<-sel_modelShap$x
     
+    ax_brk<-function(x){
+      ax_brk<-scales::log_breaks(5)(abs(x))
+      sort(c(-ax_brk,0,ax_brk))
+    }
+    
+    ax_lm<-function(x){
+      #browser()
+      ax_brk<-scales::log_breaks(3)(abs(x))
+      range(sort(c(-ax_brk,0,ax_brk)))
+    }
     
     plt<-ggplot(sel_modelShap,aes(x=x,y=y,colour=colour,text=ProvReachID))+
       geom_point()+
-      facet_wrap(~shape_param,scales="free",ncol=2)+
       geom_hline(yintercept = 0,linetype="dashed")+
       geom_smooth(aes(x=x,y=y),inherit.aes = F,se=F,colour="black")+
       labs(
@@ -452,7 +461,9 @@ function(input, output, session) {
         colour=input$shap_col_sel
       )+
       theme_bw()+
-      theme(text=element_text(size=21))
+      theme(text=element_text(size=21))+
+      scale_y_continuous(transform = "pseudo_log",breaks=ax_brk,labels=scales::comma)+ #,limits=ax_lm,expand=c(0,0)
+      facet_wrap(~shape_param,scales="free",ncol=2)
     
     if (length(sel_reach())>0){
       plt<-plt+

@@ -38,7 +38,7 @@ resp<-model_data0 %>% select(starts_with("resp_")) %>% colnames()
 resp<-resp[!grepl("Perc|cat_",resp)]
 #ep<-resp[[1]]
 
-booster_list<-c("gbtree","dart","dart_ltree")
+booster_list<-c("dart","dart_ltree")
 #booster<-"dart"
 
 for (booster in booster_list) {

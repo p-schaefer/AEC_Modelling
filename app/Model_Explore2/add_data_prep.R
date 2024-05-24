@@ -5,7 +5,7 @@ booster_shap<-"dart"
 booster_pred<-"dart_ltree"
 ep<-"resp_Comm_Biomass"
 
-fp<-file.path("app","Model_Explore2","data",paste0("Model_datas.gpkg"))
+fp<-file.path("app","Model_Explore2","data",paste0("Model_data_v2.gpkg"))
 
 # int_f <- function(x, ct1, rt1, gt1, ct2, rt2, gt2) {
 #   #browser()
@@ -116,7 +116,7 @@ t1<-dplyr::copy_to(df=tibble(taxa=taxa),
 
 # Setup names of used predictor variables ---------------------------------
 
-shap<-readRDS(file.path("data","models","LSS",paste0("Shap_","resp_Comm_Biomass","_",booster_shap,".rds")))
+shap<-readRDS(file.path("data","models","LSS",paste0("Shap_","resp_Comm_Biomass","_",booster_shap,"_Current.rds")))
 pred_names<-colnames(shap$concentration) %>% 
   .[.!="BIAS"] %>% 
   .[!grepl("tx_",.)]
@@ -194,9 +194,9 @@ shap_out<-map_dfr(c("resp_Comm_Biomass","resp_Comm_Abundance"), #
           shap_ref$rate[is.infinite(shap_ref$rate)]<-NA_real_
           
           out<-list(
-            `Current Mean`=shap$concentration*(shap$rate),
+            `Current Mean`=shap$concentration/(shap$rate),
             `Current Presence/Absence`=shap$gate*-1,
-            `Reference Mean`=shap_ref$concentration*(shap_ref$rate),
+            `Reference Mean`=shap_ref$concentration/(shap_ref$rate),
             `Reference Presence/Absence`=shap_ref$gate*-1
           )
           
@@ -206,16 +206,16 @@ shap_out<-map_dfr(c("resp_Comm_Biomass","resp_Comm_Abundance"), #
           map2_dfr(out,names(out),
                    ~mutate(as.data.frame(.x),shape_param=.y) %>%
                      select(-any_of("BIAS")) %>% 
-                     mutate(endpoint=x) #%>% 
-                     # bind_cols(
-                     #   shap[["raw_data"]] %>% 
-                     #     rename_with(~paste0("sel_",.x))
-                     # )
+                     mutate(endpoint=x) %>% 
+                     bind_cols(
+                       shap[["raw_data"]] %>%
+                         rename_with(~paste0("sel_",.x))
+                     )
                    )
         })
 
 shap_out<-shap_out %>% 
-  select(-sel_case_weight)
+  select(-any_of("sel_case_weight"))
 
 #write_csv(shap_out,file.path("app","Model_Explore2","data",paste0("shap.csv")))
 t1<-dplyr::copy_to(df=shap_out,

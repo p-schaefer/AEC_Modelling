@@ -2,7 +2,7 @@ library(shinydashboard)
 library(dplyr)
 library(dbplyr)
 
-fp<-file.path("data",paste0("Model_datas.gpkg"))
+fp<-file.path("data",paste0("Model_data_v2.gpkg"))
 con <- DBI::dbConnect(RSQLite::SQLite(), fp)
 
 regions<-tbl(con,"Region_names") %>% collect() %>% pull(1)
@@ -18,7 +18,7 @@ fluidPage(
   dashboardPage(
     dashboardHeader(title = "Fish Modeling"),
     dashboardSidebar(
-      p("1994 Filter"),
+      #p("1994 Filter"),
       sidebarMenu(
         menuItem("Welcome", tabName = "home"),
         menuItem("Fish Map", tabName = "map_bio_tab"),
