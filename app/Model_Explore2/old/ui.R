@@ -128,19 +128,18 @@ fluidPage(
                               the likelihood of a presence. Once a reach is selected, that reach will also be highlighted in the 'Predictor Response' tab.")
                          ),
                          fluidPage(
-                           shiny::radioButtons("map_layer_sel",
-                                               "",
-                                               list(
-                                                 Observed="Observed",
-                                                 `Predicted - Current`="Predicted - Current",
-                                                 `Predicted - Reference`="Predicted - Reference",
-                                                 `(Current - Reference)`="(Current - Reference)"
-                                               ),
-                                               #selected=NULL,
-                                               inline=T),
+                           # shiny::checkboxGroupInput("map_layer_sel",
+                           #                           "",
+                           #                           list(
+                           #                             Observed="Observed",
+                           #                             `Predicted - Current`="Predicted - Current",
+                           #                             `Predicted - Reference`="Predicted - Reference",
+                           #                             `(Current - Reference)`="(Current - Reference)"
+                           #                           ),
+                           #                           selected=NULL,
+                           #                           inline=T),
                            fluidRow(
-                             #shinyjqui::jqui_resizable(box(width=9,leaflet::leafletOutput("map_bio", height = "800px"))),
-                             shinyjqui::jqui_resizable(box(width=9,leafgl::leafglOutput("map_bio", height = "800px"))),
+                             shinyjqui::jqui_resizable(box(width=9,leaflet::leafletOutput("map_bio", height = "800px"))),
                              #shinyjqui::jqui_resizable(box(width=9,tmap::tmapOutput("map_bio", height = "800px"))),
                              shinyjqui::jqui_resizable(box(width=3,shiny::plotOutput("SHAP_breakdown", height = "800px")))
                            )

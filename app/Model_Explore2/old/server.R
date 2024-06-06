@@ -33,8 +33,7 @@ function(input, output, session) {
   
   sel_strms<-reactive(
     sf::read_sf(fp,
-                query=paste0("SELECT * FROM AEC_Streams WHERE AEC_Region_sub IN ('",paste(input$sel_region,collapse="', '"),"')")) %>% 
-      sf::st_transform(4326)
+                query=paste0("SELECT * FROM AEC_Streams WHERE AEC_Region_sub IN ('",paste(input$sel_region,collapse="', '"),"')"))
   )
   
   # Tab Contents ------------------------------------------------------------
@@ -76,7 +75,8 @@ function(input, output, session) {
         `Predicted - Current`=p75,
         `(Current - Reference)`=p75_refdiff
       ) %>% 
-      sf::st_as_sf() 
+      sf::st_as_sf() %>% 
+      sf::st_transform(4326)
     
     return(out)
     
@@ -90,118 +90,365 @@ function(input, output, session) {
     
     sel_modelpredictions<-map_data() 
     
-    sel_modelpredictions<-suppressWarnings(sf::st_cast(sel_modelpredictions,"LINESTRING"))
-    
     rng<-pretty(range(c(sel_modelpredictions$`Observed`,sel_modelpredictions$`Predicted - Reference`,sel_modelpredictions$`Predicted - Current`),na.rm=T),n=8)
     mx<-max(abs(sel_modelpredictions$`(Current - Reference)`),na.rm=T)
     rng2<-pretty(c(-mx,mx),n=8)
     rng2<-rng2[rng2!=0]
     
     col.pal <- leaflet::colorBin("viridis", bins = rng, na.color = "grey")
-    col.pal2 <- leaflet::colorBin("Spectral", bins = rng2, na.color = "grey")
+    col.pal2 <- leaflet::colorBin("viridis", bins = rng2, na.color = "grey")
+    
+    sel_modelpredictions_sub<-sel_modelpredictions %>% 
+      tibble::as_tibble() %>% 
+      select(ProvReachID,
+             any_of(c("Observed",
+                      "Predicted - Current",
+                      "Predicted - Reference",
+                      "(Current - Reference)")),
+             starts_with("LDI"),
+             starts_with("hb_"),
+             -ends_with("_ref"))
     
     leaflet::leaflet(data=sel_modelpredictions) %>%
       leaflet::addTiles() %>%
       leaflet::addProviderTiles(leaflet::providers$Esri.WorldImagery, group ="ESRI - Imagery") %>%
       leaflet::addProviderTiles(leaflet::providers$OpenStreetMap.Mapnik, group ="OpenStreetMap") %>%
       leaflet::addProviderTiles(leaflet::providers$CartoDB.Positron, group ="CartoDB") %>% 
-      leaflet::setView(lng=mean(sf::st_bbox(sel_modelpredictions)[c(1,3)]),lat=mean(sf::st_bbox(sel_modelpredictions)[c(2,4)]),zoom=9) %>% 
+      leaflet::setView(lng=mean(sf::st_bbox(sel_modelpredictions)[c(1,3)]),lat=mean(sf::st_bbox(sel_modelpredictions)[c(2,4)]),zoom=8) %>% 
+      leaflet::addPolylines(layerId=~paste0("Observer_",ProvReachID),
+                            group="Observed",
+                            weight=2,
+                            opacity=1,
+                            popup=leafpop::popupTable(sel_modelpredictions_sub),
+                            color=~col.pal(sel_modelpredictions[["Observed"]])
+      ) %>% 
+      leaflet::addPolylines(layerId=~paste0("Predicted - Current_",ProvReachID),
+                            group="Predicted - Current",
+                            weight=2,
+                            opacity=1,
+                            popup=leafpop::popupTable(sel_modelpredictions_sub),
+                            color=~col.pal(sel_modelpredictions[["Predicted - Current"]])
+      ) %>% 
+      leaflet::addPolylines(layerId=~paste0("Predicted - Reference_",ProvReachID),
+                            group="Predicted - Reference",
+                            weight=2,
+                            opacity=1,
+                            popup=leafpop::popupTable(sel_modelpredictions_sub),
+                            color=~col.pal(sel_modelpredictions[["Predicted - Reference"]])
+      ) %>% 
+      # leaflet::addPolylines(layerId=~paste0("(Current - Reference)_",ProvReachID),
+      #                       group="(Current - Reference)",
+      #                       weight=2,
+      #                       opacity=1,
+      #                       popup=leafpop::popupTable(sel_modelpredictions_sub),
+      #                       color=~col.pal2(sel_modelpredictions[["(Current - Reference)"]])
+      # ) %>% 
       leaflet::addLayersControl(
         baseGroups = c("CartoDB",
                        "OpenStreetMap",
-                       "ESRI - Imagery"),
+                       "ESRI - Imagery"), 
+        overlayGroups  = c("Observed",
+                           "Predicted - Current",
+                           "Predicted - Reference"#,
+                           #"(Current - Reference)"
+                           ), 
         position = "topleft",
         options = leaflet::layersControlOptions(collapsed = F)
       ) %>% 
-      leaflet::addLegend(
-        title="Observed/Predicted Values",
-        labels=rng,
-        colors=col.pal(rng)
-      )%>%
-      leaflet::addLegend(
-        title="(Current - Reference)",
-        labels=rng2,
-        colors=col.pal2(rng2)
-      ) %>% 
-      leafgl::addGlPolylines(data=sel_modelpredictions,# This function is currently a bit buggy, but its fast
-                             weight=0.5,
-                             opacity=0.9,
-                             src =F,
-                             color=~col.pal(sel_modelpredictions[["Observed"]])
-      ) 
+      leaflet::hideGroup(c("Predicted - Current",
+                           "Predicted - Reference",
+                           "(Current - Reference)"))
+    
+    
   })
   
-  observeEvent(input$map_layer_sel,
-               ignoreInit=T,{
+  observeEvent(input$map_bio_groups,
+               ignoreInit=F,
+               {
+                 req(F)
                  req(input$sel_region)
                  req(input$sel_taxa)
                  req(input$sel_ep)
+                 req(input$map_bio_groups)
                  validate(need(length(input$sel_region)<5,"Select up to 4 regions for mapping"))
+                 browser()
+                 
                  
                  sel_modelpredictions<-map_data() 
-                 
-                 sel_modelpredictions<-suppressWarnings(sf::st_cast(sel_modelpredictions,"LINESTRING"))
                  
                  rng<-pretty(range(c(sel_modelpredictions$`Observed`,sel_modelpredictions$`Predicted - Reference`,sel_modelpredictions$`Predicted - Current`),na.rm=T),n=8)
                  mx<-max(abs(sel_modelpredictions$`(Current - Reference)`),na.rm=T)
                  rng2<-pretty(c(-mx,mx),n=8)
                  rng2<-rng2[rng2!=0]
                  
-                 col.pal <- leaflet::colorBin("viridis", bins = rng, na.color = "grey")
-                 col.pal2 <- leaflet::colorBin("Spectral", bins = rng2, na.color = "grey")
+                 #if (input$map_layer_sel=="(Current - Reference)") rng<-rng2
                  
-                 sel_modelpredictions_sub<-sel_modelpredictions %>% 
-                   tibble::as_tibble() %>% 
-                   select(ProvReachID,
-                          any_of(c("Observed",
-                                   "Predicted - Current",
-                                   "Predicted - Reference",
-                                   "(Current - Reference)")),
-                          starts_with("LDI"),
-                          starts_with("hb_"),
-                          -ends_with("_ref"))
+                 # var <- input$map_layer_sel
+                 # #var<-var[var!="Observed"]
+                 # for (i in var){
+                 #   rng_sel<-rng
+                 #   if (i=="(Current - Reference)") rng_sel<-rng2
+                 # 
+                 #   col.pal <- leaflet::colorBin("viridis", bins = rng_sel, na.color = "grey")
+                 #   
+                 #   leaflet::leafletProxy("map_bio") %>% 
+                 #       leaflet::addPolylines(data=sel_modelpredictions,
+                 #                             layerId="ProvReachID",
+                 #                             color=col.pal(sel_modelpredictions[[i]]))
+                 #     
+                 # }
                  
-                 if (input$map_layer_sel == "(Current - Reference)"){
-                   col.pal<-col.pal2
-                   rng<-rng2
-                 }
+                 # i <- input$map_bio_groups
+                 # 
+                 # i <- i[i %in% c("Observed",
+                 #                 "Predicted - Current",
+                 #                 "Predicted - Reference",
+                 #                 "(Current - Reference)")]
+                 # 
+                 # rng_sel<-rng
+                 # if (i=="(Current - Reference)") rng_sel<-rng2
+                 # 
+                 # col.pal <- leaflet::colorBin("viridis", bins = rng_sel, na.color = "grey")
+                 # 
+                 # leaflet::leafletProxy("map_bio") %>% 
+                 #   leaflet::clearShapes() %>% 
+                 #   leaflet::addPolylines(data=sel_modelpredictions,
+                 #                         #layerId="ProvReachID",
+                 #                         #group=i,
+                 #                         weight=2,
+                 #                         opacity=1,
+                 #                         color=col.pal(sel_modelpredictions[[i]])
+                 #   )
+                 # 
                  
-
-                 leaflet::leafletProxy("map_bio", session) %>%
-                   leafgl::clearGlLayers() %>% 
-                   leafgl::addGlPolylines(
-                     data=sel_modelpredictions,
-                     weight=0.5,
-                     opacity=0.9,
-                     src =F,
-                     color=~col.pal(sel_modelpredictions[[input$map_layer_sel]])
-                   )
                  
                })
   
+  # observeEvent(input$map_layer_sel,
+  #              ignoreInit=T,{
+  #   req(input$sel_region)
+  #   req(input$sel_taxa)
+  #   req(input$sel_ep)
+  #   req(input$map_layer_sel)
+  #   validate(need(length(input$sel_region)<5,"Select up to 4 regions for mapping"))
+  #   #browser()
+  #   
+  #   loading_message(session)
+  #   
+  #   sel_modelpredictions<-map_data()
+  #   
+  #   rng<-pretty(range(c(sel_modelpredictions$`Observed`,sel_modelpredictions$`Predicted - Reference`,sel_modelpredictions$`Predicted - Current`),na.rm=T),n=8)
+  #   mx<-max(abs(sel_modelpredictions$`(Current - Reference)`),na.rm=T)
+  #   rng2<-pretty(c(-mx,mx),n=8)
+  #   rng2<-rng2[rng2!=0]
+  #   
+  #   #if (input$map_layer_sel=="(Current - Reference)") rng<-rng2
+  #   
+  #   var <- input$map_layer_sel
+  #   #var<-var[var!="Observed"]
+  #   for (i in var){
+  #     rng_sel<-rng
+  #     if (i=="(Current - Reference)") rng_sel<-rng2
+  #     
+  #     tmap::tmapProxy("map_bio", session, {
+  #       #tmap::tm_remove_layer(401) +
+  #         tmap::tm_shape(sel_modelpredictions) +
+  #         tmap::tm_lines(col=i,
+  #                        breaks = rng_sel,
+  #                        lwd=1.75,
+  #                        palette="viridis",
+  #                        popup.vars=c("ProvReachID",i),
+  #                        group=i,
+  #                        id="ProvReachID"#,
+  #                        #zindex=401
+  #         )
+  #     })
+  #   }
+  #   
+  #   
+  #   shinyWidgets::closeSweetAlert()
+  # })
   
-
+  
+  #output$map_bio <- leaflet::renderLeaflet({
+  output$map_bio2 <- tmap::renderTmap({
+    req(input$sel_region)
+    req(input$sel_taxa)
+    req(input$sel_ep)
+    validate(need(length(input$sel_region)<5,"Select up to 4 regions for mapping"))
+    
+    
+    # con <- DBI::dbConnect(RSQLite::SQLite(), fp)
+    # 
+    # sel_modelpredictions<-tbl(con,"Model_Predictions") %>% 
+    #   filter(tx_Taxa == local(input$sel_taxa)) %>%
+    #   filter(gen_Region %in% local(input$sel_region)) %>%
+    #   select(gen_ProvReachID,contains(input$sel_ep),contains(pred_names)) %>% 
+    #   collect()
+    # 
+    # DBI::dbDisconnect(con)
+    # 
+    # Predicted<-sel_strms() %>% 
+    #   left_join(sel_modelpredictions,
+    #             by=c("ProvReachID"="gen_ProvReachID")) %>% 
+    #   #mutate(across(contains(c("quant_","observed","predicted")),~expm1(.x))) %>% 
+    #   rename_with(~gsub(paste0(input$sel_ep,"_"),"",.x)) %>% 
+    #   select(ProvReachID,
+    #          observed,
+    #          P50=quant_0.5,
+    #          p75=quant_0.75,
+    #          p75_ref=quant_0.75_ref,
+    #          p75_refdiff=quant_0.75_refdiff,
+    #          contains(pred_names),
+    #          geom) %>% 
+    #   sf::st_as_sf()
+    # 
+    # Observed<-Predicted %>%
+    #   select(ProvReachID,`Segment Median`=observed)
+    # Reference<-Predicted %>%
+    #   select(ProvReachID,`Predicted`=p75_ref,any_of(paste0(pred_names,"_ref"))) %>%
+    #   rename_with(.cols=any_of(paste0(pred_names,"_ref")),~gsub("_ref","",.x))
+    # Difference<-Predicted %>%
+    #   select(ProvReachID,`(Current - Reference)`=p75_refdiff)
+    # Current<-Predicted %>% 
+    #   select(ProvReachID,`Predicted`=p75,any_of(paste0(pred_names,"_obs"))) %>% 
+    #   rename_with(.cols=any_of(paste0(pred_names,"_obs")),~gsub("_obs","",.x))
+    
+    browser()
+    
+    sel_modelpredictions<-map_data()
+    
+    rng<-pretty(range(c(Current$`Predicted`,Observed$`Segment Median`,Reference$`Predicted`),na.rm=T),n=8)
+    
+    mx<-max(abs(Difference$`(Current - Reference)`),na.rm=T)
+    
+    rng2<-pretty(c(-mx,mx),n=8)
+    rng2<-rng2[rng2!=0]
+    
+    browser()
+    
+    mv <- tmap::tm_shape(Observed)+
+      tmap::tm_lines(col="Segment Median",
+                     breaks =rng,
+                     lwd=1.75,
+                     palette="viridis",
+                     popup.vars=c("ProvReachID","Segment Median"),
+                     group="Observed",
+                     id="ProvReachID")+
+      tmap::tm_shape(Current)+
+      tmap::tm_lines(col="Predicted",
+                     breaks =rng,
+                     lwd=1.75,
+                     palette="viridis",
+                     popup.vars=colnames(Current)[colnames(Current)!="geom"],
+                     group="Predicted - Current",
+                     id="ProvReachID")+
+      tmap::tm_shape(Reference)+
+      tmap::tm_lines(col="Predicted",
+                     breaks =rng,
+                     lwd=1.75,
+                     palette="viridis",
+                     popup.vars=colnames(Reference)[colnames(Reference)!="geom"],
+                     group="Predicted - Reference",
+                     id="ProvReachID")+
+      tmap::tm_shape(Difference)+
+      tmap::tm_lines(col="(Current - Reference)",
+                     breaks =rng2,
+                     lwd=1.75,
+                     midpoint = 0,
+                     #palette="viridis",
+                     popup.vars=c("ProvReachID","(Current - Reference)"),
+                     group="Predicted - (Current - Reference)",
+                     id="ProvReachID")
+    # 
+    # mv<-mv %>%
+    #   tmap::tmap_leaflet(in.shiny = TRUE) %>%
+    #   leaflet::hideGroup(c("Predicted - Current","Predicted - Reference","Predicted - (Current - Reference)"))
+    
+    #browser()
+    
+    # col.bins <-rng
+    # col.pal <- leaflet::colorBin("viridis", bins = col.bins, na.color = "grey")
+    # 
+    # mv<-leaflet::leaflet() %>%
+    #   #leaflet::addTiles() %>%
+    #   #leaflet::addProviderTiles(leaflet::providers$Esri.WorldImagery, group ="ESRI") %>% 
+    #   leaflet::addPolylines(data=Observed,
+    #                         color=col.pal(Observed$`Segment Median`),
+    #                         #breaks =rng,
+    #                         #lwd=1.75,
+    #                         #palette="viridis",
+    #                         #popup=c("ProvReachID","Segment Median"),
+    #                         group="Observed",
+    #                         layerId="ProvReachID")
+    
+    # mv<-mapview::mapview(Observed,
+    #                      layer.name="Observed",
+    #                      #layerId=Observed$ProvReachID,
+    #                      zcol=c("Segment Median"),
+    #                      at=(rng))+
+    #   mapview::mapview(Current,
+    #                    layer.name="Predicted - Current",
+    #                    #layerId=Current$ProvReachID,
+    #                    zcol=c("Predicted"),
+    #                    at=(rng),
+    #                    legend =T,
+    #                    hide =T)+
+    #   mapview::mapview(Reference,
+    #                    layer.name="Predicted - Reference",
+    #                    #layerId="ProvReachID",
+    #                    zcol=c("Predicted"),
+    #                    at=(rng),
+    #                    legend =T,
+    #                    hide =T)+
+    #   mapview::mapview(Difference,
+    #                    layer.name="Predicted - (Current - Reference)",
+    #                    #layerId=Difference$ProvReachID,
+    #                    zcol=c("(Current - Reference)"),
+    #                    at=(rng2),
+    #                    legend =T,
+    #                    hide =T)
+    
+    
+    
+    return(mv)
+    # return(mv@map)
+  }) %>% 
+    bindCache(input$sel_region,
+              input$sel_taxa,
+              input$sel_ep)
+  
+  
   # map_bio_tab Observer ----------------------------------------------------
   
   sel_reach<-reactive({
-    if (is.null(input$map_bio_glify_click)) return(NULL)
-    sel_reach<-sf::st_as_sf(tibble(lat=input$map_bio_glify_click$lat,long=input$map_bio_glify_click$lng),
-                            coords = c("long","lat"),
-                            crs=4326)
-    
-    sel_reach<-suppressMessages(nngeo::st_nn(sel_reach,sel_strms(),k=1,maxdist=Inf,parallel =1,progress =F)[[1]])
-    sel_strms()$ProvReachID[sel_reach]
+    if (is.null(input$map_bio_shape_click)) return(NULL)
+    str_split(input$map_bio_shape_click$id,"_")[[1]][[2]]
   })
   
-  observeEvent(input$map_bio_glify_click,{
+  # observeEvent(input$map_bio_shape_click,{
+  #   browser()
+  #   sel_reach<-sf::st_as_sf(tibble(lat=input$map_bio_shape_click$lat,long=input$map_bio_shape_click$lng),
+  #                           coords = c("long","lat"),
+  #                           crs="+proj=longlat +datum=WGS84")
+  #   
+  #   sel_reach<-suppressMessages(nngeo::st_nn(sel_reach,sel_strms(),k=1,maxdist=Inf,parallel =1,progress =F)[[1]])
+  #   sel_reach$sel_reach<-sel_strms()$ProvReachID[sel_reach]
+  # })
+  
+  
+  observeEvent(input$map_bio_shape_click,{
+    
     output$SHAP_breakdown<-shiny::renderPlot({
-      validate(need(input$map_layer_sel %in% c("Predicted - Current","Predicted - Reference"),message="Select a stream line in the Current or Reference Layer to see the prediction breakdown"))
+      validate(need(input$map_bio_shape_click$group %in% c("Predicted - Current","Predicted - Reference"),message="Select a stream line in the Current or Reference Layer to see the prediction breakdown"))
       
       loading_message(session)
-
+      
+      #sel_reach<-input$map_bio_shape_click$id
+      #sel_reach<-gsub("\\.\\d$|\\.\\d$","",sel_reach)
       sel_time<-case_when(
-        input$map_layer_sel == "Predicted - Current" ~ c("Current Mean","Current Presence/Absence"),
-        input$map_layer_sel == "Predicted - Reference" ~ c("Reference Mean","Reference Presence/Absence")
+        input$map_bio_shape_click$group == "Predicted - Current" ~ c("Current Mean","Current Presence/Absence"),
+        input$map_bio_shape_click$group == "Predicted - Reference" ~ c("Reference Mean","Reference Presence/Absence")
       )
       
       con <- DBI::dbConnect(RSQLite::SQLite(), fp)
