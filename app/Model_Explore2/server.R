@@ -100,6 +100,8 @@ function(input, output, session) {
     col.pal <- leaflet::colorBin("viridis", bins = rng, na.color = "grey")
     col.pal2 <- leaflet::colorBin("Spectral", bins = rng2, na.color = "grey")
     
+    shiny::updateRadioButtons(session,inputId = "map_layer_sel",selected="Observed")
+    
     leaflet::leaflet(data=sel_modelpredictions) %>%
       leaflet::addTiles() %>%
       leaflet::addProviderTiles(leaflet::providers$Esri.WorldImagery, group ="ESRI - Imagery") %>%
