@@ -29,7 +29,7 @@ fluidPage(
       ),
       #box(
       #width=12,
-      selectInput("sel_region","Region (up to 4 for mapping)",regions,multiple=T,selected = "w03_Lake_Ontario_West"),
+      selectInput("sel_region","Region (up to 8 for mapping)",regions,multiple=T,selected = "w03_Lake_Ontario_West"),
       selectInput("sel_taxa","Taxa",taxa,multiple=F,selected = "Brook (speckled) Trout"),
       selectInput("sel_ep","Endpoint",ep,multiple=F),
       #),
@@ -129,14 +129,14 @@ fluidPage(
                          ),
                          fluidPage(
                            shiny::radioButtons("map_layer_sel",
-                                               "",
+                                               "Layers",
                                                list(
                                                  Observed="Observed",
                                                  `Predicted - Current`="Predicted - Current",
                                                  `Predicted - Reference`="Predicted - Reference",
                                                  `(Current - Reference)`="(Current - Reference)"
                                                ),
-                                               #selected=NULL,
+                                               selected="Observed",
                                                inline=T),
                            fluidRow(
                              #shinyjqui::jqui_resizable(box(width=9,leaflet::leafletOutput("map_bio", height = "800px"))),

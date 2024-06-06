@@ -45,7 +45,7 @@ function(input, output, session) {
     req(input$sel_region)
     req(input$sel_taxa)
     req(input$sel_ep)
-    validate(need(length(input$sel_region)<5,"Select up to 4 regions for mapping"))
+    validate(need(length(input$sel_region)<9,"Select up to 8 regions for mapping"))
     
     con <- DBI::dbConnect(RSQLite::SQLite(), fp)
     
@@ -86,7 +86,7 @@ function(input, output, session) {
     req(input$sel_region)
     req(input$sel_taxa)
     req(input$sel_ep)
-    validate(need(length(input$sel_region)<5,"Select up to 4 regions for mapping"))
+    validate(need(length(input$sel_region)<9,"Select up to 8 regions for mapping"))
     
     sel_modelpredictions<-map_data() 
     
@@ -130,59 +130,54 @@ function(input, output, session) {
                              opacity=0.9,
                              src =F,
                              color=~col.pal(sel_modelpredictions[["Observed"]])
-      ) 
+      )
   })
   
-  observeEvent(input$map_layer_sel,
-               ignoreInit=T,{
-                 req(input$sel_region)
-                 req(input$sel_taxa)
-                 req(input$sel_ep)
-                 validate(need(length(input$sel_region)<5,"Select up to 4 regions for mapping"))
-                 
-                 sel_modelpredictions<-map_data() 
-                 
-                 sel_modelpredictions<-suppressWarnings(sf::st_cast(sel_modelpredictions,"LINESTRING"))
-                 
-                 rng<-pretty(range(c(sel_modelpredictions$`Observed`,sel_modelpredictions$`Predicted - Reference`,sel_modelpredictions$`Predicted - Current`),na.rm=T),n=8)
-                 mx<-max(abs(sel_modelpredictions$`(Current - Reference)`),na.rm=T)
-                 rng2<-pretty(c(-mx,mx),n=8)
-                 rng2<-rng2[rng2!=0]
-                 
-                 col.pal <- leaflet::colorBin("viridis", bins = rng, na.color = "grey")
-                 col.pal2 <- leaflet::colorBin("Spectral", bins = rng2, na.color = "grey")
-                 
-                 sel_modelpredictions_sub<-sel_modelpredictions %>% 
-                   tibble::as_tibble() %>% 
-                   select(ProvReachID,
-                          any_of(c("Observed",
-                                   "Predicted - Current",
-                                   "Predicted - Reference",
-                                   "(Current - Reference)")),
-                          starts_with("LDI"),
-                          starts_with("hb_"),
-                          -ends_with("_ref"))
-                 
-                 if (input$map_layer_sel == "(Current - Reference)"){
-                   col.pal<-col.pal2
-                   rng<-rng2
-                 }
-                 
-
-                 leaflet::leafletProxy("map_bio", session) %>%
-                   leafgl::clearGlLayers() %>% 
-                   leafgl::addGlPolylines(
-                     data=sel_modelpredictions,
-                     weight=0.5,
-                     opacity=0.9,
-                     src =F,
-                     color=~col.pal(sel_modelpredictions[[input$map_layer_sel]])
-                   )
-                 
-               })
+  observeEvent(input$map_layer_sel,ignoreInit=T,{
+    
+    sel_modelpredictions<-map_data() 
+    
+    sel_modelpredictions<-suppressWarnings(sf::st_cast(sel_modelpredictions,"LINESTRING"))
+    
+    rng<-pretty(range(c(sel_modelpredictions$`Observed`,sel_modelpredictions$`Predicted - Reference`,sel_modelpredictions$`Predicted - Current`),na.rm=T),n=8)
+    mx<-max(abs(sel_modelpredictions$`(Current - Reference)`),na.rm=T)
+    rng2<-pretty(c(-mx,mx),n=8)
+    rng2<-rng2[rng2!=0]
+    
+    col.pal <- leaflet::colorBin("viridis", bins = rng, na.color = "grey")
+    col.pal2 <- leaflet::colorBin("Spectral", bins = rng2, na.color = "grey")
+    
+    sel_modelpredictions_sub<-sel_modelpredictions %>% 
+      tibble::as_tibble() %>% 
+      select(ProvReachID,
+             any_of(c("Observed",
+                      "Predicted - Current",
+                      "Predicted - Reference",
+                      "(Current - Reference)")),
+             starts_with("LDI"),
+             starts_with("hb_"),
+             -ends_with("_ref"))
+    
+    if (input$map_layer_sel == "(Current - Reference)"){
+      col.pal<-col.pal2
+      rng<-rng2
+    }
+    
+    
+    leaflet::leafletProxy("map_bio", session) %>%
+      leafgl::clearGlLayers() %>% 
+      leafgl::addGlPolylines(
+        data=sel_modelpredictions,
+        weight=0.5,
+        opacity=0.9,
+        src =F,
+        color=~col.pal(sel_modelpredictions[[input$map_layer_sel]])
+      )
+    
+  })
   
   
-
+  
   # map_bio_tab Observer ----------------------------------------------------
   
   sel_reach<-reactive({
@@ -200,7 +195,7 @@ function(input, output, session) {
       validate(need(input$map_layer_sel %in% c("Predicted - Current","Predicted - Reference"),message="Select a stream line in the Current or Reference Layer to see the prediction breakdown"))
       
       loading_message(session)
-
+      
       sel_time<-case_when(
         input$map_layer_sel == "Predicted - Current" ~ c("Current Mean","Current Presence/Absence"),
         input$map_layer_sel == "Predicted - Reference" ~ c("Reference Mean","Reference Presence/Absence")
@@ -262,7 +257,7 @@ function(input, output, session) {
     req(input$sel_region)
     req(input$sel_taxa)
     req(input$sel_ep)
-    validate(need(length(input$sel_region)<5,"Select up to 4 regions for mapping"))
+    validate(need(length(input$sel_region)<9,"Select up to 8 regions for mapping"))
     
     loading_message(session)
     
