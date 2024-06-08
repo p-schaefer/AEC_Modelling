@@ -10,6 +10,7 @@ con <- DBI::dbConnect(RSQLite::SQLite(), fp)
 
 regions<-tbl(con,"Region_names") %>% collect() %>% pull(1)
 taxa<-tbl(con,"Taxa_names") %>% collect() %>% pull(1)
+CalcEP<-tbl(con,"CalcEP_names") %>% collect() %>% pull(1)
 pred_names<-tbl(con,"Predictor_names") %>% collect() %>% pull(1)
 ep<-list(Biomass = "resp_Comm_Biomass",
          Density = "resp_Comm_Abundance")
@@ -64,7 +65,6 @@ function(input, output, session) {
       rename_with(~gsub(paste0(input$sel_ep,"_"),"",.x)) %>% 
       select(ProvReachID,
              observed,
-             P50=quant_0.5,
              p75=quant_0.75,
              p75_ref=quant_0.75_ref,
              p75_refdiff=quant_0.75_refdiff,
@@ -84,25 +84,16 @@ function(input, output, session) {
   
   output$map_bio <- leaflet::renderLeaflet({
     req(input$sel_region)
-    req(input$sel_taxa)
-    req(input$sel_ep)
     validate(need(length(input$sel_region)<9,"Select up to 8 regions for mapping"))
     
-    sel_modelpredictions<-map_data() 
-    
+    sel_modelpredictions<-sel_strms()
     sel_modelpredictions<-suppressWarnings(sf::st_cast(sel_modelpredictions,"LINESTRING"))
+
+    shiny::updateRadioButtons(session,inputId = "map_layer_sel",selected="Stream Lines")
     
-    rng<-pretty(range(c(sel_modelpredictions$`Observed`,sel_modelpredictions$`Predicted - Reference`,sel_modelpredictions$`Predicted - Current`),na.rm=T),n=8)
-    mx<-max(abs(sel_modelpredictions$`(Current - Reference)`),na.rm=T)
-    rng2<-pretty(c(-mx,mx),n=8)
-    rng2<-rng2[rng2!=0]
-    
-    col.pal <- leaflet::colorBin("viridis", bins = rng, na.color = "grey")
-    col.pal2 <- leaflet::colorBin("Spectral", bins = rng2, na.color = "grey")
-    
-    shiny::updateRadioButtons(session,inputId = "map_layer_sel",selected="Observed")
-    
-    leaflet::leaflet(data=sel_modelpredictions) %>%
+    leaflet::leaflet(options = leaflet::leafletOptions(zoomControl = TRUE,
+                                                       zoomSnap = 0.25,
+                                                       zoomDelta = 1)) %>%
       leaflet::addTiles() %>%
       leaflet::addProviderTiles(leaflet::providers$Esri.WorldImagery, group ="ESRI - Imagery") %>%
       leaflet::addProviderTiles(leaflet::providers$OpenStreetMap.Mapnik, group ="OpenStreetMap") %>%
@@ -114,67 +105,92 @@ function(input, output, session) {
                        "ESRI - Imagery"),
         position = "topleft",
         options = leaflet::layersControlOptions(collapsed = F)
-      ) %>% 
-      leaflet::addLegend(
-        title="Observed/Predicted Values",
-        labels=rng,
-        colors=col.pal(rng)
-      )%>%
-      leaflet::addLegend(
-        title="(Current - Reference)",
-        labels=rng2,
-        colors=col.pal2(rng2)
-      ) %>% 
-      leafgl::addGlPolylines(data=sel_modelpredictions,# This function is currently a bit buggy, but its fast
-                             weight=0.5,
-                             opacity=0.9,
-                             src =F,
-                             color=~col.pal(sel_modelpredictions[["Observed"]])
+      ) %>%
+      leafgl::addGlPolylines(
+        data=sel_modelpredictions,
+        weight=0.25,
+        opacity=0.75,
+        src =F,
+        color=~"darkgrey"
       )
   })
   
-  observeEvent(input$map_layer_sel,ignoreInit=T,{
-    
-    sel_modelpredictions<-map_data() 
-    
-    sel_modelpredictions<-suppressWarnings(sf::st_cast(sel_modelpredictions,"LINESTRING"))
-    
-    rng<-pretty(range(c(sel_modelpredictions$`Observed`,sel_modelpredictions$`Predicted - Reference`,sel_modelpredictions$`Predicted - Current`),na.rm=T),n=8)
-    mx<-max(abs(sel_modelpredictions$`(Current - Reference)`),na.rm=T)
-    rng2<-pretty(c(-mx,mx),n=8)
-    rng2<-rng2[rng2!=0]
-    
-    col.pal <- leaflet::colorBin("viridis", bins = rng, na.color = "grey")
-    col.pal2 <- leaflet::colorBin("Spectral", bins = rng2, na.color = "grey")
-    
-    sel_modelpredictions_sub<-sel_modelpredictions %>% 
-      tibble::as_tibble() %>% 
-      select(ProvReachID,
-             any_of(c("Observed",
-                      "Predicted - Current",
-                      "Predicted - Reference",
-                      "(Current - Reference)")),
-             starts_with("LDI"),
-             starts_with("hb_"),
-             -ends_with("_ref"))
-    
-    if (input$map_layer_sel == "(Current - Reference)"){
-      col.pal<-col.pal2
-      rng<-rng2
-    }
-    
-    
-    leaflet::leafletProxy("map_bio", session) %>%
-      leafgl::clearGlLayers() %>% 
-      leafgl::addGlPolylines(
-        data=sel_modelpredictions,
-        weight=0.5,
-        opacity=0.9,
-        src =F,
-        color=~col.pal(sel_modelpredictions[[input$map_layer_sel]])
-      )
-    
-  })
+  observeEvent(
+    c(input$map_layer_sel,input$sel_ep,input$sel_taxa),
+    ignoreInit=F,
+    {
+      req(input$sel_region)
+      req(input$sel_taxa)
+      req(input$sel_ep)
+      req(input$map_layer_sel)
+      req(input$map_layer_sel!="Stream Lines")
+      validate(need(length(input$sel_region)<9,"Select up to 8 regions for mapping"))
+      req(leaflet::leafletProxy("map_bio", session))
+      
+      sel_modelpredictions<-map_data() 
+      
+      sel_modelpredictions<-suppressWarnings(sf::st_cast(sel_modelpredictions,"LINESTRING"))
+      
+      rng<-pretty(range(c(sel_modelpredictions$`Observed`,sel_modelpredictions$`Predicted - Reference`,sel_modelpredictions$`Predicted - Current`),na.rm=T),n=8)
+      mx<-max(abs(sel_modelpredictions$`(Current - Reference)`),na.rm=T)
+      rng2<-pretty(c(-mx,mx),n=8)
+      rng2<-rng2[rng2!=0]
+      
+      rng<-as.numeric(scales::number(rng))
+      rng2<-as.numeric(scales::number(rng2))
+      
+      col.pal <- leaflet::colorBin("viridis", bins = rng, na.color = "grey",reverse=T)
+      col.pal2 <- leaflet::colorBin("Spectral", bins = rng2, na.color = "grey")
+      
+      sel_modelpredictions_sub<-sel_modelpredictions %>% 
+        tibble::as_tibble() %>% 
+        select(ProvReachID,
+               any_of(c("Observed",
+                        "Predicted - Current",
+                        "Predicted - Reference",
+                        "(Current - Reference)")),
+               starts_with("LDI"),
+               starts_with("hb_"),
+               -ends_with("_ref"))
+      
+      if (input$map_layer_sel == "(Current - Reference)"){
+        col.pal.sel<-col.pal2
+        rng.sel<-rng2
+      } else {
+        col.pal.sel<-col.pal
+        rng.sel<-rng
+      }
+      
+      
+      leaflet::leafletProxy("map_bio", session) %>%
+        leafgl::clearGlLayers() %>% 
+        leaflet::clearControls() %>% 
+        leaflet::addLayersControl(
+          baseGroups = c("CartoDB",
+                         "OpenStreetMap",
+                         "ESRI - Imagery"),
+          position = "topleft",
+          options = leaflet::layersControlOptions(collapsed = F)
+        ) %>% 
+        leaflet::addLegend(
+          title="Observed/Predicted Values",
+          labels=rng,
+          colors=col.pal(rng)
+        )%>%
+        leaflet::addLegend(
+          title="(Current - Reference)",
+          labels=rng2,
+          colors=col.pal2(rng2)
+        ) %>%
+        leafgl::addGlPolylines(
+          data=sel_modelpredictions,
+          weight=0.5,
+          opacity=0.9,
+          src =F,
+          color=~col.pal.sel(sel_modelpredictions[[input$map_layer_sel]])
+        )
+      
+    })
   
   
   
@@ -193,6 +209,7 @@ function(input, output, session) {
   observeEvent(input$map_bio_glify_click,{
     output$SHAP_breakdown<-shiny::renderPlot({
       validate(need(input$map_layer_sel %in% c("Predicted - Current","Predicted - Reference"),message="Select a stream line in the Current or Reference Layer to see the prediction breakdown"))
+      validate(need(!input$sel_taxa %in% CalcEP,message="Calculated Endpoints Don't Have SHAP scores yet..."))
       
       loading_message(session)
       
@@ -293,6 +310,7 @@ function(input, output, session) {
     req(input$sel_region)
     req(input$sel_taxa)
     req(input$sel_ep)
+    validate(need(input$sel_taxa %in% CalcEP,message="Calculated Endpoints Don't Have Predictive Performance Summaries Yet..."))
     
     loading_message(session)
     
@@ -348,6 +366,8 @@ function(input, output, session) {
     req(input$sel_region)
     req(input$sel_taxa)
     req(input$sel_ep)
+    validate(need(input$sel_taxa %in% CalcEP,message="Calculated Endpoints Don't Have SHAP scores yet..."))
+    
     con <- DBI::dbConnect(RSQLite::SQLite(), fp)
     loading_message(session)
     
@@ -402,6 +422,8 @@ function(input, output, session) {
     req(input$sel_ep)
     req(input$shap_pred_sel)
     req(input$shap_col_sel)
+    validate(need(input$sel_taxa %in% CalcEP,message="Calculated Endpoints Don't Have SHAP scores yet..."))
+    
     con <- DBI::dbConnect(RSQLite::SQLite(), fp)
     
     loading_message(session)

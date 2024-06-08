@@ -5,12 +5,20 @@
 library(tidyverse)
 library(openxlsx)
 library(sf)
+source("R/00_Functions/Endpoint_Calc_Functions.R")
 
 # Load Data ---------------------------------------------------------------
 
 lookup_tbl<-read.csv(file.path("data","fish_lookup.csv")) %>% 
   mutate(name.to.use=trimws(name.to.use))
 colnames(lookup_tbl)[colnames(lookup_tbl)=="OMNR.Code"]<-"SpeciesCode"
+
+SATI_df<-read.csv(file.path("data","raw","Bio","lkpSpeciesHabitatRequirement.csv")) %>% 
+  select(SpeciesCode=FWISFishCode,OPT_TEMP) %>% 
+  distinct() %>% 
+  filter(!is.na(OPT_TEMP))
+
+lookup_tbl<-left_join(lookup_tbl,SATI_df,by="SpeciesCode")
 
 raw_tbl<-read.csv(file.path("data","raw","Bio","tblFishSummaryOfTotalCatches.csv"))
 
@@ -111,131 +119,9 @@ taxa_tbl<-taxa_tbl1 %>%
 
 # Calculate endpoints -----------------------------------------------------
 
-ep_tbl<-atr_tbl %>% 
-  group_by(SampleEventID,SampleDate) %>% 
-  summarise(
-    # General Community
-    Comm_Biomass=sum(EstimatedBiomass,na.rm=T),
-    Comm_Abundance=sum(NumberOfFish,na.rm=T),
-    Comm_Richness=length(unique(SpeciesCode)),
-    # Thermal Regime 
-    Therm_cold_Bioperc=sum(EstimatedBiomass[Thermal.Regime=="coldwater"],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Therm_cool_Bioperc=sum(EstimatedBiomass[Thermal.Regime=="coolwater"],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Therm_coolcold_Bioperc=sum(EstimatedBiomass[Thermal.Regime %in% c("coolwater","coldwater")],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Therm_warm_Bioperc=sum(EstimatedBiomass[Thermal.Regime %in% c("warmwater")],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Therm_cold_Abuperc=sum(NumberOfFish[Thermal.Regime=="coldwater"],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Therm_cool_Abuperc=sum(NumberOfFish[Thermal.Regime=="coolwater"],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Therm_coolcold_Abuperc=sum(NumberOfFish[Thermal.Regime %in% c("coolwater","coldwater")],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Therm_warm_Abuperc=sum(NumberOfFish[Thermal.Regime %in% c("warmwater")],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Therm_cold_Bio=sum(EstimatedBiomass[Thermal.Regime=="coldwater"],na.rm=T),
-    Therm_cool_Bio=sum(EstimatedBiomass[Thermal.Regime=="coolwater"],na.rm=T),
-    Therm_coolcold_Bio=sum(EstimatedBiomass[Thermal.Regime %in% c("coolwater","coldwater")],na.rm=T),
-    Therm_warm_Bio=sum(EstimatedBiomass[Thermal.Regime %in% c("warmwater")],na.rm=T),
-    Therm_cold_Abu=sum(NumberOfFish[Thermal.Regime=="coldwater"],na.rm=T),
-    Therm_cool_Abu=sum(NumberOfFish[Thermal.Regime=="coolwater"],na.rm=T),
-    Therm_coolcold_Abu=sum(NumberOfFish[Thermal.Regime %in% c("coolwater","coldwater")],na.rm=T),
-    Therm_warm_Abu=sum(NumberOfFish[Thermal.Regime %in% c("warmwater")],na.rm=T),
-    Therm_warm_Rich=length(NumberOfFish[Thermal.Regime %in% c("warmwater")]),
-    Therm_cold_Rich=length(NumberOfFish[Thermal.Regime %in% c("coldwater")]),
-    Therm_cool_Rich=length(NumberOfFish[Thermal.Regime %in% c("coolwater")]),
-    Therm_coolcold_Rich=length(NumberOfFish[Thermal.Regime %in% c("coolwater","coldwater")]),
-    # Trophic Guild 
-    Troph_invert_Bioperc=sum(EstimatedBiomass[grepl("invertivore",Trophic.Class)],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Troph_detrit_Bioperc=sum(EstimatedBiomass[grepl("detritivore",Trophic.Class)],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Troph_carn_Bioperc=sum(EstimatedBiomass[grepl("carnivore",Trophic.Class)],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Troph_herb_Bioperc=sum(EstimatedBiomass[grepl("herbivore",Trophic.Class)],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Troph_plank_Bioperc=sum(EstimatedBiomass[grepl("planktivore",Trophic.Class)],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Troph_invert_Bio=sum(EstimatedBiomass[grepl("invertivore",Trophic.Class)],na.rm=T),
-    Troph_detrit_Bio=sum(EstimatedBiomass[grepl("detritivore",Trophic.Class)],na.rm=T),
-    Troph_carn_Bio=sum(EstimatedBiomass[grepl("carnivore",Trophic.Class)],na.rm=T),
-    Troph_herb_Bio=sum(EstimatedBiomass[grepl("herbivore",Trophic.Class)],na.rm=T),
-    Troph_plank_Bio=sum(EstimatedBiomass[grepl("planktivore",Trophic.Class)],na.rm=T),
-    Troph_invert_Abuperc=sum(NumberOfFish[grepl("invertivore",Trophic.Class)],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Troph_detrit_Abuperc=sum(NumberOfFish[grepl("detritivore",Trophic.Class)],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Troph_carn_Abuperc=sum(NumberOfFish[grepl("carnivore",Trophic.Class)],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Troph_herb_Abuperc=sum(NumberOfFish[grepl("herbivore",Trophic.Class)],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Troph_plank_Abuperc=sum(NumberOfFish[grepl("planktivore",Trophic.Class)],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Troph_invert_Abu=sum(NumberOfFish[grepl("invertivore",Trophic.Class)],na.rm=T),
-    Troph_detrit_Abu=sum(NumberOfFish[grepl("detritivore",Trophic.Class)],na.rm=T),
-    Troph_carn_Abu=sum(NumberOfFish[grepl("carnivore",Trophic.Class)],na.rm=T),
-    Troph_herb_Abu=sum(NumberOfFish[grepl("herbivore",Trophic.Class)],na.rm=T),
-    Troph_plank_Abu=sum(NumberOfFish[grepl("planktivore",Trophic.Class)],na.rm=T),
-    Troph_invert_Rich=length(NumberOfFish[grepl("invertivore",Trophic.Class)]),
-    Troph_detrit_Rich=length(NumberOfFish[grepl("detritivore",Trophic.Class)]),
-    Troph_carn_Rich=length(NumberOfFish[grepl("carnivore",Trophic.Class)]),
-    Troph_herb_Rich=length(NumberOfFish[grepl("herbivore",Trophic.Class)]),
-    Troph_plank_Rich=length(NumberOfFish[grepl("planktivore",Trophic.Class)]),
-    # Tolerance
-    Tol_tol_Bioperc=sum(EstimatedBiomass[grepl("tolerant",Tolerance)],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Tol_intol_Bioperc=sum(EstimatedBiomass[grepl("intolerant",Tolerance)],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Tol_tol_Abuperc=sum(NumberOfFish[grepl("tolerant",Tolerance)],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Tol_intol_Abuperc=sum(NumberOfFish[grepl("intolerant",Tolerance)],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Tol_tol_Bio=sum(EstimatedBiomass[grepl("tolerant",Tolerance)],na.rm=T),
-    Tol_intol_Bio=sum(EstimatedBiomass[grepl("intolerant",Tolerance)],na.rm=T),
-    Tol_tol_Abu=sum(NumberOfFish[grepl("tolerant",Tolerance)],na.rm=T),
-    Tol_intol_Abu=sum(NumberOfFish[grepl("intolerant",Tolerance)],na.rm=T),
-    Tol_tol_Rich=length(NumberOfFish[grepl("tolerant",Tolerance)]),
-    Tol_intol_Rich=length(NumberOfFish[grepl("intolerant",Tolerance)]),
-    # Individual Species - 
-    Spec_RBD_Bioperc=sum(EstimatedBiomass[SpeciesCode==337],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Spec_RBD_Abuperc=sum(NumberOfFish[SpeciesCode==337],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Spec_BKT_Bioperc=sum(EstimatedBiomass[SpeciesCode==80],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Spec_BKT_Abuperc=sum(NumberOfFish[SpeciesCode==80],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Spec_GDF_Bioperc=sum(EstimatedBiomass[SpeciesCode==181],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Spec_GDF_Abuperc=sum(NumberOfFish[SpeciesCode==181],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Spec_CMC_Bioperc=sum(EstimatedBiomass[SpeciesCode==186],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Spec_CMC_Abuperc=sum(NumberOfFish[SpeciesCode==186],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Spec_RDG_Bioperc=sum(EstimatedBiomass[SpeciesCode==366],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Spec_RDG_Abuperc=sum(NumberOfFish[SpeciesCode==366],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Spec_CKC_Bioperc=sum(EstimatedBiomass[SpeciesCode==212],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Spec_CKC_Abuperc=sum(NumberOfFish[SpeciesCode==212],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Spec_SKP_Bioperc=sum(EstimatedBiomass[SpeciesCode %in% c(381,382)],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Spec_SKP_Abuperc=sum(NumberOfFish[SpeciesCode %in% c(381,382)],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Spec_LMP_Bioperc=sum(EstimatedBiomass[SpeciesCode %in% c(11:14)],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Spec_LMP_Abuperc=sum(NumberOfFish[SpeciesCode %in% c(11:14)],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Spec_DRT_Bioperc=sum(EstimatedBiomass[SpeciesCode %in% c(335:340,342)],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Spec_DRT_Abuperc=sum(NumberOfFish[SpeciesCode %in% c(335:340,342)],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Spec_CEB_Bioperc=sum(EstimatedBiomass[SpeciesCode %in% c(311, 313:317)],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Spec_CEB_Abuperc=sum(NumberOfFish[SpeciesCode %in% c(311, 313:317)],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Spec_CTF_Bioperc=sum(EstimatedBiomass[SpeciesCode %in% c(231:233)],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Spec_CTF_Abuperc=sum(NumberOfFish[SpeciesCode %in% c(231:233)],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Spec_SAL_Bioperc=sum(EstimatedBiomass[SpeciesCode %in% c(71:83)],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Spec_SAL_Abuperc=sum(NumberOfFish[SpeciesCode %in% c(71:83)],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    # Environment
-    Env_benthic_Bioperc=sum(EstimatedBiomass[Environment=="benthic"],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Env_pelagic_Bioperc=sum(EstimatedBiomass[Environment=="pelagic"],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Env_benthopelagic_Bioperc=sum(EstimatedBiomass[Environment=="benthopelagic"],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Env_benthic_Abuperc=sum(NumberOfFish[Environment=="benthic"],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Env_pelagic_Abuperc=sum(NumberOfFish[Environment=="pelagic"],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Env_benthopelagic_Abuperc=sum(NumberOfFish[Environment=="benthopelagic"],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Env_benthic_Bio=sum(EstimatedBiomass[Environment=="benthic"],na.rm=T),
-    Env_pelagic_Bio=sum(EstimatedBiomass[Environment=="pelagic"],na.rm=T),
-    Env_benthopelagic_Bio=sum(EstimatedBiomass[Environment=="benthopelagic"],na.rm=T),
-    Env_benthic_Abu=sum(NumberOfFish[Environment=="benthic"],na.rm=T),
-    Env_pelagic_Abu=sum(NumberOfFish[Environment=="pelagic"],na.rm=T),
-    Env_benthopelagic_Abu=sum(NumberOfFish[Environment=="benthopelagic"],na.rm=T),
-    Env_benthic_Rich=length(NumberOfFish[Environment=="benthic"]),
-    Env_pelagic_Rich=length(NumberOfFish[Environment=="pelagic"]),
-    Env_benthopelagic_Rich=length(NumberOfFish[Environment=="benthopelagic"]),
-    # Reproductive Guild
-    ## Guarders
-    Rep_guard_Bioperc=sum(EstimatedBiomass[grepl("^B\\.",Reproductive.Code)],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Rep_guard_Abuperc=sum(NumberOfFish[grepl("^B\\.",Reproductive.Code)],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Rep_guard_Rich=length(NumberOfFish[grepl("^B\\.",Reproductive.Code)]),
-    ## Nesting?
-    Rep_OSS_Bioperc=sum(EstimatedBiomass[grepl(".1.",Reproductive.Code)],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Rep_OSS_Abuperc=sum(NumberOfFish[grepl(".1.",Reproductive.Code)],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Rep_OSS_Rich=length(NumberOfFish[grepl(".1.",Reproductive.Code)]),
-    Rep_BrHid_Bioperc=sum(EstimatedBiomass[grepl(".2.",Reproductive.Code)],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Rep_BrHid_Abuperc=sum(NumberOfFish[grepl(".2.",Reproductive.Code)],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Rep_BrHid_Rich=length(NumberOfFish[grepl(".2.",Reproductive.Code)]),
-    ## Lithophilic
-    Rep_Lith_Bioperc=sum(EstimatedBiomass[grepl("Litho",Reproductive.Guild)],na.rm=T)/sum(EstimatedBiomass,na.rm=T),
-    Rep_Lith_Abuperc=sum(NumberOfFish[grepl("Litho",Reproductive.Guild)],na.rm=T)/sum(NumberOfFish,na.rm=T),
-    Rep_Lith_Rich=length(NumberOfFish[grepl("Litho",Reproductive.Guild)])
-  ) %>% 
-  ungroup() %>% 
-  mutate(Comm_Biomass=if_else(Comm_Biomass==0,NA_real_,Comm_Biomass))
+atr_tbl<-left_join(sub_tbl,lookup_tbl,by="SpeciesCode") 
+
+ep_tbl<-calc_fish_ep(atr_tbl)
 
 # No Catch Table ----------------------------------------------------------
 
@@ -266,6 +152,7 @@ ep_tbl_lng<-ep_tbl %>%
   )) %>%
   mutate(Endpoint_subgroup=str_split(Endpoint,"_",simplify = T)[,2]) %>% 
   mutate(Endpoint_subgroup=case_when(
+    Endpoint_subgroup == "SATI" ~ "SATI",
     Endpoint_subgroup == "cold" ~ "Cold water",
     Endpoint_subgroup == "cool" ~ "Cool water",
     Endpoint_subgroup == "coolcold" ~ "Cold-Cool water",

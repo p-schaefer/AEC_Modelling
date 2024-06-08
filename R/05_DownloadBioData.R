@@ -16,7 +16,7 @@ fwis_login<-wideLogin("http://www.comap.ca/fwis/wideR.php",username,password)
 
 # Fish Download -----------------------------------------------------------
 
-fish_tbls<-"tblFishSummaryOfTotalCatches"
+fish_tbls<-c("tblFishSummaryOfTotalCatches")
 
 fish_all<-lapply(setNames(fish_tbls,fish_tbls),function(x){
   columns <- wideDataSelect(1,
@@ -30,6 +30,21 @@ fish_all<-lapply(setNames(fish_tbls,fish_tbls),function(x){
 })
 
 write_csv(fish_all$tblFishSummaryOfTotalCatches,file.path("data","raw","Bio","tblFishSummaryOfTotalCatches.csv"))
+
+fish_tbls<-c("lkpSpeciesHabitatRequirement")
+
+fish_all<-lapply(setNames(fish_tbls,fish_tbls),function(x){
+  columns <- wideDataSelect(1,
+                            "tblDataAPI",
+                            list("tbldColName", "tbldActionsRdRegUser", "tbldPK", "tbldNulls", "tbldType", "tbldGSConstraint","tbldFilePath","tbldFileFolder"),
+                            where=list(tbldUserTblName=c("=",x)),
+                            orderBy=list("tbldOrdering"))
+  
+  wideDataSelect( 1, table=x, colsSelected=as.list(columns$tbldColName) )
+  
+})
+
+write_csv(fish_all$lkpSpeciesHabitatRequirement,file.path("data","raw","Bio","lkpSpeciesHabitatRequirement.csv"))
 
 
 # Benthic Invertebrate Download -------------------------------------------

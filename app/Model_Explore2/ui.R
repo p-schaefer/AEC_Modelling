@@ -7,6 +7,7 @@ con <- DBI::dbConnect(RSQLite::SQLite(), fp)
 
 regions<-tbl(con,"Region_names") %>% collect() %>% pull(1)
 taxa<-tbl(con,"Taxa_names") %>% collect() %>% pull(1)
+CalcEP<-tbl(con,"CalcEP_names") %>% collect() %>% pull(1)
 pred_names<-tbl(con,"Predictor_names") %>% collect() %>% pull(1)
 ep<-list(Density = "resp_Comm_Abundance",
          Biomass = "resp_Comm_Biomass")
@@ -30,7 +31,8 @@ fluidPage(
       #box(
       #width=12,
       selectInput("sel_region","Region (up to 8 for mapping)",regions,multiple=T,selected = "w03_Lake_Ontario_West"),
-      selectInput("sel_taxa","Taxa",taxa,multiple=F,selected = "Brook (speckled) Trout"),
+      selectInput("sel_taxa",div("Taxa"),list(`Derived Endpoints`=CalcEP,`Modeled Taxa`=taxa),multiple=F,selected = "Brook (speckled) Trout"),
+      h6(style = "text-align: center;margin-left: 15px;margin-right: 15px;", "(Note: 'Derived Endpoints' are calculated only using 'Modeled Taxa')"),
       selectInput("sel_ep","Endpoint",ep,multiple=F),
       #),
       br(),
@@ -131,12 +133,13 @@ fluidPage(
                            shiny::radioButtons("map_layer_sel",
                                                "Layers",
                                                list(
+                                                 `Stream Lines`="Stream Lines",
                                                  Observed="Observed",
                                                  `Predicted - Current`="Predicted - Current",
                                                  `Predicted - Reference`="Predicted - Reference",
                                                  `(Current - Reference)`="(Current - Reference)"
                                                ),
-                                               selected="Observed",
+                                               selected=NULL,
                                                inline=T),
                            fluidRow(
                              #shinyjqui::jqui_resizable(box(width=9,leaflet::leafletOutput("map_bio", height = "800px"))),
