@@ -88,7 +88,7 @@ function(input, output, session) {
     
     sel_modelpredictions<-sel_strms()
     sel_modelpredictions<-suppressWarnings(sf::st_cast(sel_modelpredictions,"LINESTRING"))
-
+    
     shiny::updateRadioButtons(session,inputId = "map_layer_sel",selected="Stream Lines")
     
     leaflet::leaflet(options = leaflet::leafletOptions(zoomControl = TRUE,
@@ -310,7 +310,7 @@ function(input, output, session) {
     req(input$sel_region)
     req(input$sel_taxa)
     req(input$sel_ep)
-    validate(need(input$sel_taxa %in% CalcEP,message="Calculated Endpoints Don't Have Predictive Performance Summaries Yet..."))
+    validate(need(!input$sel_taxa %in% CalcEP,message="Calculated Endpoints Don't Have Predictive Performance Summaries Yet..."))
     
     loading_message(session)
     
@@ -366,7 +366,7 @@ function(input, output, session) {
     req(input$sel_region)
     req(input$sel_taxa)
     req(input$sel_ep)
-    validate(need(input$sel_taxa %in% CalcEP,message="Calculated Endpoints Don't Have SHAP scores yet..."))
+    validate(need(!input$sel_taxa %in% CalcEP,message="Calculated Endpoints Don't Have SHAP scores yet..."))
     
     con <- DBI::dbConnect(RSQLite::SQLite(), fp)
     loading_message(session)
@@ -422,7 +422,7 @@ function(input, output, session) {
     req(input$sel_ep)
     req(input$shap_pred_sel)
     req(input$shap_col_sel)
-    validate(need(input$sel_taxa %in% CalcEP,message="Calculated Endpoints Don't Have SHAP scores yet..."))
+    validate(need(!input$sel_taxa %in% CalcEP,message="Calculated Endpoints Don't Have SHAP scores yet..."))
     
     con <- DBI::dbConnect(RSQLite::SQLite(), fp)
     
