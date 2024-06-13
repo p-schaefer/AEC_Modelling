@@ -116,13 +116,14 @@ function(input, output, session) {
   })
   
   observeEvent(
-    c(input$map_layer_sel,input$sel_ep,input$sel_taxa),
+    c(input$map_layer_sel,input$sel_ep,input$sel_taxa,input$map_breaks),
     ignoreInit=F,
     {
       req(input$sel_region)
       req(input$sel_taxa)
       req(input$sel_ep)
       req(input$map_layer_sel)
+      req(input$map_breaks)
       req(input$map_layer_sel!="Stream Lines")
       validate(need(length(input$sel_region)<9,"Select up to 8 regions for mapping"))
       req(leaflet::leafletProxy("map_bio", session))
@@ -131,17 +132,31 @@ function(input, output, session) {
       
       sel_modelpredictions<-suppressWarnings(sf::st_cast(sel_modelpredictions,"LINESTRING"))
       
-      rng<-pretty(range(c(sel_modelpredictions$`Observed`,sel_modelpredictions$`Predicted - Reference`,sel_modelpredictions$`Predicted - Current`),na.rm=T),n=8)
-      mx<-max(abs(sel_modelpredictions$`(Current - Reference)`),na.rm=T)
-      rng2<-pretty(c(-mx,mx),n=8)
+      val_list<-c(sel_modelpredictions$`Observed`,sel_modelpredictions$`Predicted - Reference`,sel_modelpredictions$`Predicted - Current`)
+      diff_list<-sel_modelpredictions$`(Current - Reference)`
+      
+      #browser()
+      quant_fn<-function(x,n) quantile(x,probs = seq(0, 1, length.out = n + 1),na.rm=T)
+      break_fn<-switch(input$map_breaks,
+                       pretty=pretty,
+                       quantile=quant_fn,
+                       getJenksBreaks=BAMMtools::getJenksBreaks)
+      
+      diff_list<-c(-abs(diff_list),abs(diff_list))
+
+      rng<-break_fn(val_list,8)
+      rng2<-break_fn(diff_list,8)
       rng2<-rng2[rng2!=0]
       
       rng<-as.numeric(scales::number(rng))
       rng2<-as.numeric(scales::number(rng2))
       
-      col.pal <- leaflet::colorBin("viridis", bins = rng, na.color = "grey",reverse=T)
-      col.pal2 <- leaflet::colorBin("Spectral", bins = rng2, na.color = "grey")
+      rng<-unique(rng)
+      rng2<-unique(rng2)
       
+      col.pal <- leaflet::colorBin("viridis", bins = rng, na.color = "grey",reverse=F)
+      col.pal2 <- leaflet::colorBin("Spectral", bins = rng2, na.color = "grey")
+
       sel_modelpredictions_sub<-sel_modelpredictions %>% 
         tibble::as_tibble() %>% 
         select(ProvReachID,

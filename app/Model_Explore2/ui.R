@@ -130,17 +130,31 @@ fluidPage(
                               the likelihood of a presence. Once a reach is selected, that reach will also be highlighted in the 'Predictor Response' tab.")
                          ),
                          fluidPage(
-                           shiny::radioButtons("map_layer_sel",
-                                               "Layers",
-                                               list(
-                                                 `Stream Lines`="Stream Lines",
-                                                 Observed="Observed",
-                                                 `Predicted - Current`="Predicted - Current",
-                                                 `Predicted - Reference`="Predicted - Reference",
-                                                 `(Current - Reference)`="(Current - Reference)"
-                                               ),
-                                               selected=NULL,
-                                               inline=T),
+                           fluidRow(
+                             column(width=6,
+                                    shiny::radioButtons("map_layer_sel",
+                                                        "Layers",
+                                                        list(
+                                                          `Stream Lines`="Stream Lines",
+                                                          Observed="Observed",
+                                                          `Predicted - Current`="Predicted - Current",
+                                                          `Predicted - Reference`="Predicted - Reference",
+                                                          `(Current - Reference)`="(Current - Reference)"
+                                                        ),
+                                                        selected=NULL,
+                                                        inline=T)),
+                             column(width=3,
+                                    offset=1,
+                                    shiny::radioButtons("map_breaks",
+                                                        "Colour Breaks",
+                                                        list(
+                                                          Equal="pretty",
+                                                          Quantile="quantile",
+                                                          `Jenks Natural Breaks`="getJenksBreaks"),
+                                                        selected="quantile",
+                                                        inline=T))
+                             
+                           ),
                            fluidRow(
                              #shinyjqui::jqui_resizable(box(width=9,leaflet::leafletOutput("map_bio", height = "800px"))),
                              shinyjqui::jqui_resizable(box(width=9,leafgl::leafglOutput("map_bio", height = "800px"))),
