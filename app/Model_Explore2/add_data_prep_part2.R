@@ -159,3 +159,10 @@ s7<-RSQLite::dbSendQuery(con, "pragma optimize;")
 
 
 DBI::dbDisconnect(con)
+
+# file.copy(fp,
+#           file.path(normalizePath("~"),"ShinyApps","Ontario_Fish_Model_testing","data"),
+#           overwrite=T)
+# file.copy(fp,
+#           file.path(normalizePath("~"),"ShinyApps","Ontario_Fish_Model","data"),
+#           overwrite=T)
