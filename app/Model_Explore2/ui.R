@@ -151,7 +151,7 @@ fluidPage(
                                                           Equal="pretty",
                                                           Quantile="quantile",
                                                           `Jenks Natural Breaks`="getJenksBreaks"),
-                                                        selected="quantile",
+                                                        selected="getJenksBreaks",
                                                         inline=T))
                              
                            ),
