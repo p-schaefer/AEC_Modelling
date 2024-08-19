@@ -3,7 +3,7 @@ source("R/00_Functions/Endpoint_Calc_Functions.R")
 
 fp<-file.path("app","Model_Explore2","data",paste0("Model_data_v2.gpkg"))
 
-file.remove(fp)
+#file.remove(fp)
 file.copy(file.path("app","Model_Explore2","data",paste0("Model_data_v2_backup.gpkg")),fp)
 
 con <- DBI::dbConnect(RSQLite::SQLite(), fp)
@@ -149,6 +149,9 @@ t1<-dplyr::copy_to(df=out,
                    temporary =F,
                    analyze=T,
                    in_transaction=T)
+
+
+# Out of sample predictions -----------------------------------------------
 
 sel_modelOOSpredictions<-tbl(con,"OOS_Predictions") %>% 
   collect()
