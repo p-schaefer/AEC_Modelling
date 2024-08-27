@@ -2,15 +2,8 @@ library(reticulate)
 library(tidyverse)
 library(tidymodels)
 
-adj<-0.005
-
-inv.logit <- function(f,a) {
-  a <- (1-2*a)
-  out<-zapsmall((a*(1+exp(f))+(exp(f)-1))/(2*a*(1+exp(f))))
-  out[out<0]<-0
-  out[out>1]<-1#-1e-14
-  out
-}
+boosting_rounds<-1500L
+n_folds<-6L
 
 if (F) {
   # Setup python environment
@@ -19,12 +12,6 @@ if (F) {
   use_condaenv("AEC_Model")
   
   miniconda_update()
-  
-  # conda_install("AEC_Model","IPython",pip=T)
-  # 
-  # conda_install("AEC_Model","shap",pip=T)
-  
-  #conda_install("AEC_Model","git+https://github.com/dsgibbons/shap.git",pip=T)
   
   #conda_install("AEC_Model","git+https://github.com/StatMixedML/XGBoostLSS.git",pip=T)
   
@@ -85,7 +72,7 @@ for (ep in resp){
                        select(-starts_with("gen_")) %>% 
                        select(starts_with(c("tx_",
                                             "hb_",
-                                            "br_",
+                                            #"br_",
                                             "nr_",
                                             "LDI_"
                        )),
@@ -95,6 +82,7 @@ for (ep in resp){
                        -contains("lumped"),
                        -contains("_SD"),
                        -contains("_iFL"),
+                       -any_of(c("tx_Family","tx_Environment")),
                        any_of(ep),
                        any_of(paste0("cat_",ep)),
                        any_of("case_weight")) %>% 
@@ -108,8 +96,10 @@ for (ep in resp){
                     "LDI_")),
       new_role = "predictor"
     ) %>% 
-    step_nzv(all_predictors(),freq_cut =500/1) %>% 
-    step_lincomb(starts_with(c("br_","nr_"))) %>%
+    step_zv(all_predictors()) %>% 
+    step_nzv(all_predictors(),freq_cut = 100) %>% 
+    step_lincomb(starts_with(c("br_","nr_","LDI_"))) %>%
+    step_corr(method="spearman",threshold = 0.7) %>% 
     step_unorder(all_factor_predictors()) %>% 
     update_role(
       any_of(!!ep),
@@ -157,7 +147,7 @@ for (ep in resp){
   # # convert the function to a python iterator
   # iter <- py_iterator(sequence_generator(10))
   
-  folds_object = sel$GroupKFold(6L)
+  folds_object = sel$GroupKFold(n_folds)
   
   train_py = lss.model$Dataset(
     data=final_data %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
@@ -177,122 +167,70 @@ for (ep in resp){
   )
   
   # Prepare Parameters ------------------------------------------------------
-  params_lightgbm = list(boosting= list("categorical",list("dart")), #"gbdt",
-                         xgboost_dart_mode = list("categorical",list(T,F)),
-                         rate_drop= list("float",list(low= 0, high=0.3, log=FALSE)),
-                         skip_drop= list("float",list(low= 0.3, high=0.7, log=FALSE)),
-                         feature_pre_filter= list("categorical",list(F)),
-                         learning_rate = list("float",list(low= 1e-4, high=0.1, log=TRUE)), 
-                         max_depth= list("int",list(low= 5L, high=1000L, log=FALSE)),
-                         num_leaves= list("int",list(low= 10L, high=5000L, log=FALSE)),           
-                         min_data_in_leaf= list("int",list(low= 5L, high=200L, log=FALSE)),       
-                         min_gain_to_split= list("float",list(low= 1e-3, high=100, log=TRUE)),
-                         min_sum_hessian_in_leaf =list("float",list(low= 1e-3, high=100, log=TRUE)),
-                         feature_fraction_bynode = list("float",list(low= 0.3, high=0.7, log=FALSE)),
-                         baging_freq=list("none",list(1L)),
-                         bin_construct_sample_cnt =list("none",list(2000000L)),
-                         bagging_fraction = list("float",list(low= 0.3, high=0.7, log=FALSE)),
-                         max_cat_to_onehot = list("int",list(low= 2L, high=10L, log=FALSE)),
-                         max_cat_threshold = list("int",list(low= 1500L, high=5000L, log=FALSE)),
-                         min_data_per_group = list("int",list(low= 2L, high=50L, log=FALSE)),
-                         cat_smooth = list("float",list(low= 0L, high=10L, log=FALSE)),
-                         cat_l2 = list("float",list(low= 0L, high=10L, log=FALSE)),
-                         histogram_pool_size = list("none",list(-1L)),
-                         lambda_l1=list("float",list(low= 1e-3, high=100, log=TRUE)),
-                         lambda_l2=list("float",list(low= 1e-3, high=100, log=TRUE))#,
-                         # path_smooth=list("float",list(low= 0L, high=10L, log=FALSE))
-                         
+  params_lightgbm = list(
+    boosting= list("categorical",list("dart")), #"gbdt",
+    xgboost_dart_mode = list("categorical",list(T,F)),
+    rate_drop= list("float",list(low= 0, high=0.5, log=FALSE)),
+    skip_drop= list("float",list(low= 0.1, high=0.7, log=FALSE)),
+    data_sample_strategy = list("categorical",list("goss")), 
+    top_rate = list("float",list(low= 0.2, high=0.5, log=FALSE)),
+    other_rate = list("float",list(low= 0.1, high=0.4, log=FALSE)),
+    feature_pre_filter= list("categorical",list(F)),
+    learning_rate = list("float",list(low= 1e-4, high=0.9, log=TRUE)), 
+    max_depth= list("int",list(low= 5L, high=1000L, log=FALSE)),
+    num_leaves= list("int",list(low= 10L, high=5000L, log=FALSE)),           
+    min_data_in_leaf= list("int",list(low= 5L, high=200L, log=FALSE)),       
+    min_gain_to_split= list("float",list(low= 1e-3, high=600, log=TRUE)),
+    min_sum_hessian_in_leaf =list("float",list(low= 1e-3, high=600, log=TRUE)),
+    feature_fraction_bynode = list("float",list(low= 0.4, high=0.8, log=FALSE)),
+    baging_freq=list("none",list(1L)),
+    bin_construct_sample_cnt =list("none",list(2000000000L)),
+    bagging_fraction = list("float",list(low= 0.3, high=0.7, log=FALSE)),
+    max_cat_to_onehot = list("int",list(low= 2L, high=10L, log=FALSE)),
+    max_cat_threshold = list("int",list(low= 1500L, high=5000L, log=FALSE)),
+    min_data_per_group = list("int",list(low= 2L, high=50L, log=FALSE)),
+    cat_smooth = list("float",list(low= 0L, high=100L, log=FALSE)),
+    cat_l2 = list("float",list(low= 0L, high=10L, log=FALSE)),
+    histogram_pool_size = list("none",list(-1L)),
+    lambda_l1=list("float",list(low= 1e-3, high=100, log=TRUE)),
+    lambda_l2=list("float",list(low= 1e-3, high=100, log=TRUE))
   )
   
   # Tune hyperparameters
-  opt_param = xgb$hyper_opt(hp_dict=r_to_py(params_lightgbm),
-                            train_set=train_py,
-                            num_boost_round=r_to_py(2500L),        # Number of boosting iterations.
-                            folds=folds_object,
-                            multivariate=r_to_py(TRUE),
-                            n_startup_trials=r_to_py(30L),
-                            nfold=r_to_py(6L),                    # Number of cv-folds.
-                            early_stopping_rounds=r_to_py(20L),   # Number of early-stopping rounds
-                            max_minutes=r_to_py(60L*6L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
-                            silence=r_to_py(FALSE)
-  )
+  
+  dart_log <- py_capture_output({
+    opt_param = xgb$hyper_opt(hp_dict=r_to_py(params_lightgbm),
+                              train_set=train_py,
+                              num_boost_round=r_to_py(boosting_rounds),    # Number of boosting iterations.
+                              folds=folds_object,
+                              multivariate=r_to_py(FALSE),
+                              n_startup_trials=r_to_py(80L),
+                              nfold=r_to_py(n_folds),                    # Number of cv-folds.
+                              early_stopping_rounds=r_to_py(20L),   # Number of early-stopping rounds
+                              max_minutes=r_to_py(60L*12L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
+                              silence=r_to_py(FALSE),
+                              seed=r_to_py(123L),
+                              hp_seed=r_to_py(123L)
+    )
+  })
+  write(dart_log,file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_dart_log.txt")))
   saveRDS(opt_param,file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_dart.rds"))) 
   
-  # # Models ------------------------------------------------------------------
-  # 
-  # # Tune hyperparameters
-  # opt_param = xgb$hyper_opt(hp_dict=r_to_py(params_lightgbm),
-  #                           train_set=train_py,
-  #                           num_boost_round=r_to_py(4000L),        # Number of boosting iterations.
-  #                           folds=folds_object,
-  #                           multivariate=r_to_py(TRUE),
-  #                           n_startup_trials=r_to_py(30L),
-  #                           nfold=r_to_py(6L),                    # Number of cv-folds.
-  #                           early_stopping_rounds=r_to_py(20L),   # Number of early-stopping rounds
-  #                           max_minutes=r_to_py(60L*6L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
-  #                           silence=r_to_py(FALSE)
-  # )
-  # 
-  # 
-  # 
-  # saveRDS(opt_param,file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_gbtree.rds")))
-  # 
-  # 
-  # # Add DART ----------------------------------------------------------------
-  # 
-  # params_lightgbm = list(
-  #   boosting = list("categorical",list("dart")),
-  #   xgboost_dart_mode = list("categorical",list(T,F)),
-  #   rate_drop= list("float",list(low= 0, high=0.3, log=FALSE)),
-  #   skip_drop= list("float",list(low= 0.3, high=0.7, log=FALSE)),
-  #   max_drop= list("none",list(-1L)),
-  #   feature_pre_filter= list("none",list(opt_param$feature_pre_filter)),
-  #   learning_rate = list("none",list(opt_param$learning_rate)), 
-  #   max_depth= list("none",list(opt_param$max_depth)),
-  #   num_leaves= list("none",list(opt_param$num_leaves)),           
-  #   min_data_in_leaf= list("none",list(opt_param$min_data_in_leaf)),       
-  #   min_gain_to_split= list("none",list(opt_param$min_gain_to_split)),
-  #   min_sum_hessian_in_leaf =list("none",list(opt_param$min_sum_hessian_in_leaf)),
-  #   feature_fraction_bynode = list("none",list(opt_param$feature_fraction_bynode)),
-  #   baging_freq=list("none",list(opt_param$baging_freq)),
-  #   bin_construct_sample_cnt =list("none",list(opt_param$bin_construct_sample_cnt)),
-  #   bagging_fraction = list("none",list(opt_param$bagging_fraction)),
-  #   max_cat_to_onehot = list("none",list(opt_param$max_cat_to_onehot)),
-  #   max_cat_threshold = list("none",list(opt_param$max_cat_threshold)),
-  #   min_data_per_group = list("none",list(opt_param$min_data_per_group)),
-  #   cat_smooth = list("none",list(opt_param$cat_smooth)),
-  #   cat_l2 = list("none",list(opt_param$cat_l2)),
-  #   histogram_pool_size = list("none",list(opt_param$histogram_pool_size)),
-  #   lambda_l1=list("none",list(opt_param$lambda_l1)),
-  #   lambda_l2=list("none",list(opt_param$lambda_l2))#,
-  #   # path_smooth=list("none",list(opt_param$path_smooth))
-  # )
-  # 
-  # # Tune hyperparameters
-  # opt_param = xgb$hyper_opt(hp_dict=r_to_py(params_lightgbm),
-  #                           train_set=train_py,
-  #                           num_boost_round=r_to_py(opt_param$opt_rounds + 2000L),        # Number of boosting iterations.
-  #                           folds=folds_object,
-  #                           multivariate=r_to_py(TRUE),
-  #                           n_startup_trials=r_to_py(15L),
-  #                           nfold=r_to_py(6L),                    # Number of cv-folds.
-  #                           early_stopping_rounds=r_to_py(20L),   # Number of early-stopping rounds
-  #                           max_minutes=r_to_py(60L*3L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
-  #                           silence=r_to_py(FALSE)
-  # )
-  # 
-  # saveRDS(opt_param,file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_dart.rds"))) 
   
   # Add linear_tree ----------------------------------------------------------------
   
   params_lightgbm = list(
     linear_tree= list("categorical",list(T)),
     linear_lambda= list("float",list(low= 1e-3, high=100, log=TRUE)),
+    
     boosting = list("none",list(opt_param$boosting)),
     xgboost_dart_mode = list("none",list(opt_param$xgboost_dart_mode)),
     rate_drop= list("none",list(opt_param$rate_drop)),
     skip_drop= list("none",list(opt_param$skip_drop)),
     max_drop= list("none",list(opt_param$max_drop)),
+    data_sample_strategy = list("none",list(opt_param$data_sample_strategy)), 
+    top_rate = list("none",list(opt_param$top_rate)),
+    other_rate = list("none",list(opt_param$other_rate)),
     feature_pre_filter= list("none",list(opt_param$feature_pre_filter)),
     learning_rate = list("none",list(opt_param$learning_rate)),
     max_depth= list("none",list(opt_param$max_depth)),
@@ -311,239 +249,63 @@ for (ep in resp){
     cat_l2 = list("none",list(opt_param$cat_l2)),
     histogram_pool_size = list("none",list(opt_param$histogram_pool_size)),
     lambda_l1=list("none",list(opt_param$lambda_l1)),
-    lambda_l2=list("none",list(opt_param$lambda_l2))#,
-    # path_smooth=list("none",list(opt_param$path_smooth))
+    lambda_l2=list("none",list(opt_param$lambda_l2))
+    # boosting= list("categorical",list("dart")), #"gbdt",
+    # xgboost_dart_mode = list("categorical",list(T,F)),
+    # rate_drop= list("float",list(low= 0, high=0.5, log=FALSE)),
+    # skip_drop= list("float",list(low= 0.1, high=0.7, log=FALSE)),
+    # data_sample_strategy = list("categorical",list("goss")), 
+    # top_rate = list("float",list(low= 0.2, high=0.5, log=FALSE)),
+    # other_rate = list("float",list(low= 0.1, high=0.4, log=FALSE)),
+    # feature_pre_filter= list("categorical",list(F)),
+    # learning_rate = list("float",list(low= 1e-4, high=0.9, log=TRUE)), 
+    # max_depth= list("int",list(low= 5L, high=1000L, log=FALSE)),
+    # num_leaves= list("int",list(low= 10L, high=5000L, log=FALSE)),           
+    # min_data_in_leaf= list("int",list(low= 5L, high=200L, log=FALSE)),       
+    # min_gain_to_split= list("float",list(low= 1e-3, high=100, log=TRUE)),
+    # min_sum_hessian_in_leaf =list("float",list(low= 1e-5, high=10, log=TRUE)),
+    # feature_fraction_bynode = list("float",list(low= 0.4, high=0.8, log=FALSE)),
+    # baging_freq=list("none",list(1L)),
+    # bin_construct_sample_cnt =list("none",list(2000000L)),
+    # bagging_fraction = list("float",list(low= 0.3, high=0.7, log=FALSE)),
+    # max_cat_to_onehot = list("int",list(low= 2L, high=10L, log=FALSE)),
+    # max_cat_threshold = list("int",list(low= 1500L, high=5000L, log=FALSE)),
+    # min_data_per_group = list("int",list(low= 2L, high=50L, log=FALSE)),
+    # cat_smooth = list("float",list(low= 0L, high=100L, log=FALSE)),
+    # cat_l2 = list("float",list(low= 0L, high=10L, log=FALSE)),
+    # histogram_pool_size = list("none",list(-1L)),
+    # lambda_l1=list("float",list(low= 1e-3, high=100, log=TRUE)),
+    # lambda_l2=list("float",list(low= 1e-3, high=100, log=TRUE))
   )
   
   # need to regenerate data when setting linear_tree
   train_py = lss.model$Dataset(
-    data=final_data %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
+    data=final_data %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>% r_to_py(),
     label=final_data %>% select(any_of(ep)) %>% as.matrix() %>% r_to_py(),
     group=table(as.numeric(model_data$gen_ProvReachID))
     #weight =final_data %>% select(any_of("case_weight")) %>% as.matrix() %>% r_to_py()
   )
   
   # Tune hyperparameters
-  opt_param = xgb$hyper_opt(hp_dict=r_to_py(params_lightgbm),
-                            train_set=train_py,
-                            num_boost_round=r_to_py(opt_param$opt_rounds + 1000L),        # Number of boosting iterations.
-                            folds=folds_object,
-                            multivariate=r_to_py(FALSE),
-                            n_startup_trials=r_to_py(5L),
-                            nfold=r_to_py(6L),                    # Number of cv-folds.
-                            early_stopping_rounds=r_to_py(20L),   # Number of early-stopping rounds
-                            max_minutes=r_to_py(60L*2L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
-                            silence=r_to_py(FALSE)
-  )
+  linear_tree_log <- py_capture_output({
+    opt_param = xgb$hyper_opt(hp_dict=r_to_py(params_lightgbm),
+                              train_set=train_py,
+                              num_boost_round=r_to_py(opt_param$opt_rounds + 1000L),        # Number of boosting iterations.
+                              folds=folds_object,
+                              multivariate=r_to_py(FALSE),
+                              # n_startup_trials=r_to_py(100L),
+                              n_startup_trials=r_to_py(10L),
+                              nfold=r_to_py(n_folds),                    # Number of cv-folds.
+                              early_stopping_rounds=r_to_py(20L),   # Number of early-stopping rounds
+                              # max_minutes=r_to_py(60L*18L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
+                              max_minutes=r_to_py(60L*2L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
+                              silence=r_to_py(FALSE),
+                              seed=r_to_py(123L),
+                              hp_seed=r_to_py(123L)
+    )
+  })
+  write(linear_tree_log,file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_dart_ltree_log.txt")))
+  saveRDS(opt_param,file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_dart_ltree.rds")))
   
-  saveRDS(opt_param,file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_dart_ltree.rds"))) 
-  
-  
-  # validate CV -------------------------------------------------------------
-  
-  # Define Cross-Validation -------------------------------------------------
-  
-  if (F){
-    
-    for (ii in c("gbtree","dart")){
-      opt_param<-readRDS(file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_",ii,".rds")))
-      
-      cros_v<-group_vfold_cv(model_data0,
-                             "gen_ProvReachID",
-                             20)
-      
-      out_res<-list()
-      for (i in 1:nrow(cros_v)){
-        print(i)
-        xgb = lss.model$LightGBMLSS(
-          distr.lgb$ZAGamma$ZAGamma(
-            stabilization = "None",
-            response_fn = "exp",
-            loss_fn="nll"
-          )
-        )
-        
-        trn_raw<-training(cros_v$splits[[i]]) %>% 
-          mutate(across(starts_with(c("case_weight")),~as.numeric(.))) %>% 
-          group_by(gen_ProvReachID,gen_link_id,gen_StreamName,across(starts_with("tx_"))) %>% 
-          summarise(across(where(is.numeric),~median(.x,na.rm=T)),
-                    across(!where(is.numeric),~tail(.x,1)),
-                    .groups="drop")
-        
-        tst_raw<-testing(cros_v$splits[[i]]) %>% 
-          mutate(across(starts_with(c("case_weight")),~as.numeric(.))) %>% 
-          group_by(gen_ProvReachID,gen_link_id,gen_StreamName,across(starts_with("tx_"))) %>% 
-          summarise(across(where(is.numeric),~median(.x,na.rm=T)),
-                    across(!where(is.numeric),~tail(.x,1)),
-                    .groups="drop")
-        
-        final_prep<-prep(recip_main,trn_raw)
-        
-        tst<- tst_raw %>% 
-          bake(object=final_prep) 
-        
-        trn<-trn_raw %>% #training(cros_v$splits[[i]]) %>% 
-          bake(object=final_prep)
-        
-        train_py = lss.model$Dataset(
-          data=trn %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
-          label=trn %>% select(any_of(ep)) %>% as.matrix() %>% r_to_py()#,
-          #group=table(as.numeric(trn_raw$gen_ProvReachID))%>% r_to_py(),
-          #weight = as.numeric(trn_raw$case_weight) %>% r_to_py()
-        )
-        
-        # test_py = lss.model$Dataset(
-        #   data=tst %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
-        #   label=tst %>% select(any_of(ep)) %>% as.matrix() %>% r_to_py(),
-        #   #weight = tst %>% select(any_of("case_weight")) %>% as.matrix() %>% r_to_py()
-        # )
-        
-        
-        xgb$train(
-          r_to_py(opt_param[names(opt_param)!="opt_rounds"]),
-          train_py,
-          num_boost_round=opt_param$opt_rounds
-        )
-        
-        # xgb$plot(test_py,
-        #          parameter="concentration",
-        #          feature="LDI_HAiFLO_mean",
-        #          plot_type="Partial_Dependence"
-        #          
-        #          )
-        
-        # Calculate quantiles from predicted distribution
-        pred_quantiles = xgb$predict(tst %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
-                                     pred_type="quantiles",
-                                     n_samples=2000L,
-                                     quantiles=c(0.05,0.25,0.5,0.75,0.95))
-        
-        pred_samples = xgb$predict(tst %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
-                                   pred_type="samples",
-                                   n_samples=2000L) %>% 
-          rowMeans() %>% 
-          unlist()
-        # xgb$predict(test_py, pred_type="parameters")
-        # pred_quantiles = xgb$predict(test_py, pred_type="expectiles")
-        
-        out<-pred_quantiles %>% 
-          bind_cols(tibble(Predicted=pred_samples)) %>% 
-          #rename_with(.cols=any_of(c("quant_0.5","expectile_0.5")),~paste0("Predicted")) %>% 
-          bind_cols(tst_raw %>%
-                      select(any_of(ep),tx_Taxa,everything()) %>%
-                      rename_with(.cols=any_of(ep),~paste0("Observed")) %>% 
-                      mutate(endpoint=ep,
-                             cv_fold=i)
-          ) %>% 
-          mutate(gen_ProvReachID=tst_raw$gen_ProvReachID)
-        
-        if (F){
-          
-          
-          #explainer = shap$TreeExplainer(xgb$booster)
-          
-          # xgb$plot(
-          #   #train_py,
-          #   tst %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
-          #   parameter="concentration",
-          #   plot_type="Feature_Importance"
-          # )
-          out<-out %>% 
-            rename(Observed=observed,
-                   Predicted=predicted)
-          out %>% 
-            mutate(in_90=Observed<=quant_0.95 & Observed>=quant_0.05) %>% 
-            select(in_90) %>% 
-            summarise(in_90=sum(in_90)/length(in_90))
-          
-          ggplot(out,aes(x=Observed,y=Predicted,colour=tx_Taxa))+
-            geom_point()+
-            geom_abline(slope=1,intercept=0)+
-            geom_smooth(aes(x=Observed,y=Predicted),se=F,method="gam",colour="black")+
-            geom_smooth(aes(x=Observed,y=quant_0.75),se=F,method="gam",colour="blue")+
-            geom_smooth(aes(x=Observed,y=quant_0.25),se=F,method="gam",colour="blue")+
-            facet_wrap(~tx_Taxa,scales="free")
-          
-          rsq_vec(out$Observed,out$Predicted)
-          rmse_vec(out$Observed,out$Predicted)
-          
-          sumry<-out %>%
-            group_by(tx_Taxa,gen_ProvReachID) %>%
-            summarise(Observed=median(Observed),
-                      Predicted=median(quant_0.75))
-          
-          m1<-sumry %>%
-            filter(tx_Taxa=="Brook (speckled) Trout") %>%
-            left_join(bind_rows(stm_lns),
-                      by=c("gen_ProvReachID"="gen_ProvReachID")) %>%
-            sf::st_as_sf()
-          
-          mapview::mapview(m1,zcol="Predicted",at=0:10)+mapview::mapview(m1,zcol="Observed",at=0:10)
-          
-        }
-        
-        out_res[[i]]<-out
-        
-      }
-      
-      out_res<-bind_rows(out_res)
-      
-      saveRDS(out_res,file.path("data","models","LSS",paste0("best_params_OOB_Pred_",ep,"_",ii,".rds")))
-      
-      
-      
-      if (F) {
-        xgb = lss.model$LightGBMLSS(
-          distr.lgb$ZAGamma$ZAGamma(
-            stabilization = "None",
-            response_fn = "exp",
-            loss_fn="nll"
-          )
-        )
-        
-        train_py = lss.model$Dataset(
-          data=final_data %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>%   r_to_py(),
-          label=final_data %>% select(any_of(ep)) %>% as.matrix() %>% r_to_py()#,
-          #weight = final_data %>% select(any_of("case_weight")) %>% as.matrix() %>% r_to_py()
-        )
-        
-        xgb$train(
-          r_to_py(opt_param[names(opt_param)!="opt_rounds"]),
-          train_py,
-          num_boost_round=opt_param$opt_rounds
-        )
-        
-        shap$initjs()
-        explainer = shap$TreeExplainer(xgb$booster)
-        shap_values = explainer(final_data %>% 
-                                  select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% 
-                                  as.data.frame() %>%
-                                  r_to_py())
-        
-        #shap_values$base_values[,1]+shap_values$values[,,1]
-        #shap$plots$scatter(shap_values[,32,1],color=shap_values[,32,1])
-        
-        saveRDS(shap_values,file.path("data","models","LSS",paste0("best_params_SHAP_",ep,"_",ii,".rds")))
-        
-        shap_values2 = xgb$booster$predict(final_data %>% 
-                                             select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% 
-                                             as.data.frame() %>%
-                                             r_to_py(),
-                                           num_iteration =-1L,
-                                           pred_contrib =T
-        )
-        
-        saveRDS(shap_values2,file.path("data","models","LSS",paste0("best_params_SHAP2_",ep,"_",ii,".rds")))
-        
-        shap_values_interact<-explainer$shap_interaction_values(final_data %>% 
-                                                                  select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% 
-                                                                  as.data.frame() %>%
-                                                                  r_to_py()
-        )
-        saveRDS(shap_values_interact,file.path("data","models","LSS",paste0("best_params_SHAPinteraction_",ep,"_",ii,".rds")))
-      }
-      
-    }
-  }
 }
 
