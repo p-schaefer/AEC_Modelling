@@ -4,7 +4,7 @@ source("R/00_Functions/Endpoint_Calc_Functions.R")
 fp<-file.path("app","Model_Explore2","data",paste0("Model_data_v2.gpkg"))
 
 #file.remove(fp)
-file.copy(file.path("app","Model_Explore2","data",paste0("Model_data_v2_backup.gpkg")),fp)
+#file.copy(file.path("app","Model_Explore2","data",paste0("Model_data_v2_backup.gpkg")),fp)
 
 con <- DBI::dbConnect(RSQLite::SQLite(), fp)
 
@@ -31,6 +31,8 @@ lookup_tbl<-lookup_tbl %>%
   summarize(across(everything(),~head(.x,1))) %>% 
   distinct()
 
+# TODO: replace below approach with simulating outcomes using shape parameters and getting
+# distributions from them.
 
 # Setup Endpoints ---------------------------------------------------------
 sel_ep<-c(`Community Total Biomass`="Comm_Biomass",
@@ -153,9 +155,76 @@ t1<-dplyr::copy_to(df=out,
 
 # Out of sample predictions -----------------------------------------------
 
-sel_modelOOSpredictions<-tbl(con,"OOS_Predictions") %>% 
-  collect()
+Model_Predictions_list<-list(
+  Predicted95=c(EstimatedBiomass="resp_Comm_Biomass_quant_0.95",NumberOfFish="resp_Comm_Abundance_quant_0.95"),
+  Predicted84=c(EstimatedBiomass="resp_Comm_Biomass_quant_0.84",NumberOfFish="resp_Comm_Abundance_quant_0.84"),
+  Predicted75=c(EstimatedBiomass="resp_Comm_Biomass_quant_0.75",NumberOfFish="resp_Comm_Abundance_quant_0.75"),
+  Predicted66=c(EstimatedBiomass="resp_Comm_Biomass_quant_0.66",NumberOfFish="resp_Comm_Abundance_quant_0.66"),
+  Predicted5=c(EstimatedBiomass="resp_Comm_Biomass_quant_0.5",NumberOfFish="resp_Comm_Abundance_quant_0.5"),
+  Predicted33=c(EstimatedBiomass="resp_Comm_Biomass_quant_0.33",NumberOfFish="resp_Comm_Abundance_quant_0.33"),
+  Predicted25=c(EstimatedBiomass="resp_Comm_Biomass_quant_0.25",NumberOfFish="resp_Comm_Abundance_quant_0.25"),
+  Predicted16=c(EstimatedBiomass="resp_Comm_Biomass_quant_0.16",NumberOfFish="resp_Comm_Abundance_quant_0.16"),
+  Predicted05=c(EstimatedBiomass="resp_Comm_Biomass_quant_0.05",NumberOfFish="resp_Comm_Abundance_quant_0.05"),
+  predicted=c(EstimatedBiomass="resp_Comm_Biomass_predicted",NumberOfFish="resp_Comm_Abundance_predicted"),
+  Observed=c(EstimatedBiomass="resp_Comm_Biomass_observed",NumberOfFish="resp_Comm_Abundance_observed")
+)
 
+sel_modelOOSpredictions<-tbl(con,"OOS_Predictions") %>% 
+  collect() %>% 
+  distinct() %>% 
+  pivot_wider(values_from =c(starts_with("quant_"),predicted,observed),
+              names_from = endpoint,
+              values_fn =median,
+              names_glue = "{endpoint}_{.value}")
+
+sel_modelOOSpredictions <- sel_modelOOSpredictions %>% 
+  left_join(lookup_tbl,by="tx_Taxa")
+
+out<-map(Model_Predictions_list, 
+         function(x){
+           sel_modelOOSpredictions %>% 
+             select(ProvReachID=gen_ProvReachID,all_of(setNames(x,NULL)),all_of(info_cols)) %>% 
+             mutate(across(any_of(setNames(x,NULL)),~expm1(.x))) %>% 
+             filter(!if_any(any_of(setNames(x,NULL)),~is.na(.x))) %>% 
+             filter(!if_all(any_of(setNames(x,NULL)),~.x==0)) %>% 
+             set_names(c("SampleEventID",names(x),info_cols)) %>% 
+             mutate(SampleDate="2000-01-01") %>% 
+             calc_fish_ep() %>% 
+             select(SampleEventID,SampleDate,all_of(setNames(sel_ep$Endpoint,NULL))) %>% 
+             pivot_longer(c(everything(),-SampleEventID,-SampleDate),names_to="Endpoint",values_to="val") %>% 
+             left_join(sel_ep,by=c("Endpoint"))  %>% 
+             select(gen_ProvReachID=SampleEventID,tx_Taxa=Endpoint_group2,Endpoint_type,val) %>% 
+             pivot_wider(names_from="Endpoint_type",values_from="val") %>% 
+             mutate(Abundance=if_else(is.na(Abundance),Biomass,Abundance)) %>% 
+             set_names(c("gen_ProvReachID","tx_Taxa",x)) %>% 
+             mutate(across(any_of(setNames(x,NULL)),
+                           ~case_when(
+                             tx_Taxa %in% c("Community Total") ~ log1p(.x),
+                             grepl("%",tx_Taxa) ~ .x*100,
+                             T ~ .x
+                           )))
+         }
+) %>% 
+  purrr::reduce(left_join,by=c("gen_ProvReachID","tx_Taxa")) 
+
+out <- out %>% 
+  pivot_longer(c(everything(),-gen_ProvReachID,-tx_Taxa)) %>% 
+  mutate(endpoint=if_else(grepl("Biomass",name),"resp_Comm_Biomass","resp_Comm_Abundance")) %>% 
+  rowwise() %>% 
+  mutate(name=gsub(paste0(endpoint,"_"),"",name)) %>% 
+  ungroup() %>% 
+  pivot_wider()
+
+#out<-left_join(out,region,by="gen_ProvReachID")
+
+t1<-dplyr::copy_to(df=out,
+                   con,
+                   "OOS_Predictions",
+                   overwrite =F,
+                   append=T,
+                   temporary =F,
+                   analyze=T,
+                   in_transaction=T)
 
 s6<-RSQLite::dbSendQuery(con, "pragma vacuum;")
 s7<-RSQLite::dbSendQuery(con, "pragma optimize;")

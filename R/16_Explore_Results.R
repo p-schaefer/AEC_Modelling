@@ -19,20 +19,20 @@ ep_rn<-function(x) {
   case_when(
     x=="resp_Comm_Biomass" ~ "Biomass (g/m²)",
     x=="resp_Comm_Abundance" ~ "Density (ind/m²)",
-    x=="Atlantic Salmon (ouananiche)" ~ "Atlantic \nSalmon",
-    x=="Brook (speckled) Trout" ~ "Brook \nTrout",
-    x=="Brook Stickleback" ~ "Brook  \nStickleback",
-    x=="Brown Trout" ~ "Brown \nTrout",
-    x=="Central Mudminnow" ~ "Central \nMudminnow",
-    x=="Common Shiner" ~ "Common \nShiner",
-    x=="Creek Chub" ~ "Creek \nChub",
-    x=="Fantail Darter" ~ "Fantail \nDarter",
-    x=="Johnny/tesselated Darter" ~ "Johnny/tesselated \nDarter",
+    x=="Atlantic Salmon (ouananiche)" ~ "Atlantic Salmon",
+    x=="Brook (speckled) Trout" ~ "Brook Trout",
+    x=="Brook Stickleback" ~ "Brook  Stickleback",
+    x=="Brown Trout" ~ "Brown Trout",
+    x=="Central Mudminnow" ~ "Central Mudminnow",
+    x=="Common Shiner" ~ "Common Shiner",
+    x=="Creek Chub" ~ "Creek Chub",
+    x=="Fantail Darter" ~ "Fantail Darter",
+    x=="Johnny/tesselated Darter" ~ "Johnny/tesselated Darter",
     x=="Pumpkinseed" ~ "Pumpkinseed",
-    x=="Rainbow Darter" ~ "Rainbow \nDarter",
-    x=="Rainbow Trout (steelhead)" ~ "Rainbow \nTrout",
-    x=="Rock Bass" ~ "Rock \nBass",
-    x=="White Sucker" ~ "White \nSucker",
+    x=="Rainbow Darter" ~ "Rainbow Darter",
+    x=="Rainbow Trout (steelhead)" ~ "Rainbow Trout",
+    x=="Rock Bass" ~ "Rock Bass",
+    x=="White Sucker" ~ "White Sucker",
     T ~ x
   )
 }
@@ -46,25 +46,64 @@ sel_modelOOSpredictions<-tbl(con,"OOS_Predictions") %>%
   mutate(endpoint=ep_rn(endpoint),
          tx_Taxa=ep_rn(tx_Taxa))
 
-rng<-range(c(sel_modelOOSpredictions$observed,sel_modelOOSpredictions$quant_0.75),na.rm=T)
+rng_fn<-function(x){
+  rng<-range(c(x$observed,x$quant_0.75),na.rm=T)
+  rng<-range(pretty(rng))
+  rng
+}
 
-rng<-range(pretty(rng))
+plt <- sel_modelOOSpredictions %>% 
+  mutate(across(`quant_0.05`:observed,
+                ~case_when(
+                  tx_Taxa == "SATI" & (observed == 0 | quant_0.75 ==0) ~ NA_real_,
+                  T ~ .
+                ))) %>% 
+  group_by(tx_Taxa) %>% 
+  nest() %>% 
+  ungroup() %>% 
+  mutate(ep_gp=case_when(
+    tx_Taxa %in% CalcEP ~ "Derived",
+    T ~ "Taxa"
+  )) %>% 
+  mutate(plt=map2(data,tx_Taxa,
+                  ~ggplot(.x,
+                          aes(x=observed,y=quant_0.5))+
+                    geom_point(size=0.5)+
+                    geom_abline(slope=1,intercept=0)+
+                    geom_smooth(aes(x=observed,y=quant_0.5),se=F,method="gam",colour="black", formula = y ~ splines::bs(x, 3))+
+                    geom_smooth(aes(x=observed,y=quant_0.75),se=F,method="gam",colour="blue", formula = y ~ splines::bs(x, 3))+
+                    geom_smooth(aes(x=observed,y=quant_0.25),se=F,method="gam",colour="blue", formula = y ~ splines::bs(x, 3))+
+                    scale_x_continuous(breaks=scales::pretty_breaks())+
+                    scale_y_continuous(breaks=scales::pretty_breaks())+
+                    coord_cartesian(xlim=rng_fn(.x),ylim=rng_fn(.x))+
+                    theme_bw()+
+                    labs(x="Observed",
+                         y="Predicted",
+                         title=paste0(.y)) +
+                    facet_wrap(~endpoint)
+  )) %>% 
+  group_by(ep_gp ) %>% 
+  nest() %>% 
+  ungroup() %>% 
+  mutate(plt=map(data,~cowplot::plot_grid(plotlist = .x$plt,align="hv",axis="tblr")))
 
-plt<-ggplot(sel_modelOOSpredictions,
-            aes(x=observed,y=quant_0.5))+
-  geom_point(size=0.5)+
-  geom_abline(slope=1,intercept=0)+
-  geom_smooth(aes(x=observed,y=quant_0.5),se=F,method="gam",colour="black", formula = y ~ splines::bs(x, 2))+
-  geom_smooth(aes(x=observed,y=quant_0.75),se=F,method="gam",colour="blue", formula = y ~ splines::bs(x, 2))+
-  geom_smooth(aes(x=observed,y=quant_0.25),se=F,method="gam",colour="blue", formula = y ~ splines::bs(x, 2))+
-  scale_x_continuous(breaks=scales::pretty_breaks())+
-  scale_y_continuous(breaks=scales::pretty_breaks())+
-  coord_cartesian(xlim=rng,ylim=rng)+
-  theme_bw()+
-  labs(x="Observed (ln(x+1)-scaled)",
-       y="Predicted (ln(x+1)-scaled)",
-       title="Out of Sample Predictions vs. Observed")+
-  facet_grid(endpoint~tx_Taxa)
+
+
+# plt<-ggplot(sel_modelOOSpredictions,
+#             aes(x=observed,y=quant_0.5))+
+#   geom_point(size=0.5)+
+#   geom_abline(slope=1,intercept=0)+
+#   geom_smooth(aes(x=observed,y=quant_0.5),se=F,method="gam",colour="black", formula = y ~ splines::bs(x, 2))+
+#   geom_smooth(aes(x=observed,y=quant_0.75),se=F,method="gam",colour="blue", formula = y ~ splines::bs(x, 2))+
+#   geom_smooth(aes(x=observed,y=quant_0.25),se=F,method="gam",colour="blue", formula = y ~ splines::bs(x, 2))+
+#   scale_x_continuous(breaks=scales::pretty_breaks())+
+#   scale_y_continuous(breaks=scales::pretty_breaks())+
+#   coord_cartesian(xlim=rng,ylim=rng)+
+#   theme_bw()+
+#   labs(x="Observed (ln(x+1)-scaled)",
+#        y="Predicted (ln(x+1)-scaled)",
+#        title="Out of Sample Predictions vs. Observed")+
+#   facet_grid(endpoint~tx_Taxa,scales="free")
 
 # do for calculated endpoints as well
 
@@ -98,20 +137,43 @@ plt <- pred_imp %>%
   group_by(sel_tx_Taxa,ttl) %>% 
   nest() %>% 
   mutate(plt=map2(data,ttl,
-                 ~ggplot(.x,
-                         aes(x=Importance,
-                             y=Predictors,
-                             xmin=q25,
-                             xmax=q75,
-                             colour=endpoint))+
-                   geom_point(position=position_dodge(width=0.5))+
-                   geom_linerange(position=position_dodge(width=0.5))+
-                   scale_colour_manual(values = c(RColorBrewer::brewer.pal(3,"Dark2")[1:2]))+
-                   facet_wrap(~shape_param,scales="free_x")+
-                   labs(title=.y,colour = "")+
-                   xlab("Importance\n(mean absolute SHAP value | 10th-90th range)")+
-                   theme_bw()))
+                  ~ggplot(.x,
+                          aes(x=Importance,
+                              y=Predictors,
+                              xmin=q25,
+                              xmax=q75,
+                              colour=endpoint))+
+                    geom_point(position=position_dodge(width=0.5))+
+                    geom_linerange(position=position_dodge(width=0.5))+
+                    scale_colour_manual(values = c(RColorBrewer::brewer.pal(3,"Dark2")[1:2]))+
+                    facet_wrap(~shape_param,scales="free_x")+
+                    labs(title=.y,colour = "")+
+                    xlab("Importance\n(mean absolute SHAP value | 10th-90th Percentile range)")+
+                    theme_bw()+
+                    theme(legend.position = "none")
+                  ))
 
+plt2 <- pred_imp %>% 
+  mutate(ttl="All",
+         sel_tx_Taxa="ALL") %>% 
+  group_by(sel_tx_Taxa,ttl) %>% 
+  nest() %>% 
+  mutate(plt=map2(data,ttl,
+                  ~ggplot(.x,
+                          aes(x=Importance,
+                              y=Predictors,
+                              xmin=q25,
+                              xmax=q75,
+                              colour=endpoint))+
+                    geom_point(position=position_dodge(width=0.5))+
+                    geom_linerange(position=position_dodge(width=0.5))+
+                    scale_colour_manual(values = c(RColorBrewer::brewer.pal(3,"Dark2")[1:2]))+
+                    facet_wrap(~shape_param,scales="free_x")+
+                    labs(title=.y,colour = "")+
+                    xlab("Importance\n(mean absolute SHAP value | 10th-90th Percentile range)")+
+                    theme_bw()+
+                    theme(legend.position = "none")
+  ))
 
 # Response Surfaces -------------------------------------------------------
 
