@@ -65,16 +65,16 @@ function(input, output, session) {
       rename_with(~gsub(paste0(input$sel_ep,"_"),"",.x)) %>% 
       select(ProvReachID,
              observed,
-             p75=quant_0.75,
-             p75_ref=quant_0.75_ref,
-             p75_refdiff=quant_0.75_refdiff,
+             p50=quant_0.5,
+             p50_ref=quant_0.5_ref,
+             p50_refdiff=quant_0.5_refdiff,
              contains(pred_names),
              geom) %>% 
       mutate(
         `Observed`=observed,
-        `Predicted - Reference`=p75_ref,
-        `Predicted - Current`=p75,
-        `(Current - Reference)`=p75_refdiff
+        `Predicted - Reference`=p50_ref,
+        `Predicted - Current`=p50,
+        `(Current - Reference)`=p50_refdiff
       ) %>% 
       sf::st_as_sf() 
     
@@ -349,7 +349,7 @@ function(input, output, session) {
                 T ~ "Density (individuals/100m^2)")
     )
     
-    rng<-range(c(sel_modelOOSpredictions$observed,sel_modelOOSpredictions$quant_0.75),na.rm=T)
+    rng<-range(c(sel_modelOOSpredictions$observed,sel_modelOOSpredictions$quant_0.5),na.rm=T)
     
     rng<-range(pretty(rng))
     
@@ -386,9 +386,9 @@ function(input, output, session) {
     con <- DBI::dbConnect(RSQLite::SQLite(), fp)
     loading_message(session)
     
-    q25<-function(x) quantile(x,0.10,na.rm = T)
+    q10<-function(x) quantile(x,0.10,na.rm = T)
     mn<-function(x) mean(x,na.rm=T)
-    q75<-function(x) quantile(x,0.90,na.rm = T)
+    q90<-function(x) quantile(x,0.90,na.rm = T)
     
     sel_ProvReachID<-sf::read_sf(fp,
                                  query=paste0("SELECT * FROM AEC_Streams WHERE AEC_Region_sub IN ('",paste(input$sel_region,collapse="', '"),"')")) %>% 
@@ -402,7 +402,7 @@ function(input, output, session) {
       group_by(shape_param) %>% 
       mutate(across(everything(),~abs(.x))) %>% 
       collect() %>% 
-      summarise(across(everything(),list(Importance=mn,q25=q25,q75=q75),.names = "{.fn}_{.col}")) %>% 
+      summarise(across(everything(),list(Importance=mn,q10=q10,q90=q90),.names = "{.fn}_{.col}")) %>% 
       pivot_longer(c(everything(),-shape_param),names_to = "Predictors", values_to = "Importance") %>% 
       mutate(Summary=stringr::str_split(Predictors,"_",n=2,simplify=T)[,1]) %>% 
       mutate(Predictors=str_replace(Predictors,Summary,""))%>% 
@@ -413,7 +413,7 @@ function(input, output, session) {
     
     pred_imp<-sel_modelShap
     
-    plt<-ggplot(pred_imp,aes(x=Importance,y=Predictors,xmin=q25,xmax=q75))+
+    plt<-ggplot(pred_imp,aes(x=Importance,y=Predictors,xmin=q10,xmax=q90))+
       geom_point()+
       geom_linerange()+
       facet_wrap(~shape_param,scales="free_x")+

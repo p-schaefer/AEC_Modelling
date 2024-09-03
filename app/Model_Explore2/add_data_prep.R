@@ -134,8 +134,7 @@ t1<-dplyr::copy_to(df=tibble(pred_names=pred_names),
 out_final<-readRDS(file.path("data","models","LSS",paste0("Landscape_Predictions_",booster_pred,".rds")))
 out_final_ref<-readRDS(file.path("data","models","LSS",paste0("Landscape_RefPredictions_",booster_pred,".rds")))
 
-model_data0<-read_rds(file.path("data","final","Model_building_finaltaxa_data.rds")) %>% 
-  filter(year(as.Date(gen_SampleDate))>1994) 
+model_data0<-read_rds(file.path("data","final","Model_building_finaltaxa_data.rds")) 
 
 preds<-out_final %>% 
   select(tx_Taxa,gen_Region,gen_ProvReachID,contains(c("resp_")),any_of(pred_names)) %>% 
@@ -230,7 +229,7 @@ t1<-dplyr::copy_to(df=shap_out,
 
 out_res<-map_dfr(c("resp_Comm_Biomass","resp_Comm_Abundance"),#
     ~readRDS(file.path("data","models","LSS",paste0("OOB_Pred_",.x,"_",booster_pred,".rds"))) %>% 
-      select(contains(c("quant_","predicted","observed","endpoint","tx_Taxa","gen_ProvReachID")))
+      select(contains(c("quant_","predicted","observed","concentration","rate","gate","endpoint","tx_Taxa","gen_ProvReachID")))
     )
 #write_csv(out_res,file.path("app","Model_Explore2","data",paste0("OOS_Pred.csv")))
 t1<-dplyr::copy_to(df=out_res,
