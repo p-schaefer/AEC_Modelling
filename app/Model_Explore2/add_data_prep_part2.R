@@ -87,8 +87,8 @@ t1<-dplyr::copy_to(df=tibble(calc_ep=calc_ep),
 # Setup Prediction list ---------------------------------------------------
 
 Model_Predictions_list<-list(
-  Predicted=c(EstimatedBiomass="resp_Comm_Biomass_quant_0.75",NumberOfFish="resp_Comm_Abundance_quant_0.75"),
-  Reference=c(EstimatedBiomass="resp_Comm_Biomass_quant_0.75_ref",NumberOfFish="resp_Comm_Abundance_quant_0.75_ref"),
+  Predicted=c(EstimatedBiomass="resp_Comm_Biomass_quant_0.5",NumberOfFish="resp_Comm_Abundance_quant_0.5"),
+  Reference=c(EstimatedBiomass="resp_Comm_Biomass_quant_0.5_ref",NumberOfFish="resp_Comm_Abundance_quant_0.5_ref"),
   Observed=c(EstimatedBiomass="resp_Comm_Biomass_observed",NumberOfFish="resp_Comm_Abundance_observed")
 )
 Model_Predictions_list_sub<-unlist(Model_Predictions_list)
@@ -137,8 +137,8 @@ out<-map(Model_Predictions_list,
 ) %>% 
   purrr::reduce(left_join,by=c("gen_ProvReachID","tx_Taxa")) %>% 
   mutate(
-    resp_Comm_Abundance_quant_0.75_refdiff=resp_Comm_Abundance_quant_0.75-resp_Comm_Abundance_quant_0.75_ref,
-    resp_Comm_Biomass_quant_0.75_refdiff=resp_Comm_Biomass_quant_0.75-resp_Comm_Biomass_quant_0.75_ref,
+    resp_Comm_Abundance_quant_0.5_refdiff=resp_Comm_Abundance_quant_0.5-resp_Comm_Abundance_quant_0.5_ref,
+    resp_Comm_Biomass_quant_0.5_refdiff=resp_Comm_Biomass_quant_0.5-resp_Comm_Biomass_quant_0.5_ref,
   )
 
 out<-left_join(out,region,by="gen_ProvReachID")
@@ -169,7 +169,8 @@ Model_Predictions_list<-list(
   Observed=c(EstimatedBiomass="resp_Comm_Biomass_observed",NumberOfFish="resp_Comm_Abundance_observed")
 )
 
-sel_modelOOSpredictions<-tbl(con,"OOS_Predictions") %>% 
+sel_modelOOSpredictions <- tbl(con,"OOS_Predictions") %>%
+  filter(!tx_Taxa %in% sel_ep$Endpoint_group2) %>% 
   collect() %>% 
   distinct() %>% 
   pivot_wider(values_from =c(starts_with("quant_"),predicted,observed),
