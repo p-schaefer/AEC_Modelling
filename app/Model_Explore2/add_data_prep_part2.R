@@ -173,7 +173,7 @@ sel_modelOOSpredictions <- tbl(con,"OOS_Predictions") %>%
   filter(!tx_Taxa %in% sel_ep$Endpoint_group2) %>% 
   collect() %>% 
   distinct() %>% 
-  pivot_wider(values_from =c(starts_with("quant_"),predicted,observed),
+  pivot_wider(values_from =c(starts_with("quant_"),predicted,observed,concentration,rate,gate),
               names_from = endpoint,
               values_fn =median,
               names_glue = "{endpoint}_{.value}")
