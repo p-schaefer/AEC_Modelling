@@ -7,9 +7,9 @@ lu_master<-readRDS(file.path("data","lookups.rds"))
 
 plan(multisession(workers=8))
 
-fl<-list.files(file.path("data","Processed","ihydro"),full.names = T)
-fl_base<-fl[!grepl("_loi|_DW|.csv|.ini|old",fl)]
-names(fl_base)<-gsub(".gpkg","",basename(fl_base))
+# fl<-list.files(file.path("data","Processed","ihydro"),full.names = T)
+# fl_base<-fl[!grepl("_loi|_DW|.csv|.ini|old",fl)]
+# names(fl_base)<-gsub(".gpkg","",basename(fl_base))
 
 all_lc<-read_csv(file.path("data","final","All_LC_Attr.csv")) %>% 
   select(-`...1`,-status)

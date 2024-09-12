@@ -92,14 +92,24 @@ model_data<-tx_data %>%
     resp_Perc_Abundance=car::logit(resp_Perc_Abundance,F,adj)
   ) 
 
-taxa_prop <- model_data %>% 
+taxa_prop1 <- model_data %>% 
+  select(-case_weight) %>% 
+  group_by(gen_ProvReachID,tx_Taxa) %>% 
+  summarise(across(where(is.numeric),~median(.x,na.rm=T)),
+            across(!where(is.numeric),~tail(.x,1)),
+            .groups="drop")
+
+taxa_prop <- taxa_prop1 %>% 
   group_by(tx_Taxa) %>% 
   summarise(
-    mean_biomass_perc=inv.logit(mean(resp_Perc_Biomass,na.rm=T),adj)*100,
-    mean_abund_perc=inv.logit(mean(resp_Perc_Abundance,na.rm=T),adj)*100
+    mean_biomass_perc=inv.logit(mean(resp_Perc_Biomass,na.rm=T),adj),
+    mean_abund_perc=inv.logit(mean(resp_Perc_Abundance,na.rm=T),adj),
+    perc_present=sum(resp_Comm_Abundance!=0)/length(resp_Comm_Abundance)
   ) %>% 
-  arrange(desc(mean_abund_perc)) %>% 
-  filter(mean_abund_perc>=0.09) # pushed to 9% for atlantic slmon
+  arrange(desc(perc_present)) %>% 
+  filter(perc_present>=0.1) 
+
+saveRDS(taxa_prop,file.path("data","taxa_keep.rds"))
 
 model_data<-model_data %>% 
   filter(tx_Taxa %in% taxa_prop$tx_Taxa) %>% 

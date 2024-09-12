@@ -66,7 +66,10 @@ con <- DBI::dbConnect(RSQLite::SQLite(), fp)
 
 # Write Prediction Data frame ----------------------------------------------
 
-pred_data_fin<-read_rds(file.path("data","final","Prediction_finaltaxa_data.rds"))
+taxa_keep<-readRDS(file.path("data","taxa_keep.rds"))
+pred_data_fin<-read_rds(file.path("data","final","Prediction_finaltaxa_data.rds")) %>% 
+  filter(tx_Taxa %in% taxa_keep$tx_Taxa) %>% 
+  mutate(tx_Taxa = factor(tx_Taxa, levels=taxa_keep$tx_Taxa))
 # write_csv(pred_data_fin %>%
 #             select(-starts_with("tx_"),-case_weight) %>%
 #             distinct(),
@@ -134,7 +137,9 @@ t1<-dplyr::copy_to(df=tibble(pred_names=pred_names),
 out_final<-readRDS(file.path("data","models","LSS",paste0("Landscape_Predictions_",booster_pred,".rds")))
 out_final_ref<-readRDS(file.path("data","models","LSS",paste0("Landscape_RefPredictions_",booster_pred,".rds")))
 
-model_data0<-read_rds(file.path("data","final","Model_building_finaltaxa_data.rds")) 
+model_data0<-read_rds(file.path("data","final","Model_building_finaltaxa_data.rds")) %>% 
+  filter(tx_Taxa %in% taxa_keep$tx_Taxa) %>% 
+  mutate(tx_Taxa = factor(tx_Taxa, levels=taxa_keep$tx_Taxa))
 
 preds<-out_final %>% 
   select(tx_Taxa,gen_Region,gen_ProvReachID,contains(c("resp_")),any_of(pred_names)) %>% 

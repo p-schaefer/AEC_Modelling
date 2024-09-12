@@ -12,8 +12,10 @@ distr.lgb<-import("lightgbmlss.distributions")
 shap<-import("shap")
 
 # Load Data ---------------------------------------------------------------
-
+taxa_keep<-readRDS(file.path("data","taxa_keep.rds"))
 model_data0<-read_rds(file.path("data","final","Model_building_finaltaxa_data.rds")) %>% 
+  filter(tx_Taxa %in% taxa_keep$tx_Taxa) %>% 
+  mutate(tx_Taxa = factor(tx_Taxa, levels=taxa_keep$tx_Taxa)) %>% 
   #filter(year(as.Date(gen_SampleDate))>1994) %>% 
   mutate(across(starts_with("resp_"),
                 ~case_when(
@@ -63,7 +65,7 @@ for (booster in booster_list) {
     xgb = lss.model$LightGBMLSS(
       distr.lgb$ZAGamma$ZAGamma(
         stabilization = "None",
-        response_fn = "exp",
+        response_fn = "softplus",
         loss_fn="nll"
       )
     )
@@ -81,7 +83,7 @@ for (booster in booster_list) {
     
     xgb$save_model(r_to_py(file.path("data","models","LSS",paste0("Final_Model_",ep,"_",booster,".txt"))))
     
-    if (booster=="dart_ltree"){
+    if (T){#if (booster=="dart_ltree"){
       # OOS Predictions -------------------------------------------------------------
       
       cros_v<-group_vfold_cv(model_data_means,
@@ -93,7 +95,7 @@ for (booster in booster_list) {
         xgb = lss.model$LightGBMLSS(
           distr.lgb$ZAGamma$ZAGamma(
             stabilization = "None",
-            response_fn = "exp",
+            response_fn = "softplus",
             loss_fn="nll"
           )
         )

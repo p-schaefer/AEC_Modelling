@@ -14,9 +14,15 @@ shap<-import("shap")
 
 # Load Data ---------------------------------------------------------------
 
-model_data0_fin<-read_rds(file.path("data","final","Prediction_finaltaxa_data.rds"))
-model_refdata0_fin<-read_rds(file.path("data","final","Prediction_ref_finaltaxa_data.rds")) 
+taxa_keep<-readRDS(file.path("data","taxa_keep.rds"))
 
+model_data0_fin<-read_rds(file.path("data","final","Prediction_finaltaxa_data.rds")) %>% 
+  filter(tx_Taxa %in% taxa_keep$tx_Taxa) %>% 
+  mutate(tx_Taxa = factor(tx_Taxa, levels=taxa_keep$tx_Taxa)) 
+
+model_refdata0_fin<-read_rds(file.path("data","final","Prediction_ref_finaltaxa_data.rds")) %>% 
+  filter(tx_Taxa %in% taxa_keep$tx_Taxa) %>% 
+  mutate(tx_Taxa = factor(tx_Taxa, levels=taxa_keep$tx_Taxa)) 
 
 # resp<-model_data0 %>% select(starts_with("resp_")) %>% colnames()
 # resp<-resp[!grepl("Perc|cat_",resp)]
@@ -45,7 +51,7 @@ for (dt in c("Current","Reference")){
     xgb = lss.model$LightGBMLSS(
       distr.lgb$ZAGamma$ZAGamma(
         stabilization = "None",
-        response_fn = "exp",
+        response_fn = "softplus",
         loss_fn="nll"
       )
     )
