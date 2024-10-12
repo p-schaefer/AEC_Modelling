@@ -51,7 +51,7 @@ for (dt in c("Current","Reference")){
     xgb = lss.model$LightGBMLSS(
       distr.lgb$ZAGamma$ZAGamma(
         stabilization = "None",
-        response_fn = "softplus",
+        response_fn = "exp",
         loss_fn="nll"
       )
     )

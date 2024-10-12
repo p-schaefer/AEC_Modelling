@@ -52,7 +52,7 @@ for (booster in booster_list){
     xgb = lss.model$LightGBMLSS(
       distr.lgb$ZAGamma$ZAGamma(
         stabilization = "None",
-        response_fn = "softplus",
+        response_fn = "exp",
         loss_fn="nll"
       )
     )

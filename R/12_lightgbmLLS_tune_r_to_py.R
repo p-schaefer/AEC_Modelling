@@ -3,7 +3,7 @@ library(tidyverse)
 library(tidymodels)
 
 boosting_rounds<-1500L
-n_folds<-6L
+n_folds<-5L
 
 if (F) {
   # Setup python environment
@@ -59,7 +59,7 @@ model_data0<-read_rds(file.path("data","final","Model_building_finaltaxa_data.rd
 
 resp<-model_data0 %>% select(starts_with("resp_")) %>% colnames()
 resp<-resp[!grepl("Perc|cat_",resp)]
-#ep<-resp[[1]]
+#ep<-resp[[2]]
 
 for (ep in resp){
   print(ep)
@@ -100,7 +100,7 @@ for (ep in resp){
       new_role = "predictor"
     ) %>% 
     step_zv(all_predictors()) %>% 
-    step_nzv(all_predictors(),freq_cut = 100) %>% 
+    step_nzv(all_predictors(),freq_cut = 500) %>% 
     step_lincomb(starts_with(c("br_","nr_","LDI_"))) %>%
     step_corr(method="spearman",threshold = 0.7) %>% 
     step_unorder(all_factor_predictors()) %>% 
@@ -164,7 +164,7 @@ for (ep in resp){
   xgb = lss.model$LightGBMLSS(
     distr.lgb$ZAGamma$ZAGamma(
       stabilization = "None",
-      response_fn = "softplus",
+      response_fn = "exp",
       loss_fn="nll"
     )
   )
@@ -179,12 +179,12 @@ for (ep in resp){
     # top_rate = list("float",list(low= 0.2, high=0.5, log=FALSE)),
     # other_rate = list("float",list(low= 0.1, high=0.4, log=FALSE)),
     feature_pre_filter= list("categorical",list(F)),
-    learning_rate = list("float",list(low= 1e-4, high=0.9, log=TRUE)), 
-    max_depth= list("int",list(low= 5L, high=1000L, log=FALSE)),
-    num_leaves= list("int",list(low= 10L, high=5000L, log=FALSE)),           
+    learning_rate = list("float",list(low= 1e-6, high=3, log=TRUE)), 
+    max_depth= list("int",list(low= 100L, high=2000L, log=FALSE)),
+    num_leaves= list("int",list(low= 150L, high=40000L, log=FALSE)),           
     min_data_in_leaf= list("int",list(low= 5L, high=200L, log=FALSE)),       
-    min_gain_to_split= list("float",list(low= 1e-3, high=600, log=TRUE)),
-    min_sum_hessian_in_leaf =list("float",list(low= 1e-3, high=600, log=TRUE)),
+    min_gain_to_split= list("float",list(low= 1e-9, high=9, log=TRUE)),
+    min_sum_hessian_in_leaf =list("float",list(low= 1e-9, high=99, log=TRUE)),
     feature_fraction_bynode = list("float",list(low= 0.4, high=0.8, log=FALSE)),
     baging_freq=list("none",list(1L)),
     bin_construct_sample_cnt =list("none",list(2000000L)),
@@ -192,30 +192,36 @@ for (ep in resp){
     max_cat_to_onehot = list("int",list(low= 2L, high=10L, log=FALSE)),
     max_cat_threshold = list("int",list(low= 1500L, high=5000L, log=FALSE)),
     min_data_per_group = list("int",list(low= 2L, high=50L, log=FALSE)),
-    cat_smooth = list("float",list(low= 0L, high=100L, log=FALSE)),
-    cat_l2 = list("float",list(low= 0L, high=10L, log=FALSE)),
+    cat_smooth = list("float",list(low= 0L, high=60L, log=FALSE)),
+    cat_l2 = list("float",list(low= 1e-9, high=9, log=TRUE)),
     histogram_pool_size = list("none",list(-1L)),
-    lambda_l1=list("float",list(low= 1e-3, high=100, log=TRUE)),
-    lambda_l2=list("float",list(low= 1e-3, high=100, log=TRUE))
+    lambda_l1=list("float",list(low= 1e-9, high=9, log=TRUE)),
+    lambda_l2=list("float",list(low= 1e-9, high=9, log=TRUE))
   )
   
   # Tune hyperparameters
+  oo<-try(lm(xyz~0),silent=T)
+  while(inherits(oo,"try-error")){
+    oo<-try({
+      dart_log <- py_capture_output({
+        opt_param = xgb$hyper_opt(hp_dict=r_to_py(params_lightgbm),
+                                  train_set=train_py,
+                                  num_boost_round=r_to_py(boosting_rounds),    # Number of boosting iterations.
+                                  folds=folds_object,
+                                  multivariate=r_to_py(FALSE),
+                                  n_startup_trials=r_to_py(100L),
+                                  nfold=r_to_py(n_folds),                    # Number of cv-folds.
+                                  early_stopping_rounds=r_to_py(20L),   # Number of early-stopping rounds
+                                  max_minutes=r_to_py(60L*24L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
+                                  n_trials=r_to_py(400L),
+                                  silence=r_to_py(FALSE),
+                                  seed=r_to_py(666L),
+                                  hp_seed=r_to_py(666L)
+        )
+      })
+    },silent=F)
+  }
   
-  dart_log <- py_capture_output({
-    opt_param = xgb$hyper_opt(hp_dict=r_to_py(params_lightgbm),
-                              train_set=train_py,
-                              num_boost_round=r_to_py(boosting_rounds),    # Number of boosting iterations.
-                              folds=folds_object,
-                              multivariate=r_to_py(FALSE),
-                              n_startup_trials=r_to_py(40L),
-                              nfold=r_to_py(n_folds),                    # Number of cv-folds.
-                              early_stopping_rounds=r_to_py(20L),   # Number of early-stopping rounds
-                              max_minutes=r_to_py(60L*18L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
-                              silence=r_to_py(FALSE),
-                              seed=r_to_py(1234L),
-                              hp_seed=r_to_py(1234L)
-    )
-  })
   write(dart_log,file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_dart_log.txt")))
   saveRDS(opt_param,file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_dart.rds"))) 
   
@@ -224,62 +230,62 @@ for (ep in resp){
   
   params_lightgbm = list(
     linear_tree= list("categorical",list(T)),
-    linear_lambda= list("float",list(low= 1e-3, high=100, log=TRUE)),
+    linear_lambda= list("float",list(low= 1e-9, high=3, log=TRUE)),
     
-    boosting = list("none",list(opt_param$boosting)),
-    xgboost_dart_mode = list("none",list(opt_param$xgboost_dart_mode)),
-    rate_drop= list("none",list(opt_param$rate_drop)),
-    skip_drop= list("none",list(opt_param$skip_drop)),
-    max_drop= list("none",list(opt_param$max_drop)),
-    # data_sample_strategy = list("none",list(opt_param$data_sample_strategy)),
-    # top_rate = list("none",list(opt_param$top_rate)),
-    # other_rate = list("none",list(opt_param$other_rate)),
-    feature_pre_filter= list("none",list(opt_param$feature_pre_filter)),
-    learning_rate = list("none",list(opt_param$learning_rate)),
-    max_depth= list("none",list(opt_param$max_depth)),
-    num_leaves= list("none",list(opt_param$num_leaves)),
-    min_data_in_leaf= list("none",list(opt_param$min_data_in_leaf)),
-    min_gain_to_split= list("none",list(opt_param$min_gain_to_split)),
-    min_sum_hessian_in_leaf =list("none",list(opt_param$min_sum_hessian_in_leaf)),
-    feature_fraction_bynode = list("none",list(opt_param$feature_fraction_bynode)),
-    baging_freq=list("none",list(opt_param$baging_freq)),
-    bin_construct_sample_cnt =list("none",list(opt_param$bin_construct_sample_cnt)),
-    bagging_fraction = list("none",list(opt_param$bagging_fraction)),
-    max_cat_to_onehot = list("none",list(opt_param$max_cat_to_onehot)),
-    max_cat_threshold = list("none",list(opt_param$max_cat_threshold)),
-    min_data_per_group = list("none",list(opt_param$min_data_per_group)),
-    cat_smooth = list("none",list(opt_param$cat_smooth)),
-    cat_l2 = list("none",list(opt_param$cat_l2)),
-    histogram_pool_size = list("none",list(opt_param$histogram_pool_size)),
-    lambda_l1=list("none",list(opt_param$lambda_l1)),
-    lambda_l2=list("none",list(opt_param$lambda_l2))
+    # boosting = list("none",list(opt_param$boosting)),
+    # xgboost_dart_mode = list("none",list(opt_param$xgboost_dart_mode)),
+    # rate_drop= list("none",list(opt_param$rate_drop)),
+    # skip_drop= list("none",list(opt_param$skip_drop)),
+    # max_drop= list("none",list(opt_param$max_drop)),
+    # # data_sample_strategy = list("none",list(opt_param$data_sample_strategy)),
+    # # top_rate = list("none",list(opt_param$top_rate)),
+    # # other_rate = list("none",list(opt_param$other_rate)),
+    # feature_pre_filter= list("none",list(opt_param$feature_pre_filter)),
+    # learning_rate = list("none",list(opt_param$learning_rate)),
+    # max_depth= list("none",list(opt_param$max_depth)),
+    # num_leaves= list("none",list(opt_param$num_leaves)),
+    # min_data_in_leaf= list("none",list(opt_param$min_data_in_leaf)),
+    # min_gain_to_split= list("none",list(opt_param$min_gain_to_split)),
+    # min_sum_hessian_in_leaf =list("none",list(opt_param$min_sum_hessian_in_leaf)),
+    # feature_fraction_bynode = list("none",list(opt_param$feature_fraction_bynode)),
+    # baging_freq=list("none",list(opt_param$baging_freq)),
+    # bin_construct_sample_cnt =list("none",list(opt_param$bin_construct_sample_cnt)),
+    # bagging_fraction = list("none",list(opt_param$bagging_fraction)),
+    # max_cat_to_onehot = list("none",list(opt_param$max_cat_to_onehot)),
+    # max_cat_threshold = list("none",list(opt_param$max_cat_threshold)),
+    # min_data_per_group = list("none",list(opt_param$min_data_per_group)),
+    # cat_smooth = list("none",list(opt_param$cat_smooth)),
+    # cat_l2 = list("none",list(opt_param$cat_l2)),
+    # histogram_pool_size = list("none",list(opt_param$histogram_pool_size)),
+    # lambda_l1=list("none",list(opt_param$lambda_l1)),
+    # lambda_l2=list("none",list(opt_param$lambda_l2))
     
-    # boosting= list("categorical",list("dart")), #"gbdt",
-    # xgboost_dart_mode = list("categorical",list(T,F)),
-    # rate_drop= list("float",list(low= 0, high=0.5, log=FALSE)),
-    # skip_drop= list("float",list(low= 0.1, high=0.7, log=FALSE)),
-    # # data_sample_strategy = list("categorical",list("goss")),
-    # # top_rate = list("float",list(low= 0.2, high=0.5, log=FALSE)),
-    # # other_rate = list("float",list(low= 0.1, high=0.4, log=FALSE)),
-    # feature_pre_filter= list("categorical",list(F)),
-    # learning_rate = list("float",list(low= 1e-4, high=0.9, log=TRUE)),
-    # max_depth= list("int",list(low= 5L, high=1000L, log=FALSE)),
-    # num_leaves= list("int",list(low= 10L, high=5000L, log=FALSE)),
-    # min_data_in_leaf= list("int",list(low= 5L, high=200L, log=FALSE)),
-    # min_gain_to_split= list("float",list(low= 1e-3, high=100, log=TRUE)),
-    # min_sum_hessian_in_leaf =list("float",list(low= 1e-5, high=10, log=TRUE)),
-    # feature_fraction_bynode = list("float",list(low= 0.4, high=0.8, log=FALSE)),
-    # baging_freq=list("none",list(1L)),
-    # bin_construct_sample_cnt =list("none",list(2000000L)),
-    # bagging_fraction = list("float",list(low= 0.3, high=0.7, log=FALSE)),
-    # max_cat_to_onehot = list("int",list(low= 2L, high=10L, log=FALSE)),
-    # max_cat_threshold = list("int",list(low= 1500L, high=5000L, log=FALSE)),
-    # min_data_per_group = list("int",list(low= 2L, high=50L, log=FALSE)),
-    # cat_smooth = list("float",list(low= 0L, high=100L, log=FALSE)),
-    # cat_l2 = list("float",list(low= 0L, high=10L, log=FALSE)),
-    # histogram_pool_size = list("none",list(-1L)),
-    # lambda_l1=list("float",list(low= 1e-3, high=100, log=TRUE)),
-    # lambda_l2=list("float",list(low= 1e-3, high=100, log=TRUE))
+    boosting= list("categorical",list("dart")), #"gbdt",
+    xgboost_dart_mode = list("categorical",list(T,F)),
+    rate_drop= list("float",list(low= 0, high=0.5, log=FALSE)),
+    skip_drop= list("float",list(low= 0.1, high=0.7, log=FALSE)),
+    # data_sample_strategy = list("categorical",list("goss")), #this made fits worse
+    # top_rate = list("float",list(low= 0.2, high=0.5, log=FALSE)),
+    # other_rate = list("float",list(low= 0.1, high=0.4, log=FALSE)),
+    feature_pre_filter= list("categorical",list(F)),
+    learning_rate = list("float",list(low= 1e-6, high=3, log=TRUE)), 
+    max_depth= list("int",list(low= 100L, high=2000L, log=FALSE)),
+    num_leaves= list("int",list(low= 150L, high=40000L, log=FALSE)),           
+    min_data_in_leaf= list("int",list(low= 5L, high=200L, log=FALSE)),       
+    min_gain_to_split= list("float",list(low= 1e-9, high=9, log=TRUE)),
+    min_sum_hessian_in_leaf =list("float",list(low= 1e-9, high=99, log=TRUE)),
+    feature_fraction_bynode = list("float",list(low= 0.4, high=0.8, log=FALSE)),
+    baging_freq=list("none",list(1L)),
+    bin_construct_sample_cnt =list("none",list(2000000L)),
+    bagging_fraction = list("float",list(low= 0.3, high=0.7, log=FALSE)),
+    max_cat_to_onehot = list("int",list(low= 2L, high=10L, log=FALSE)),
+    max_cat_threshold = list("int",list(low= 1500L, high=5000L, log=FALSE)),
+    min_data_per_group = list("int",list(low= 2L, high=50L, log=FALSE)),
+    cat_smooth = list("float",list(low= 0L, high=60L, log=FALSE)),
+    cat_l2 = list("float",list(low= 1e-9, high=9, log=TRUE)),
+    histogram_pool_size = list("none",list(-1L)),
+    lambda_l1=list("float",list(low= 1e-9, high=9, log=TRUE)),
+    lambda_l2=list("float",list(low= 1e-9, high=9, log=TRUE))
   )
   
   # need to regenerate data when setting linear_tree
@@ -291,24 +297,31 @@ for (ep in resp){
   )
   
   # Tune hyperparameters
-  linear_tree_log <- py_capture_output({
-    opt_param = xgb$hyper_opt(hp_dict=r_to_py(params_lightgbm),
-                              train_set=train_py,
-                              #num_boost_round=r_to_py(opt_param$opt_rounds + 1000L),        # Number of boosting iterations.
-                              num_boost_round=r_to_py(boosting_rounds),    # Number of boosting iterations.
-                              folds=folds_object,
-                              multivariate=r_to_py(FALSE),
-                              n_startup_trials=r_to_py(10L),
-                              # n_startup_trials=r_to_py(10L),
-                              nfold=r_to_py(n_folds),                    # Number of cv-folds.
-                              early_stopping_rounds=r_to_py(20L),   # Number of early-stopping rounds
-                              max_minutes=r_to_py(60L*4L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
-                              # max_minutes=r_to_py(60L*2L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
-                              silence=r_to_py(FALSE),
-                              seed=r_to_py(1234L),
-                              hp_seed=r_to_py(1234L)
-    )
-  })
+  oo<-try(lm(xyz~0),silent=T)
+  while(inherits(oo,"try-error")){
+    oo<-try({
+      linear_tree_log <- py_capture_output({
+        opt_param = xgb$hyper_opt(hp_dict=r_to_py(params_lightgbm),
+                                  train_set=train_py,
+                                  #num_boost_round=r_to_py(opt_param$opt_rounds + 1000L),        # Number of boosting iterations.
+                                  num_boost_round=r_to_py(boosting_rounds + 500L),    # Number of boosting iterations.
+                                  folds=folds_object,
+                                  multivariate=r_to_py(FALSE),
+                                  n_startup_trials=r_to_py(100L),
+                                  # n_startup_trials=r_to_py(10L),
+                                  nfold=r_to_py(n_folds),                    # Number of cv-folds.
+                                  early_stopping_rounds=r_to_py(20L),   # Number of early-stopping rounds
+                                  max_minutes=r_to_py(60L*24L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
+                                  n_trials=r_to_py(400L),
+                                  silence=r_to_py(FALSE),
+                                  seed=r_to_py(666L),
+                                  hp_seed=r_to_py(666L)
+        )
+      })
+    },silent=F)
+  }
+  
+  
   write(linear_tree_log,file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_dart_ltree_log.txt")))
   saveRDS(opt_param,file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_dart_ltree.rds")))
   

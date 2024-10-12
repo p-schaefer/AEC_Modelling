@@ -1,3 +1,27 @@
+rZAGamma<-function(n=1000,concentration,rate,gate) {
+  rgamma(n,shape=concentration, rate=rate)*Rlab::rbern(n,1-gate)
+}
+
+sim_fish_ep<-function(df,n,quant=0.5,infocols){
+  map_dfr(1:n,
+      ~df %>% 
+        rowwise() %>% 
+        mutate(EstimatedBiomass=rZAGamma(1,resp_Comm_Biomass_concentration,resp_Comm_Biomass_rate,resp_Comm_Biomass_gate),
+               NumberOfFish=rZAGamma(1,resp_Comm_Abundance_concentration,resp_Comm_Abundance_rate,resp_Comm_Abundance_gate)
+               ) %>% 
+        ungroup() %>% 
+        mutate(across(any_of(c("EstimatedBiomass","NumberOfFish")),~expm1(.x))) %>% 
+        filter(!if_any(any_of(c("EstimatedBiomass","NumberOfFish")),~is.na(.x))) %>% 
+        filter(!if_all(any_of(c("EstimatedBiomass","NumberOfFish")),~.x==0)) %>% 
+        select(ProvReachID,all_of(c("EstimatedBiomass","NumberOfFish")),all_of(info_cols)) %>% 
+        set_names(c("SampleEventID",c("EstimatedBiomass","NumberOfFish"),info_cols)) %>% 
+        mutate(SampleDate="2000-01-01") %>% 
+        calc_fish_ep()
+      ) %>% 
+    group_by(SampleEventID,SampleDate) %>% 
+    summarise(across(everything(),~quantile(.x,quant)))
+}
+
 calc_fish_ep<-function(df) {
 
   # Calculate endpoints -----------------------------------------------------

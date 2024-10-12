@@ -2,7 +2,7 @@ library(shinydashboard)
 library(tidyverse)
 library(sf)
 # Set the application-level cache
-shinyOptions(cache = cachem::cache_disk("./bind-cache",max_size = 1024 * 1024^4))
+#shinyOptions(cache = cachem::cache_disk("./bind-cache",max_size = 1024 * 1024^4))
 #shinyOptions(cache = cachem::cache_disk("./cache"))
 
 fp<-file.path("data",paste0("Model_data_v2.gpkg"))

@@ -65,7 +65,7 @@ for (booster in booster_list) {
     xgb = lss.model$LightGBMLSS(
       distr.lgb$ZAGamma$ZAGamma(
         stabilization = "None",
-        response_fn = "softplus",
+        response_fn = "exp",
         loss_fn="nll"
       )
     )
@@ -95,7 +95,7 @@ for (booster in booster_list) {
         xgb = lss.model$LightGBMLSS(
           distr.lgb$ZAGamma$ZAGamma(
             stabilization = "None",
-            response_fn = "softplus",
+            response_fn = "exp",
             loss_fn="nll"
           )
         )
@@ -156,6 +156,12 @@ for (booster in booster_list) {
       }
       
       out_res<-bind_rows(out_res)
+      
+      # out_res %>%
+      #   filter(tx_Taxa=="Rainbow Trout (steelhead)") %>%
+      #   ggplot(aes(x=observed,y=quant_0.5))+
+      #   geom_point()+
+      #   geom_abline(slope=1,intercept = 0)
       
       saveRDS(out_res,file.path("data","models","LSS",paste0("OOB_Pred_",ep,"_",booster,".rds")))
     }

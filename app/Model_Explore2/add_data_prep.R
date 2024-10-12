@@ -2,7 +2,7 @@ library(tidyverse)
 library(sf)
 
 booster_shap<-"dart"
-booster_pred<-"dart_ltree"
+booster_pred<-"dart" #dart_ltree
 ep<-"resp_Comm_Biomass"
 
 fp<-file.path("app","Model_Explore2","data",paste0("Model_data_v2.gpkg"))
@@ -198,9 +198,9 @@ shap_out<-map_dfr(c("resp_Comm_Biomass","resp_Comm_Abundance"), #
           shap_ref$rate[is.infinite(shap_ref$rate)]<-NA_real_
           
           out<-list(
-            `Current Mean`=shap$concentration/(shap$rate),
+            `Current Mean`=(shap$concentration/(shap$rate))*((1-out_final[[paste0(x,"_gate")]])>0.5),#*((shap$gate*-1)),
             `Current Presence/Absence`=shap$gate*-1,
-            `Reference Mean`=shap_ref$concentration/(shap_ref$rate),
+            `Reference Mean`=(shap_ref$concentration/(shap_ref$rate))*((1-out_final_ref[[paste0(x,"_gate")]])>0.5),#*((shap_ref$gate*-1)),
             `Reference Presence/Absence`=shap_ref$gate*-1
           )
           
