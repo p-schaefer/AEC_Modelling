@@ -1,5 +1,5 @@
 library(tidyverse)
-fp<-file.path("app","Model_Explore2","data",paste0("Model_data_v2.gpkg"))
+fp<-file.path("app","Model_Explore2","data",paste0("Model_data_v2_old.gpkg"))
 
 con <- DBI::dbConnect(RSQLite::SQLite(), fp)
 

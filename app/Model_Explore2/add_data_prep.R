@@ -5,7 +5,7 @@ booster_shap<-"dart"
 booster_pred<-"dart" #dart_ltree
 ep<-"resp_Comm_Biomass"
 
-fp<-file.path("app","Model_Explore2","data",paste0("Model_data_v2.gpkg"))
+fp<-file.path("app","Model_Explore2","data",paste0("Model_data_v4.gpkg"))
 
 # int_f <- function(x, ct1, rt1, gt1, ct2, rt2, gt2) {
 #   #browser()
@@ -192,20 +192,37 @@ shap_out<-map_dfr(c("resp_Comm_Biomass","resp_Comm_Abundance"), #
           shap<-readRDS(file.path("data","models","LSS",paste0("Shap_",x,"_",booster_shap,"_Current.rds")))
           shap_ref<-readRDS(file.path("data","models","LSS",paste0("Shap_",x,"_",booster_shap,"_Reference.rds")))
           
+          conc_B<-shap$concentration[,ncol(shap$concentration)]
+          conc_B<-conc_B[!is.na(conc_B)]
+          conc_B<-conc_B[1]
+          rate_B<-shap$rate[,ncol(shap$rate)]
+          rate_B<-rate_B[!is.na(rate_B)]
+          rate_B<-rate_B[1]
+          conc_B_ref<-shap_ref$concentration[,ncol(shap_ref$concentration)]
+          conc_B_ref<-conc_B_ref[!is.na(conc_B_ref)]
+          conc_B_ref<-conc_B_ref[1]
+          rate_B_ref<-shap_ref$rate[,ncol(shap_ref$rate)]
+          rate_B_ref<-rate_B_ref[!is.na(rate_B_ref)]
+          rate_B_ref<-rate_B_ref[1]
+          
+          #(conc_B+shap$concentration)/(rate_B+shap$rate)-(conc_B/rate_B)
+          
           #shap$rate<-1/shap$rate
           shap$rate[is.infinite(shap$rate)]<-NA_real_
           #shap_ref$rate<-1/shap_ref$rate
           shap_ref$rate[is.infinite(shap_ref$rate)]<-NA_real_
           
           out<-list(
-            `Current Mean`=(shap$concentration/(shap$rate))*((1-out_final[[paste0(x,"_gate")]])>0.5),#*((shap$gate*-1)),
+            # `Current Mean`=(shap$concentration/(shap$rate))*((1-out_final[[paste0(x,"_gate")]])>0.5),#*((shap$gate*-1)),
+            `Current Mean`=((conc_B+shap$concentration)/(rate_B+shap$rate))-(conc_B/rate_B),
             `Current Presence/Absence`=shap$gate*-1,
-            `Reference Mean`=(shap_ref$concentration/(shap_ref$rate))*((1-out_final_ref[[paste0(x,"_gate")]])>0.5),#*((shap_ref$gate*-1)),
+            # `Reference Mean`=(shap_ref$concentration/(shap_ref$rate))*((1-out_final_ref[[paste0(x,"_gate")]])>0.5),#*((shap_ref$gate*-1)),
+            `Reference Mean`=((conc_B_ref+shap_ref$concentration)/(rate_B_ref+shap_ref$rate))-(conc_B_ref/rate_B_ref),
             `Reference Presence/Absence`=shap_ref$gate*-1
           )
           
-          out$`Current Mean`[is.na(out$`Current Mean`)]<-0
-          out$`Reference Mean`[is.na(out$`Reference Mean`)]<-0
+          #out$`Current Mean`[is.na(out$`Current Mean`)]<-0
+          #out$`Reference Mean`[is.na(out$`Reference Mean`)]<-0
           
           map2_dfr(out,names(out),
                    ~mutate(as.data.frame(.x),shape_param=.y) %>%

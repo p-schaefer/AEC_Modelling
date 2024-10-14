@@ -2,7 +2,7 @@ library(shinydashboard)
 library(dplyr)
 library(dbplyr)
 
-fp<-file.path("data",paste0("Model_data_v2.gpkg"))
+fp<-file.path("data",paste0("Model_data_v3.gpkg"))
 con <- DBI::dbConnect(RSQLite::SQLite(), fp)
 
 regions<-tbl(con,"Region_names") %>% collect() %>% pull(1)

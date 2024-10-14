@@ -3,7 +3,7 @@ library(tidyverse)
 library(tidymodels)
 
 boosting_rounds<-1500L
-n_folds<-5L
+n_folds<-6L
 
 if (F) {
   # Setup python environment
@@ -184,7 +184,7 @@ for (ep in resp){
     num_leaves= list("int",list(low= 150L, high=40000L, log=FALSE)),           
     min_data_in_leaf= list("int",list(low= 5L, high=200L, log=FALSE)),       
     min_gain_to_split= list("float",list(low= 1e-9, high=9, log=TRUE)),
-    min_sum_hessian_in_leaf =list("float",list(low= 1e-9, high=99, log=TRUE)),
+    min_sum_hessian_in_leaf =list("float",list(low= 1e-9, high=999, log=TRUE)),
     feature_fraction_bynode = list("float",list(low= 0.4, high=0.8, log=FALSE)),
     baging_freq=list("none",list(1L)),
     bin_construct_sample_cnt =list("none",list(2000000L)),
@@ -193,10 +193,10 @@ for (ep in resp){
     max_cat_threshold = list("int",list(low= 1500L, high=5000L, log=FALSE)),
     min_data_per_group = list("int",list(low= 2L, high=50L, log=FALSE)),
     cat_smooth = list("float",list(low= 0L, high=60L, log=FALSE)),
-    cat_l2 = list("float",list(low= 1e-9, high=9, log=TRUE)),
+    cat_l2 = list("float",list(low= 1e-9, high=0.1, log=TRUE)),
     histogram_pool_size = list("none",list(-1L)),
-    lambda_l1=list("float",list(low= 1e-9, high=9, log=TRUE)),
-    lambda_l2=list("float",list(low= 1e-9, high=9, log=TRUE))
+    lambda_l1=list("float",list(low= 1e-9, high=0.1, log=TRUE)),
+    lambda_l2=list("float",list(low= 1e-9, high=0.1, log=TRUE))
   )
   
   # Tune hyperparameters
@@ -220,17 +220,18 @@ for (ep in resp){
         )
       })
     },silent=F)
+    
+    write(dart_log,file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_dart_log.txt")))
+    saveRDS(opt_param,file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_dart.rds"))) 
   }
   
-  write(dart_log,file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_dart_log.txt")))
-  saveRDS(opt_param,file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_dart.rds"))) 
-  
+  opt_param<-readRDS(file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_dart.rds"))) 
   
   # Add linear_tree ----------------------------------------------------------------
   
   params_lightgbm = list(
     linear_tree= list("categorical",list(T)),
-    linear_lambda= list("float",list(low= 1e-9, high=3, log=TRUE)),
+    linear_lambda= list("float",list(low= 1e-9, high=0.1, log=TRUE)),
     
     # boosting = list("none",list(opt_param$boosting)),
     # xgboost_dart_mode = list("none",list(opt_param$xgboost_dart_mode)),
@@ -273,7 +274,7 @@ for (ep in resp){
     num_leaves= list("int",list(low= 150L, high=40000L, log=FALSE)),           
     min_data_in_leaf= list("int",list(low= 5L, high=200L, log=FALSE)),       
     min_gain_to_split= list("float",list(low= 1e-9, high=9, log=TRUE)),
-    min_sum_hessian_in_leaf =list("float",list(low= 1e-9, high=99, log=TRUE)),
+    min_sum_hessian_in_leaf =list("float",list(low= 1e-9, high=999, log=TRUE)),
     feature_fraction_bynode = list("float",list(low= 0.4, high=0.8, log=FALSE)),
     baging_freq=list("none",list(1L)),
     bin_construct_sample_cnt =list("none",list(2000000L)),
@@ -282,10 +283,10 @@ for (ep in resp){
     max_cat_threshold = list("int",list(low= 1500L, high=5000L, log=FALSE)),
     min_data_per_group = list("int",list(low= 2L, high=50L, log=FALSE)),
     cat_smooth = list("float",list(low= 0L, high=60L, log=FALSE)),
-    cat_l2 = list("float",list(low= 1e-9, high=9, log=TRUE)),
+    cat_l2 = list("float",list(low= 1e-9, high=0.1, log=TRUE)),
     histogram_pool_size = list("none",list(-1L)),
-    lambda_l1=list("float",list(low= 1e-9, high=9, log=TRUE)),
-    lambda_l2=list("float",list(low= 1e-9, high=9, log=TRUE))
+    lambda_l1=list("float",list(low= 1e-9, high=0.1, log=TRUE)),
+    lambda_l2=list("float",list(low= 1e-9, high=0.1, log=TRUE))
   )
   
   # need to regenerate data when setting linear_tree

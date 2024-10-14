@@ -5,7 +5,7 @@ library(sf)
 #shinyOptions(cache = cachem::cache_disk("./bind-cache",max_size = 1024 * 1024^4))
 #shinyOptions(cache = cachem::cache_disk("./cache"))
 
-fp<-file.path("data",paste0("Model_data_v2.gpkg"))
+fp<-file.path("data",paste0("Model_data_v3.gpkg"))
 con <- DBI::dbConnect(RSQLite::SQLite(), fp)
 
 regions<-tbl(con,"Region_names") %>% collect() %>% pull(1)
@@ -47,7 +47,7 @@ function(input, output, session) {
     req(input$sel_taxa)
     req(input$sel_ep)
     validate(need(length(input$sel_region)<9,"Select up to 8 regions for mapping"))
-    
+
     con <- DBI::dbConnect(RSQLite::SQLite(), fp)
     
     sel_modelpredictions<-tbl(con,"Model_Predictions") %>% 
@@ -325,8 +325,7 @@ function(input, output, session) {
     req(input$sel_region)
     req(input$sel_taxa)
     req(input$sel_ep)
-    validate(need(!input$sel_taxa %in% CalcEP,message="Calculated Endpoints Don't Have Predictive Performance Summaries Yet..."))
-    
+
     loading_message(session)
     
     con <- DBI::dbConnect(RSQLite::SQLite(), fp)
@@ -467,13 +466,13 @@ function(input, output, session) {
     if (!"colour" %in% colnames(sel_modelShap)) sel_modelShap$colour<-sel_modelShap$x
     
     ax_brk<-function(x){
-      ax_brk<-scales::log_breaks(5)(abs(x))
+      ax_brk<-scales::pretty_breaks(5)(abs(x))
       sort(c(-ax_brk,0,ax_brk))
     }
     
     ax_lm<-function(x){
       #browser()
-      ax_brk<-scales::log_breaks(3)(abs(x))
+      ax_brk<-scales::pretty_breaks(3)(abs(x))
       range(sort(c(-ax_brk,0,ax_brk)))
     }
     
@@ -488,7 +487,7 @@ function(input, output, session) {
       )+
       theme_bw()+
       theme(text=element_text(size=21))+
-      scale_y_continuous(transform = "pseudo_log",breaks=ax_brk,labels=scales::comma)+ #,limits=ax_lm,expand=c(0,0)
+      scale_y_continuous(breaks=ax_brk,labels=scales::comma,limits=ax_lm)+ #,limits=ax_lm,expand=c(0,0)
       facet_wrap(~shape_param,scales="free",ncol=2)
     
     if (length(sel_reach())>0){
