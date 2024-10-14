@@ -1,8 +1,22 @@
 rZAGamma<-function(n=1000,concentration,rate,gate) {
-  rgamma(n,shape=concentration, rate=rate)*Rlab::rbern(n,1-gate)
+  ot<-try(rgamma(n,shape=concentration, rate=rate)*Rlab::rbern(n,1-gate),silent=T)
+  if (inherits(ot,"try-error")){
+    return(NA_real_)
+  } else {
+    return(ot)
+  }
 }
 
-sim_fish_ep<-function(df,n,quant=0.5,infocols){
+sim_fish_ep<-function(df,n,infocols){
+  rZAGamma<-function(n=1000,concentration,rate,gate) {
+    ot<-try(rgamma(n,shape=concentration, rate=rate)*Rlab::rbern(n,1-gate),silent=T)
+    if (inherits(ot,"try-error")){
+      return(NA_real_)
+    } else {
+      return(ot)
+    }
+  }
+  
   map_dfr(1:n,
       ~df %>% 
         rowwise() %>% 
@@ -17,9 +31,7 @@ sim_fish_ep<-function(df,n,quant=0.5,infocols){
         set_names(c("SampleEventID",c("EstimatedBiomass","NumberOfFish"),info_cols)) %>% 
         mutate(SampleDate="2000-01-01") %>% 
         calc_fish_ep()
-      ) %>% 
-    group_by(SampleEventID,SampleDate) %>% 
-    summarise(across(everything(),~quantile(.x,quant)))
+      ) 
 }
 
 calc_fish_ep<-function(df) {
