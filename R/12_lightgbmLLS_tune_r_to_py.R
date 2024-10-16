@@ -3,7 +3,7 @@ library(tidyverse)
 library(tidymodels)
 
 boosting_rounds<-1500L
-n_folds<-6L
+n_folds<-5L
 
 if (F) {
   # Setup python environment
@@ -179,12 +179,12 @@ for (ep in resp){
     # top_rate = list("float",list(low= 0.2, high=0.5, log=FALSE)),
     # other_rate = list("float",list(low= 0.1, high=0.4, log=FALSE)),
     feature_pre_filter= list("categorical",list(F)),
-    learning_rate = list("float",list(low= 1e-6, high=3, log=TRUE)), 
+    learning_rate = list("float",list(low= 1e-4, high=3, log=TRUE)), 
     max_depth= list("int",list(low= 100L, high=2000L, log=FALSE)),
-    num_leaves= list("int",list(low= 150L, high=40000L, log=FALSE)),           
+    num_leaves= list("int",list(low= 150L, high=25000L, log=FALSE)),           
     min_data_in_leaf= list("int",list(low= 5L, high=200L, log=FALSE)),       
-    min_gain_to_split= list("float",list(low= 1e-9, high=9, log=TRUE)),
-    min_sum_hessian_in_leaf =list("float",list(low= 1e-9, high=999, log=TRUE)),
+    min_gain_to_split= list("float",list(low= 1e-4, high=9, log=TRUE)),
+    min_sum_hessian_in_leaf =list("float",list(low= 1e-4, high=999, log=TRUE)),
     feature_fraction_bynode = list("float",list(low= 0.4, high=0.8, log=FALSE)),
     baging_freq=list("none",list(1L)),
     bin_construct_sample_cnt =list("none",list(2000000L)),
@@ -193,10 +193,10 @@ for (ep in resp){
     max_cat_threshold = list("int",list(low= 1500L, high=5000L, log=FALSE)),
     min_data_per_group = list("int",list(low= 2L, high=50L, log=FALSE)),
     cat_smooth = list("float",list(low= 0L, high=60L, log=FALSE)),
-    cat_l2 = list("float",list(low= 1e-9, high=0.1, log=TRUE)),
+    cat_l2 = list("float",list(low= 1e-4, high=0.1, log=TRUE)),
     histogram_pool_size = list("none",list(-1L)),
-    lambda_l1=list("float",list(low= 1e-9, high=0.1, log=TRUE)),
-    lambda_l2=list("float",list(low= 1e-9, high=0.1, log=TRUE))
+    lambda_l1=list("float",list(low= 1e-4, high=0.1, log=TRUE)),
+    lambda_l2=list("float",list(low= 1e-4, high=0.1, log=TRUE))
   )
   
   # Tune hyperparameters
@@ -215,23 +215,24 @@ for (ep in resp){
                                   max_minutes=r_to_py(60L*24L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
                                   n_trials=r_to_py(400L),
                                   silence=r_to_py(FALSE),
-                                  seed=r_to_py(666L),
-                                  hp_seed=r_to_py(666L)
+                                  seed=r_to_py(1234L),
+                                  hp_seed=r_to_py(1234L)
         )
       })
     },silent=F)
-    
-    write(dart_log,file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_dart_log.txt")))
-    saveRDS(opt_param,file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_dart.rds"))) 
   }
+  
+  write(dart_log,file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_dart_log.txt")))
+  saveRDS(opt_param,file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_dart.rds"))) 
   
   opt_param<-readRDS(file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_dart.rds"))) 
   
+  gg<-gc()
   # Add linear_tree ----------------------------------------------------------------
   
   params_lightgbm = list(
     linear_tree= list("categorical",list(T)),
-    linear_lambda= list("float",list(low= 1e-9, high=0.1, log=TRUE)),
+    linear_lambda= list("float",list(low= 1e-4, high=0.1, log=TRUE)),
     
     # boosting = list("none",list(opt_param$boosting)),
     # xgboost_dart_mode = list("none",list(opt_param$xgboost_dart_mode)),
@@ -269,12 +270,12 @@ for (ep in resp){
     # top_rate = list("float",list(low= 0.2, high=0.5, log=FALSE)),
     # other_rate = list("float",list(low= 0.1, high=0.4, log=FALSE)),
     feature_pre_filter= list("categorical",list(F)),
-    learning_rate = list("float",list(low= 1e-6, high=3, log=TRUE)), 
+    learning_rate = list("float",list(low= 1e-4, high=3, log=TRUE)), 
     max_depth= list("int",list(low= 100L, high=2000L, log=FALSE)),
-    num_leaves= list("int",list(low= 150L, high=40000L, log=FALSE)),           
+    num_leaves= list("int",list(low= 150L, high=25000L, log=FALSE)),           
     min_data_in_leaf= list("int",list(low= 5L, high=200L, log=FALSE)),       
-    min_gain_to_split= list("float",list(low= 1e-9, high=9, log=TRUE)),
-    min_sum_hessian_in_leaf =list("float",list(low= 1e-9, high=999, log=TRUE)),
+    min_gain_to_split= list("float",list(low= 1e-4, high=9, log=TRUE)),
+    min_sum_hessian_in_leaf =list("float",list(low= 1e-4, high=999, log=TRUE)),
     feature_fraction_bynode = list("float",list(low= 0.4, high=0.8, log=FALSE)),
     baging_freq=list("none",list(1L)),
     bin_construct_sample_cnt =list("none",list(2000000L)),
@@ -283,10 +284,10 @@ for (ep in resp){
     max_cat_threshold = list("int",list(low= 1500L, high=5000L, log=FALSE)),
     min_data_per_group = list("int",list(low= 2L, high=50L, log=FALSE)),
     cat_smooth = list("float",list(low= 0L, high=60L, log=FALSE)),
-    cat_l2 = list("float",list(low= 1e-9, high=0.1, log=TRUE)),
+    cat_l2 = list("float",list(low= 1e-4, high=0.1, log=TRUE)),
     histogram_pool_size = list("none",list(-1L)),
-    lambda_l1=list("float",list(low= 1e-9, high=0.1, log=TRUE)),
-    lambda_l2=list("float",list(low= 1e-9, high=0.1, log=TRUE))
+    lambda_l1=list("float",list(low= 1e-4, high=0.1, log=TRUE)),
+    lambda_l2=list("float",list(low= 1e-4, high=0.1, log=TRUE))
   )
   
   # need to regenerate data when setting linear_tree
@@ -315,8 +316,8 @@ for (ep in resp){
                                   max_minutes=r_to_py(60L*24L),             # Time budget in minutes, i.e., stop study after the given number of minutes.
                                   n_trials=r_to_py(400L),
                                   silence=r_to_py(FALSE),
-                                  seed=r_to_py(666L),
-                                  hp_seed=r_to_py(666L)
+                                  seed=r_to_py(1234L),
+                                  hp_seed=r_to_py(1234L)
         )
       })
     },silent=F)
@@ -325,6 +326,7 @@ for (ep in resp){
   
   write(linear_tree_log,file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_dart_ltree_log.txt")))
   saveRDS(opt_param,file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_dart_ltree.rds")))
+  gg<-gc()
   
 }
 
