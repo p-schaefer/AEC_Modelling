@@ -1,14 +1,6 @@
-rZAGamma<-function(n=1000,concentration,rate,gate) {
-  ot<-try(rgamma(n,shape=concentration, rate=rate)*Rlab::rbern(n,1-gate),silent=T)
-  if (inherits(ot,"try-error")){
-    return(NA_real_)
-  } else {
-    return(ot)
-  }
-}
 
 sim_fish_ep<-function(df,n,infocols){
-  rZAGamma<-function(n=1000,concentration,rate,gate) {
+  rZAGamma<-function(n=1,concentration,rate,gate) {
     ot<-try(rgamma(n,shape=concentration, rate=rate)*Rlab::rbern(n,1-gate),silent=T)
     if (inherits(ot,"try-error")){
       return(NA_real_)

@@ -1,5 +1,5 @@
 library(tidyverse)
-fp<-file.path("app","Model_Explore2","data",paste0("Model_data_v2_old.gpkg"))
+fp<-file.path("app","Model_Explore2","data",paste0("Model_data_v4_dart.gpkg"))
 
 con <- DBI::dbConnect(RSQLite::SQLite(), fp)
 
@@ -37,6 +37,49 @@ ep_rn<-function(x) {
   )
 }
 
+pred_rn<-function(x) {
+  case_when(
+    x=="tx_Taxa" ~ "Species",
+    x=="tx_Family" ~ "Family",
+    x=="tx_Tolerance" ~ "Species Tolerance",
+    x=="tx_Trophic_Class" ~ "Species Trophic Class",
+    x=="tx_Thermal_Regime" ~ "Species Thermal Requirement",
+    x=="tx_General_Habitat" ~ "Species Habitat Preference",
+    x=="tx_Environment" ~ "Species Environmental Preference",
+    x=="tx_Repro_1" ~ "Species Nest Guarding",
+    x=="tx_Repro_2" ~ "Species Spawning Habitat Preference",
+    x=="tx_Repro_3" ~ "Species Spawning Methods",
+    x=="hb_Temperature" ~ "AEC Modeled Stream Temperature",
+    x=="hb_GDDair_UpstreamCatchmentMean" ~ "AEC Air Temperature Growing Degree Days in Catchment",
+    x=="hb_Turbidity" ~ "AEC Turbidity",
+    x=="hb_Slope" ~ "AEC Channel Slope",
+    x=="hb_BFI_RCA" ~ "AEC Baseflow Index in Reach Contributing Area",
+    x=="hb_BFI_UCA" ~ "AEC Baseflow Index in Upstream Catchment Area",
+    x=="hb_UCA" ~ "AEC Catchment Area",
+    x=="hb_Temperature_Class" ~ "AEC Stream Temperature Class",
+    x=="hb_Lake_Inf" ~ "AEC Lake Influence",
+    x=="hb_Wadeability" ~ "AEC Wadeability",
+    x=="nr_BroadleafForest_HAiFLS_prop" ~ "OLCC Deciduous Treed - HAiFLS",
+    x=="nr_BroadleafForest_HAiFLO_prop" ~ "OLCC Deciduous Treed - HAiFLO",
+    x=="nr_ConiferousForest_HAiFLS_prop" ~ "OLCC Coniferous Treed - HAiFLS",
+    x=="nr_ConiferousForest_HAiFLO_prop" ~ "OLCC Coniferous Treed - HAiFLO",
+    x=="nr_MixedAgriculture_HAiFLS_prop" ~ "OLCC Agriculture and Undifferentiated Rural - HAiFLS",
+    x=="nr_MixedAgriculture_HAiFLO_prop" ~ "OLCC Agriculture and Undifferentiated Rural - HAiFLO",
+    x=="nr_MixedForest_HAiFLS_prop" ~ "OLCC Mixed, Sparse, Upland, Plantations Treed - HAiFLS",
+    x=="nr_MixedForest_HAiFLO_prop" ~ "OLCC Mixed, Sparse, Upland, Plantations Treed - HAiFLO",
+    x=="nr_Water_HAiFLS_prop" ~ "OLCC Clear Open, Turbid Water - HAiFLS",
+    x=="nr_Water_HAiFLO_prop" ~ "OLCC Clear Open, Turbid Water - HAiFLO",
+    x=="nr_Wetland_HAiFLS_prop" ~ "OLCC Marsh, Swamp, Fen, Bog - HAiFLS",
+    x=="nr_Wetland_HAiFLO_prop" ~ "OLCC Marsh, Swamp, Fen, Bog - HAiFLO",
+    x=="nr_UrbanDeveloped_HAiFLS_prop" ~ "OLCC Urban Developed - HAiFLS",
+    x=="nr_UrbanDeveloped_HAiFLO_prop" ~ "OLCC Urban Developed - HAiFLO",
+    x=="nr_ExposedLandBarren_HAiFLS_prop" ~ "OLCC Depletion/Disturbance - HAiFLS",
+    x=="nr_ExposedLandBarren_HAiFLO_prop" ~ "OLCC Depletion/Disturbance - HAiFLO",
+    x=="LDI_HAiFLS_mean" ~ "OLCC Land Disturbance Index - HAiFLS",
+    x=="LDI_HAiFLO_mean" ~ "OLCC Land Disturbance Index - HAiFLO",
+    T ~ x
+  )
+}
 # Predictive Performance --------------------------------------------------
 sel_modelOOSpredictions<-tbl(con,"OOS_Predictions") %>% 
   #filter(tx_Taxa == local(input$sel_taxa)) %>% 
@@ -109,7 +152,7 @@ plt_1to1 <- sel_modelOOSpredictions %>%
 
 # Predictor Importance ----------------------------------------------------
 
-sel_modelShap0<-tbl(con,"SHAP_scores")%>% 
+sel_modelShap0<-tbl(con,"SHAP_scores") %>% 
   #filter(endpoint == local(input$sel_ep)) %>%
   #filter(sel_tx_Taxa == local(input$sel_taxa)) %>%
   #filter(sel_gen_ProvReachID %in% local(sel_ProvReachID)) %>%
@@ -137,7 +180,7 @@ plt_predImp <- pred_imp %>%
   group_by(sel_tx_Taxa,ttl) %>% 
   nest() %>% 
   mutate(plt=map2(data,ttl,
-                  ~ggplot(.x,
+                  ~ggplot(.x %>% mutate(Predictors=pred_rn(Predictors)),
                           aes(x=Importance,
                               y=Predictors,
                               xmin=q10,
@@ -159,7 +202,7 @@ plt2_predImpAll <- pred_imp %>%
   group_by(sel_tx_Taxa,ttl) %>% 
   nest() %>% 
   mutate(plt=map2(data,ttl,
-                  ~ggplot(.x,
+                  ~ggplot(.x %>% mutate(Predictors=pred_rn(Predictors)),
                           aes(x=Importance,
                               y=Predictors,
                               xmin=q10,
@@ -178,22 +221,13 @@ plt2_predImpAll <- pred_imp %>%
 # Response Surfaces -------------------------------------------------------
 
 ax_brk<-function(x){
-  #browser()
-  a1<-scales::transform_pseudo_log()
-  a1$breaks(x)
-  #a1$minor_breaks(x,c(),3)
-  # tns<-scales::pseudo_log_trans()$transform(x)
-  # brks<-scales::pretty_breaks(5)(tns)
-  # 
-  # scales::pseudo_log_trans()$inverse(abs(scales::pretty_breaks(5)(abs(tns))))
-  
-  #ax_brk<-scales::log_breaks(5)(c(0.3,max(x)))
-  #sort(c(-ax_brk,0,ax_brk))
+  ax_brk<-scales::pretty_breaks(5)(abs(x))
+  sort(c(-ax_brk,0,ax_brk))
 }
 
 ax_lm<-function(x){
   #browser()
-  ax_brk<-scales::log_breaks(3)(abs(x))
+  ax_brk<-scales::pretty_breaks(5)(abs(x))
   range(sort(c(-ax_brk,0,ax_brk)))
 }
 
@@ -230,7 +264,7 @@ plt_RespSurf <- tibble(
                       )+
                       theme_bw()+
                       scale_colour_manual(values = c(RColorBrewer::brewer.pal(3,"Dark2")[1:2]))+
-                      scale_y_continuous(transform = "pseudo_log",breaks=ax_brk,labels=scales::comma,limits=ax_lm)+ #,expand=c(0,0)
+                      scale_y_continuous(breaks=ax_brk,labels=scales::comma,limits=ax_lm)+ #,expand=c(0,0)
                       facet_grid(ep_rn(shape_param)~ep_rn(endpoint),scales="free")+
                       theme(legend.position = "bottom")
                   }

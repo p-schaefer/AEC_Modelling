@@ -2,7 +2,73 @@ library(shinydashboard)
 library(dplyr)
 library(dbplyr)
 
-fp<-file.path("data",paste0("Model_data_v3.gpkg"))
+ep_rn<-function(x) {
+  case_when(
+    x=="resp_Comm_Biomass" ~ "Biomass (g/m²)",
+    x=="resp_Comm_Abundance" ~ "Density (ind/m²)",
+    x=="Atlantic Salmon (ouananiche)" ~ "Atlantic Salmon",
+    x=="Brook (speckled) Trout" ~ "Brook Trout",
+    x=="Brook Stickleback" ~ "Brook Stickleback",
+    x=="Brown Trout" ~ "Brown Trout",
+    x=="Central Mudminnow" ~ "Central Mudminnow",
+    x=="Common Shiner" ~ "Common Shiner",
+    x=="Creek Chub" ~ "Creek Chub",
+    x=="Fantail Darter" ~ "Fantail Darter",
+    x=="Johnny/tesselated Darter" ~ "Johnny/Tesselated Darter",
+    x=="Pumpkinseed" ~ "Pumpkinseed",
+    x=="Rainbow Darter" ~ "Rainbow Darter",
+    x=="Rainbow Trout (steelhead)" ~ "Rainbow Trout",
+    x=="Rock Bass" ~ "Rock Bass",
+    x=="White Sucker" ~ "White Sucker",
+    T ~ x
+  )
+}
+
+pred_rn<-function(x) {
+  case_when(
+    x=="tx_Taxa" ~ "Species",
+    x=="tx_Family" ~ "Family",
+    x=="tx_Tolerance" ~ "Species Tolerance",
+    x=="tx_Trophic_Class" ~ "Species Trophic Class",
+    x=="tx_Thermal_Regime" ~ "Species Thermal Requirement",
+    x=="tx_General_Habitat" ~ "Species Habitat Preference",
+    x=="tx_Environment" ~ "Species Environmental Preference",
+    x=="tx_Repro_1" ~ "Species Nest Guarding",
+    x=="tx_Repro_2" ~ "Species Spawning Habitat Preference",
+    x=="tx_Repro_3" ~ "Species Spawning Methods",
+    x=="hb_Temperature" ~ "AEC Modeled Stream Temperature",
+    x=="hb_GDDair_UpstreamCatchmentMean" ~ "AEC Air Temperature Growing Degree Days in Catchment",
+    x=="hb_Turbidity" ~ "AEC Turbidity",
+    x=="hb_Slope" ~ "AEC Channel Slope",
+    x=="hb_BFI_RCA" ~ "AEC Baseflow Index in Reach Contributing Area",
+    x=="hb_BFI_UCA" ~ "AEC Baseflow Index in Upstream Catchment Area",
+    x=="hb_UCA" ~ "AEC Catchment Area",
+    x=="hb_Temperature_Class" ~ "AEC Stream Temperature Class",
+    x=="hb_Lake_Inf" ~ "AEC Lake Influence",
+    x=="hb_Wadeability" ~ "AEC Wadeability",
+    x=="nr_BroadleafForest_HAiFLS_prop" ~ "OLCC Deciduous Treed - HAiFLS",
+    x=="nr_BroadleafForest_HAiFLO_prop" ~ "OLCC Deciduous Treed - HAiFLO",
+    x=="nr_ConiferousForest_HAiFLS_prop" ~ "OLCC Coniferous Treed - HAiFLS",
+    x=="nr_ConiferousForest_HAiFLO_prop" ~ "OLCC Coniferous Treed - HAiFLO",
+    x=="nr_MixedAgriculture_HAiFLS_prop" ~ "OLCC Agriculture and Undifferentiated Rural - HAiFLS",
+    x=="nr_MixedAgriculture_HAiFLO_prop" ~ "OLCC Agriculture and Undifferentiated Rural - HAiFLO",
+    x=="nr_MixedForest_HAiFLS_prop" ~ "OLCC Mixed, Sparse, Upland, Plantations Treed - HAiFLS",
+    x=="nr_MixedForest_HAiFLO_prop" ~ "OLCC Mixed, Sparse, Upland, Plantations Treed - HAiFLO",
+    x=="nr_Water_HAiFLS_prop" ~ "OLCC Clear Open, Turbid Water - HAiFLS",
+    x=="nr_Water_HAiFLO_prop" ~ "OLCC Clear Open, Turbid Water - HAiFLO",
+    x=="nr_Wetland_HAiFLS_prop" ~ "OLCC Marsh, Swamp, Fen, Bog - HAiFLS",
+    x=="nr_Wetland_HAiFLO_prop" ~ "OLCC Marsh, Swamp, Fen, Bog - HAiFLO",
+    x=="nr_UrbanDeveloped_HAiFLS_prop" ~ "OLCC Urban Developed - HAiFLS",
+    x=="nr_UrbanDeveloped_HAiFLO_prop" ~ "OLCC Urban Developed - HAiFLO",
+    x=="nr_ExposedLandBarren_HAiFLS_prop" ~ "OLCC Depletion/Disturbance - HAiFLS",
+    x=="nr_ExposedLandBarren_HAiFLO_prop" ~ "OLCC Depletion/Disturbance - HAiFLO",
+    x=="LDI_HAiFLS_mean" ~ "OLCC Land Disturbance Index - HAiFLS",
+    x=="LDI_HAiFLO_mean" ~ "OLCC Land Disturbance Index - HAiFLO",
+    T ~ x
+  )
+}
+
+fp<-file.path("data",paste0("Model_data_v4_dart.gpkg"))
 con <- DBI::dbConnect(RSQLite::SQLite(), fp)
 
 regions<-tbl(con,"Region_names") %>% collect() %>% pull(1)
@@ -11,6 +77,9 @@ CalcEP<-tbl(con,"CalcEP_names") %>% collect() %>% pull(1)
 pred_names<-tbl(con,"Predictor_names") %>% collect() %>% pull(1)
 ep<-list(Density = "resp_Comm_Abundance",
          Biomass = "resp_Comm_Biomass")
+
+names(taxa) <- ep_rn(taxa)
+names(pred_names) <- pred_rn(pred_names)
 
 DBI::dbDisconnect(con)
 
