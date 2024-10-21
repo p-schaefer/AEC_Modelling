@@ -89,8 +89,8 @@ pred_rn<-function(x) {
     x=="nr_UrbanDeveloped_HAiFLO_prop" ~ "OLCC Urban Developed - HAiFLO",
     x=="nr_ExposedLandBarren_HAiFLS_prop" ~ "OLCC Depletion/Disturbance - HAiFLS",
     x=="nr_ExposedLandBarren_HAiFLO_prop" ~ "OLCC Depletion/Disturbance - HAiFLO",
-    x=="LDI_HAiFLS_mean" ~ "OLCC Land Disturbance Index - HAiFLS",
-    x=="LDI_HAiFLO_mean" ~ "OLCC Land Disturbance Index - HAiFLO",
+    x=="LDI_HAiFLS_mean" ~ "Land Disturbance Index - HAiFLS",
+    x=="LDI_HAiFLO_mean" ~ "Land Disturbance Index - HAiFLO",
     T ~ x
   )
 }

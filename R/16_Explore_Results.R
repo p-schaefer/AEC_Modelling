@@ -75,11 +75,12 @@ pred_rn<-function(x) {
     x=="nr_UrbanDeveloped_HAiFLO_prop" ~ "OLCC Urban Developed - HAiFLO",
     x=="nr_ExposedLandBarren_HAiFLS_prop" ~ "OLCC Depletion/Disturbance - HAiFLS",
     x=="nr_ExposedLandBarren_HAiFLO_prop" ~ "OLCC Depletion/Disturbance - HAiFLO",
-    x=="LDI_HAiFLS_mean" ~ "OLCC Land Disturbance Index - HAiFLS",
-    x=="LDI_HAiFLO_mean" ~ "OLCC Land Disturbance Index - HAiFLO",
+    x=="LDI_HAiFLS_mean" ~ "Land Disturbance Index - HAiFLS",
+    x=="LDI_HAiFLO_mean" ~ "Land Disturbance Index - HAiFLO",
     T ~ x
   )
 }
+
 # Predictive Performance --------------------------------------------------
 sel_modelOOSpredictions<-tbl(con,"OOS_Predictions") %>% 
   #filter(tx_Taxa == local(input$sel_taxa)) %>% 
@@ -111,7 +112,7 @@ plt_1to1 <- sel_modelOOSpredictions %>%
   mutate(plt=map2(data,tx_Taxa,
                   ~ggplot(.x,
                           aes(x=observed,y=quant_0.5))+
-                    geom_point(size=0.5)+
+                    geom_point(size=0.1,alpha=0.1)+
                     geom_abline(slope=1,intercept=0)+
                     geom_smooth(aes(x=observed,y=quant_0.5),se=F,method="gam",colour="black", formula = y ~ splines::bs(x, 3))+
                     geom_smooth(aes(x=observed,y=quant_0.75),se=F,method="gam",colour="blue", formula = y ~ splines::bs(x, 3))+
@@ -122,7 +123,7 @@ plt_1to1 <- sel_modelOOSpredictions %>%
                     theme_bw()+
                     labs(x="Observed",
                          y="Predicted",
-                         title=paste0(.y)) +
+                         title=ep_rn(paste0(.y))) +
                     facet_wrap(~endpoint)
   )) %>% 
   group_by(ep_gp ) %>% 
@@ -130,7 +131,8 @@ plt_1to1 <- sel_modelOOSpredictions %>%
   ungroup() %>% 
   mutate(plt=map(data,~cowplot::plot_grid(plotlist = .x$plt,align="hv",axis="tblr")))
 
-
+ggsave(file.path("Figs","Fig 1 1to1 Taxa.pdf"),plt_1to1$plt[[1]],height=8.5,width=11)
+ggsave(file.path("Figs","Fig 1 1to1 Derived.pdf"),plt_1to1$plt[[2]],height=8.5,width=11)
 
 # plt<-ggplot(sel_modelOOSpredictions,
 #             aes(x=observed,y=quant_0.5))+
@@ -191,10 +193,12 @@ plt_predImp <- pred_imp %>%
                     scale_colour_manual(values = c(RColorBrewer::brewer.pal(3,"Dark2")[1:2]))+
                     facet_wrap(~shape_param,scales="free_x")+
                     labs(title=.y,colour = "")+
-                    xlab("Importance\n(mean absolute SHAP value | 10th-90th Percentile range)")+
+                    xlab("Importance\n(mean absolute SHAP value | 10th-90th percentile range)")+
                     theme_bw()+
-                    theme(legend.position = "none")
+                    theme(legend.position = "bottom")
   ))
+
+a<-map2(plt_predImp$ttl, plt_predImp$plt, ~ggsave(file.path("Figs",paste0("Fig 2. PredImp ",gsub("\\/","",.x),".pdf")),.y,height=8.5,width=11))
 
 plt2_predImpAll <- pred_imp %>% 
   mutate(ttl="All",
@@ -215,19 +219,19 @@ plt2_predImpAll <- pred_imp %>%
                     labs(title=.y,colour = "")+
                     xlab("Importance\n(mean absolute SHAP value | 10th-90th Percentile range)")+
                     theme_bw()+
-                    theme(legend.position = "none")
+                    theme(legend.position = "bottom")
   ))
 
 # Response Surfaces -------------------------------------------------------
 
 ax_brk<-function(x){
-  ax_brk<-scales::pretty_breaks(5)(abs(x))
-  sort(c(-ax_brk,0,ax_brk))
+  ax_brk<-scales::pretty_breaks(5)(x)
+  unique(sort(c(-ax_brk,0,ax_brk)))
 }
 
 ax_lm<-function(x){
   #browser()
-  ax_brk<-scales::pretty_breaks(5)(abs(x))
+  ax_brk<-scales::pretty_breaks(5)(x)
   range(sort(c(-ax_brk,0,ax_brk)))
 }
 
@@ -238,10 +242,11 @@ plt_RespSurf <- tibble(
 ) %>% 
   #unnest(ep) %>% 
   unnest(taxa) %>% 
-  unnest(pred_names) %>% 
+  unnest(pred_names) 
+
+plt_RespSurf <- plt_RespSurf %>% 
   mutate(plt=pmap(list(sel_taxa=taxa,shap_pred_sel=pred_names), #sel_ep=ep,
                   function(sel_ep,sel_taxa,shap_pred_sel) {
-                    #browser()
                     sel_modelShap <- tbl(con,"SHAP_scores") %>%
                       #filter(endpoint == local(sel_ep)) %>%
                       filter(sel_tx_Taxa == local(sel_taxa)) %>%
@@ -250,25 +255,112 @@ plt_RespSurf <- tibble(
                              all_of(local(paste0("sel_",shap_pred_sel)))) %>%
                       collect() %>%
                       setNames(c("ProvReachID","endpoint","shape_param","y","x")) %>% 
-                      filter(!grepl("Reference",shape_param))
+                      filter(!grepl("Reference",shape_param)) %>% 
+                      mutate(shape_param=gsub("Current ","",shape_param)) %>% 
+                      filter(!is.na(y)) %>% 
+                      filter(!is.na(x)) %>% 
+                      filter(x!="NA") 
+                    
+                    knots <- 10
+                    if (is.character(sel_modelShap$x[[1]])){
+                      sel_modelShap <- sel_modelShap %>% 
+                        mutate(x_lab=x,
+                               x=as.numeric(factor(x)))
+                      
+                      knots <- length(unique(sel_modelShap$x))
+                    } 
                     
                     
-                    ggplot(sel_modelShap,aes(x=x,y=y,colour=endpoint))+
-                      #geom_point(size=0.1,alpha=0.05)+
+                    
+                    mod_frame<-sel_modelShap %>% 
+                      select(shape_param,endpoint,y,x) %>% 
+                      distinct() %>% 
+                      group_by(shape_param,endpoint) %>% 
+                      nest() %>% 
+                      mutate(mod=map(data,function(zzz){
+                        mod <- try(mgcv::gam(y~s(x, bs = "cs",k=knots), data=zzz ),silent=T)
+                        if (inherits(mod,"try-error")){
+                          mod <- try(loess(y~x, data=zzz ),silent=T)
+                          
+                          xrange <- range(sel_modelShap$x,na.rm=T)
+                          xseq <- seq(from=xrange[1], to=xrange[2], length=100)
+                          pred <- predict(mod, newdata = data.frame(x = xseq), se=F)
+                          y = pred
+                          ci <- NA_real_
+                          ymin = NA_real_
+                          ymax = NA_real_
+                          return(data.frame(x = xseq, y, ymin, ymax, se = NA_real_))
+                        }
+                        if (inherits(mod,"try-error")){
+                          return(data.frame(x = NA_real_, y=NA_real_, ymin=NA_real_, ymax=NA_real_, se = NA_real_)[F,])
+                        }
+                        xrange <- range(sel_modelShap$x,na.rm=T)
+                        xseq <- seq(from=xrange[1], to=xrange[2], length=100)
+                        pred <- predict(mod, newdata = data.frame(x = xseq), se=T)
+                        y = pred$fit
+                        ci <- pred$se.fit * qt(0.95 / 2 + .5, 10)
+                        ymin = y - ci
+                        ymax = y + ci
+                        data.frame(x = xseq, y, ymin, ymax, se = pred$se.fit)
+                      })) %>% 
+                      select(-data) %>% 
+                      unnest(mod)
+                    
+                    plt<-ggplot(sel_modelShap,aes(x=x,y=y,colour=endpoint))+
+                      geom_point(size=0.1,alpha=0.01)+
                       geom_hline(yintercept = 0,linetype="dashed",linewidth=0.25)+
-                      geom_smooth(aes(x=x,y=y,colour=endpoint),inherit.aes = F,se=T)+
+                      geom_smooth(aes_auto(mod_frame), data=mod_frame, stat="identity")+
+                      #geom_smooth(aes(x=x,y=y,colour=endpoint),inherit.aes = F,se=T,method="gam")+ #,formula = y ~ s(x,bs="ps")
                       labs(
-                        x=shap_pred_sel,
+                        x=pred_rn(shap_pred_sel),
                         y="SHAP Score",
                         title=paste(ep_rn(sel_taxa)) #,ep_rn(sel_ep)
                       )+
                       theme_bw()+
                       scale_colour_manual(values = c(RColorBrewer::brewer.pal(3,"Dark2")[1:2]))+
-                      scale_y_continuous(breaks=ax_brk,labels=scales::comma,limits=ax_lm)+ #,expand=c(0,0)
+                      scale_y_continuous(#labels=scales::comma,
+                        #breaks=ax_brk,
+                        limits=ax_lm)+ #,expand=c(0,0) breaks=ax_brk,
                       facet_grid(ep_rn(shape_param)~ep_rn(endpoint),scales="free")+
-                      theme(legend.position = "bottom")
+                      theme(legend.position = "none")
+                    
+                    if (any(colnames(sel_modelShap)=="x_lab")){
+                      plt <- plt +
+                        scale_x_continuous(labels = sel_modelShap %>% select(x,x_lab) %>% distinct() %>% arrange(x) %>% pull(x_lab),
+                                           breaks = sel_modelShap %>% select(x,x_lab) %>% distinct() %>% arrange(x) %>% pull(x))
+                    }
+                    
+                    return(plt)
                   }
   ))
+
+plt_RespSurf2 <- plt_RespSurf %>% 
+  mutate(plt_tbl=map(plt,~.x$layers[[3]]$data)) %>% 
+  select(-plt) %>% 
+  unnest(plt_tbl)
+
+saveRDS(plt_RespSurf2,file.path("Figs","Fig 3. PredSirf.rds"))
+
+gp_plt<-plt_RespSurf2 %>%
+  group_by(shape_param,endpoint) %>% 
+  nest() %>% 
+  mutate(plt_nm=paste(ep_rn(endpoint),shape_param)) %>% 
+  mutate(plot=map(data,
+                  ~ggplot(.x,aes(x=x,y=y,colour=ep_rn(taxa)))+
+                    geom_hline(yintercept = 0,linetype="dashed",linewidth=0.25)+
+                    geom_smooth(stat="identity")+
+                    labs(colour="Taxa",y="SHAP")+
+                    facet_wrap(~pred_rn(pred_names),scales = "free")+
+                    scale_colour_manual(values = RColorBrewer::brewer.pal(12,"Paired"))+
+                    scale_y_continuous(limits=ax_lm)+
+                    theme_bw()+
+                    theme(legend.position = "bottom")))
+
+a<-map2(gp_plt$plt_nm,gp_plt$plot,
+        ~ggsave(file.path("Figs",paste0("Fig 3. PredSurf ",gsub("\\/","",.x),".pdf")),.y,height=11.5,width=17))
+
+  
+
 
 # Database Disconnect -------------------------------------------------------
 
