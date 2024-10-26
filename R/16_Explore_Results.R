@@ -201,9 +201,8 @@ plt_predImp <- pred_imp %>%
 a<-map2(plt_predImp$ttl, plt_predImp$plt, ~ggsave(file.path("Figs",paste0("Fig 2. PredImp ",gsub("\\/","",.x),".pdf")),.y,height=8.5,width=11))
 
 plt2_predImpAll <- pred_imp %>% 
-  mutate(ttl="All",
-         sel_tx_Taxa="ALL") %>% 
-  group_by(sel_tx_Taxa,ttl) %>% 
+  mutate(ttl=endpoint) %>% 
+  group_by(ttl) %>% 
   nest() %>% 
   mutate(plt=map2(data,ttl,
                   ~ggplot(.x %>% mutate(Predictors=pred_rn(Predictors)),
@@ -211,16 +210,19 @@ plt2_predImpAll <- pred_imp %>%
                               y=Predictors,
                               xmin=q10,
                               xmax=q90,
-                              colour=endpoint))+
-                    geom_point(position=position_dodge(width=0.5))+
-                    geom_linerange(position=position_dodge(width=0.5))+
-                    scale_colour_manual(values = c(RColorBrewer::brewer.pal(3,"Dark2")[1:2]))+
+                              colour=sel_tx_Taxa,
+                              group = sel_tx_Taxa))+
+                    geom_linerange(position=position_dodge(width=0.75),linewidth=0.25)+
+                    geom_point(position=position_dodge(width=0.75))+
+                    scale_colour_manual(values = c(RColorBrewer::brewer.pal(12,"Paired")))+
                     facet_wrap(~shape_param,scales="free_x")+
                     labs(title=.y,colour = "")+
                     xlab("Importance\n(mean absolute SHAP value | 10th-90th Percentile range)")+
                     theme_bw()+
-                    theme(legend.position = "bottom")
+                    theme(legend.position = "right")
   ))
+
+a<-map2(plt2_predImpAll$ttl, plt2_predImpAll$plt, ~ggsave(file.path("Figs",paste0("Fig 2. PredImp ",gsub("\\/","",.x)," All Taxa.pdf")),.y,height=8.5,width=11))
 
 # Response Surfaces -------------------------------------------------------
 

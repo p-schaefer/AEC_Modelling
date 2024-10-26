@@ -11,6 +11,7 @@ booster<-"dart"
 lss.model <- import("lightgbmlss.model")
 distr.lgb<-import("lightgbmlss.distributions")
 shap<-import("shap")
+graphviz <-import("graphviz")
 
 # Load Data ---------------------------------------------------------------
 
@@ -27,6 +28,9 @@ model_refdata0_fin<-read_rds(file.path("data","final","Prediction_ref_finaltaxa_
 # resp<-model_data0 %>% select(starts_with("resp_")) %>% colnames()
 # resp<-resp[!grepl("Perc|cat_",resp)]
 # #ep<-resp[[1]]
+
+# dt<-"Current"
+# ep<-"resp_Comm_Abundance"
 
 for (dt in c("Current","Reference")){
   
@@ -59,6 +63,20 @@ for (dt in c("Current","Reference")){
     # Load Model --------------------------------------------------------
     xgb<-xgb$load_model(r_to_py(file.path("data","models","LSS",paste0("Final_Model_",ep,"_",booster,".txt"))))
     
+    if (F){
+      #explainer = shap$TreeExplainer(xgb$booster)
+      
+      #tree_dot = xgb$booster$dump_model()["tree_info"]
+      dot_data = lss.model$lgb$create_tree_digraph(xgb$booster,
+                                                   tree_index=752L,
+                                                   orientation ="horizontal",
+                                                   show_info=c("data_percentage","split_gain","internal_count",
+                                                               "leaf_count","internal_value","internal_weight",
+                                                               "leaf_weight","internal_weight")
+                                                   )
+      dot_data$view()
+      #a<-lss.model$lgb$plot_tree(xgb$booster,tree_index=0L)
+    }
     # xgb$plot(r_to_py(train_data %>%
     #                    select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>%
     #                    #filter(tx_Taxa=="Brook (speckled) Trout") %>%
