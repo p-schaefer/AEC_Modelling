@@ -1,7 +1,7 @@
 library(tidyverse)
 source("R/00_Functions/Endpoint_Calc_Functions.R")
 
-fp<-file.path("app","Model_Explore2","data",paste0("Model_data_v4_dart.gpkg"))
+fp<-file.path("app","Model_Explore2","data",paste0("Model_data_v5_dart.gpkg"))
 
 n_sim_reps<-99
 
@@ -93,8 +93,8 @@ t1<-dplyr::copy_to(df=tibble(calc_ep=calc_ep),
 
 
 Model_Predictions_list<-list(
-  Predicted=c(EstimatedBiomass="resp_Comm_Biomass_quant_0.5",NumberOfFish="resp_Comm_Abundance_quant_0.5"),
-  Reference=c(EstimatedBiomass="resp_Comm_Biomass_quant_0.5_ref",NumberOfFish="resp_Comm_Abundance_quant_0.5_ref"),
+  Predicted=c(EstimatedBiomass="resp_Comm_Biomass_quant_0.75",NumberOfFish="resp_Comm_Abundance_quant_0.75"),
+  Reference=c(EstimatedBiomass="resp_Comm_Biomass_quant_0.75_ref",NumberOfFish="resp_Comm_Abundance_quant_0.75_ref"),
   Observed=c(EstimatedBiomass="resp_Comm_Biomass_observed",NumberOfFish="resp_Comm_Abundance_observed")
 )
 Model_Predictions_list_sub<-unlist(Model_Predictions_list)
@@ -167,8 +167,16 @@ out_sim<-map2(Model_Predictions_list2[1:2],Model_Predictions_list[1:2],
               }) %>% 
   purrr::reduce(left_join,by=c("gen_ProvReachID","tx_Taxa")) %>% 
   mutate(
+    resp_Comm_Abundance_quant_0.25_refdiff=resp_Comm_Abundance_quant_0.25-resp_Comm_Abundance_quant_0.25_ref,
+    resp_Comm_Biomass_quant_0.25_refdiff=resp_Comm_Biomass_quant_0.25-resp_Comm_Biomass_quant_0.25_ref,
+    resp_Comm_Abundance_quant_0.33_refdiff=resp_Comm_Abundance_quant_0.33-resp_Comm_Abundance_quant_0.33_ref,
+    resp_Comm_Biomass_quant_0.33_refdiff=resp_Comm_Biomass_quant_0.33-resp_Comm_Biomass_quant_0.33_ref,
     resp_Comm_Abundance_quant_0.5_refdiff=resp_Comm_Abundance_quant_0.5-resp_Comm_Abundance_quant_0.5_ref,
     resp_Comm_Biomass_quant_0.5_refdiff=resp_Comm_Biomass_quant_0.5-resp_Comm_Biomass_quant_0.5_ref,
+    resp_Comm_Abundance_quant_0.66_refdiff=resp_Comm_Abundance_quant_0.66-resp_Comm_Abundance_quant_0.66_ref,
+    resp_Comm_Biomass_quant_0.66_refdiff=resp_Comm_Biomass_quant_0.66-resp_Comm_Biomass_quant_0.66_ref,
+    resp_Comm_Abundance_quant_0.75_refdiff=resp_Comm_Abundance_quant_0.75-resp_Comm_Abundance_quant_0.75_ref,
+    resp_Comm_Biomass_quant_0.75_refdiff=resp_Comm_Biomass_quant_0.75-resp_Comm_Biomass_quant_0.75_ref,
   )
 
 

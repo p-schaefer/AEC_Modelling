@@ -123,6 +123,81 @@ atr_tbl<-left_join(sub_tbl,lookup_tbl,by="SpeciesCode")
 
 ep_tbl<-calc_fish_ep(atr_tbl)
 
+if (F) {
+  # compare reduced derived EP with full ep
+  taxa_keep<-readRDS(file.path("data","taxa_keep.rds"))
+  atr_tbl_sub<-atr_tbl %>% 
+    filter(name.to.use %in% taxa_keep$tx_Taxa)
+  
+  atr_tbl_sub2 <- atr_tbl_sub %>%
+    left_join(SampleEventID) %>% 
+    group_by(SiteCode,name.to.use) %>%
+    summarise(across(where(is.numeric),~median(.x,na.rm=T)),
+              across(!where(is.numeric),~tail(.x,1)),
+              .groups="drop")
+  
+  atr_tbl2<-left_join(sub_tbl,lookup_tbl,by="SpeciesCode") 
+  
+  atr_tbl2 <- atr_tbl2 %>%
+    left_join(SampleEventID) %>% 
+    group_by(SiteCode,name.to.use) %>%
+    summarise(across(where(is.numeric),~median(.x,na.rm=T)),
+              across(!where(is.numeric),~tail(.x,1)),
+              .groups="drop")
+  
+  ep_tbl2<-calc_fish_ep(atr_tbl2)
+  
+  ep_tbl_sub2<-calc_fish_ep(atr_tbl_sub2)
+  
+  
+  sel_ep<-c(`Community Total Biomass`="Comm_Biomass",
+            `Community Total Density`="Comm_Abundance",
+            `Community Total Richness`="Comm_Richness",
+            `SATI Biomass`="Therm_SATI_Bioperc",
+            `SATI Density`="Therm_SATI_Abuperc",
+            `% Cold Water Stenotherm Biomass`="Therm_cold_Bioperc",
+            `% Cold Water Stenotherm Density`="Therm_cold_Abuperc",
+            `% Tolerant Taxa Biomass`="Tol_tol_Bioperc",
+            `% Intolerant Taxa Biomass`="Tol_intol_Bioperc",
+            `% Tolerant Taxa Density`="Tol_tol_Abuperc",
+            `% Intolerant Taxa Density`="Tol_intol_Abuperc",
+            `Tolerant Taxa Richness`="Tol_tol_Rich",
+            `Intolerant Taxa Richness`="Tol_intol_Rich"
+  )
+  
+  p1<-map2(sel_ep,names(sel_ep),
+           function(x,y){
+             df<-full_join(
+               ep_tbl2 %>% 
+                 select(SampleEventID,SampleDate,all_of(x)) %>% 
+                 rename_with(.cols=all_of(x),~paste0("full")),
+               ep_tbl_sub2 %>% 
+                 select(SampleEventID,SampleDate,all_of(x)) %>% 
+                 rename_with(.cols=all_of(x),~paste0("sub")),
+             ) %>% 
+               filter(!is.na(full),!is.na(sub)) %>% 
+               filter(!(full==0 & sub==0)) 
+             
+             ggplot(df,aes(x=full,y=sub))+
+               #geom_hex(alpha=0.5)+
+               geom_point(size=0.5)+
+               geom_smooth()+
+               geom_abline(slope=1,intercept = 0,colour="gray",linewidth=0.25,colour="black")+
+               labs(
+                 x="Full Community",
+                 y="12 Taxa Subset",
+                 subtitle = y,
+                 caption = paste0("r2 = ",scales::number(cor(df$full,df$sub,method = "spearman")^2,accuracy = 0.01))
+               )+
+               theme_bw()+
+               theme(legend.position = "none")
+           })
+  
+  a1<-cowplot::plot_grid(plotlist =  p1)
+  
+}
+
+
 # No Catch Table ----------------------------------------------------------
 
 no_catch_tbl<-SampleEventID %>% 

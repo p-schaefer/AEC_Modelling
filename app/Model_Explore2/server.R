@@ -5,7 +5,7 @@ library(sf)
 #shinyOptions(cache = cachem::cache_disk("./bind-cache",max_size = 1024 * 1024^4))
 #shinyOptions(cache = cachem::cache_disk("./cache"))
 
-fp<-file.path("data",paste0("Model_data_v4_dart.gpkg"))
+fp<-file.path("data",paste0("Model_data_v5_dart.gpkg"))
 con <- DBI::dbConnect(RSQLite::SQLite(), fp)
 
 regions<-tbl(con,"Region_names") %>% collect() %>% pull(1)
@@ -130,9 +130,9 @@ function(input, output, session) {
       rename_with(~gsub(paste0(input$sel_ep,"_"),"",.x)) %>% 
       select(ProvReachID,
              observed,
-             p50=quant_0.5,
-             p50_ref=quant_0.5_ref,
-             p50_refdiff=quant_0.5_refdiff,
+             p50=quant_0.75,
+             p50_ref=quant_0.75_ref,
+             p50_refdiff=quant_0.75_refdiff,
              contains(pred_names),
              geom) %>% 
       mutate(
