@@ -68,7 +68,7 @@ pred_rn<-function(x) {
   )
 }
 
-fp<-file.path("data",paste0("Model_data_v4_dart.gpkg"))
+fp<-file.path("data",paste0("Model_data_v5_dart.gpkg"))
 con <- DBI::dbConnect(RSQLite::SQLite(), fp)
 
 regions<-tbl(con,"Region_names") %>% collect() %>% pull(1)

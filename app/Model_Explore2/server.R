@@ -198,7 +198,12 @@ function(input, output, session) {
       sel_modelpredictions<-suppressWarnings(sf::st_cast(sel_modelpredictions,"LINESTRING"))
       
       val_list<-c(sel_modelpredictions$`Observed`,sel_modelpredictions$`Predicted - Reference`,sel_modelpredictions$`Predicted - Current`)
+      val_list<-val_list[!is.na(val_list)]
       diff_list<-sel_modelpredictions$`(Current - Reference)`
+      diff_list<-diff_list[!is.na(diff_list)]
+      
+      if (length(val_list)==0) val_list<-0
+      if (length(diff_list)==0) diff_list<-0
       
       #browser()
       quant_fn<-function(x,n) quantile(x,probs = seq(0, 1, length.out = n + 1),na.rm=T)
@@ -213,11 +218,17 @@ function(input, output, session) {
       rng2<-break_fn(diff_list,8)
       rng2<-rng2[rng2!=0]
       
+      if (length(rng)==0) rng<-0
+      if (length(rng2)==0) rng2<-0
+      
       rng<-as.numeric(scales::number(rng))
       rng2<-as.numeric(scales::number(rng2))
       
       rng<-unique(rng)
       rng2<-unique(rng2)
+      
+      if (length(rng)<2) rng<-c(0,1,2,3,4)
+      if (length(rng2)<2) rng2<-c(-4,-3,-2,-1,1,2,3,4)
       
       col.pal <- leaflet::colorBin("viridis", bins = rng, na.color = "grey",reverse=F)
       col.pal2 <- leaflet::colorBin("Spectral", bins = rng2, na.color = "grey")
