@@ -339,6 +339,8 @@ function(input, output, session) {
           by = join_by(shape_param, endpoint, Predictors)
         ) 
       
+      reach_shap <- reach_shap %>% 
+        mutate(Predictors=pred_rn(Predictors))
       
       DBI::dbDisconnect(con)
       
