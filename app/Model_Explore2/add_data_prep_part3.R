@@ -17,6 +17,8 @@ dat <- tbl(con,"Model_Predictions") %>%
 
 
 sum_fun<-function(x){
+  quant_fn<-function(x,n) quantile(x,probs = seq(0, 1, length.out = n + 1),na.rm=T)
+  
   #browser()
   sel_ep<-if_else(grepl("resp_Comm_Abundance",cur_column()),
                   "resp_Comm_Abundance",
