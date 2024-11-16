@@ -42,10 +42,11 @@ sum_fun<-function(x){
   if (grepl("_refdiff",cur_column())){
     diff_list<-sel_modelpredictions[[4]]
     diff_list<-diff_list[!is.na(diff_list)]
+    has_0 <- any(diff_list==0)
     if (length(diff_list)==0 | any(is.infinite(diff_list))) diff_list<-0
     diff_list <- diff_list[diff_list!=0]
-    diff_list <- c(0,diff_list)
-    
+    if (has_0) diff_list <- c(0,diff_list)
+
     diff_list<-c(-abs(diff_list),abs(diff_list))
     
     rng2 <- list(
@@ -68,9 +69,11 @@ sum_fun<-function(x){
   } else {
     val_list<-c(sel_modelpredictions[[1]],sel_modelpredictions[[2]],sel_modelpredictions[[3]])
     val_list<-val_list[!is.na(val_list)]
+    has_0 <- any(val_list==0)
     if (length(val_list)==0 | any(is.infinite(val_list))) val_list<-0
     val_list <- val_list[val_list!=0]
-    val_list <- c(0,val_list)
+    if (has_0) diff_list <- val_list <- c(0,val_list)
+    
     
     rng <- list(
       pretty=pretty(val_list,8),
