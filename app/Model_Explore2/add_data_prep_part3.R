@@ -43,6 +43,8 @@ sum_fun<-function(x){
     diff_list<-sel_modelpredictions[[4]]
     diff_list<-diff_list[!is.na(diff_list)]
     if (length(diff_list)==0 | any(is.infinite(diff_list))) diff_list<-0
+    diff_list <- diff_list[diff_list!=0]
+    diff_list <- c(0,diff_list)
     
     diff_list<-c(-abs(diff_list),abs(diff_list))
     
