@@ -201,8 +201,9 @@ fluidPage(
                          fluidPage(
                            fluidRow(
                              column(width=6,
+                                    h4("Layers"),
                                     shiny::radioButtons("map_layer_sel",
-                                                        "Layers",
+                                                        "",
                                                         list(
                                                           `Stream Lines`="Stream Lines",
                                                           Observed="Observed",
@@ -212,23 +213,33 @@ fluidPage(
                                                         ),
                                                         selected=NULL,
                                                         inline=T)),
-                             column(width=3,
+                             column(width=5,
                                     offset=1,
-                                    shiny::radioButtons("map_breaks",
-                                                        "Colour Breaks",
-                                                        list(
-                                                          Equal="pretty",
-                                                          Quantile="quantile",
-                                                          `Jenks Natural Breaks`="getJenksBreaks"),
-                                                        selected="getJenksBreaks",
-                                                        inline=T))
-                             
+                                    h4("Colour Breaks"),
+                                    column(
+                                      width=3,
+                                      shiny::checkboxInput("const_col",
+                                                           "Consistent Province-Wide Breaks",
+                                                           value=T)
+                                    ),
+                                    column(
+                                      width=9,
+                                      shiny::radioButtons("map_breaks",
+                                                          "",
+                                                          list(
+                                                            Equal="pretty",
+                                                            Quantile="quantile",
+                                                            `Jenks Natural Breaks`="getJenksBreaks"),
+                                                          selected="getJenksBreaks",
+                                                          inline=T)
+                                    )
+                             )
                            ),
                            fluidRow(
-                             #shinyjqui::jqui_resizable(box(width=9,leaflet::leafletOutput("map_bio", height = "800px"))),
-                             shinyjqui::jqui_resizable(box(width=9,leafgl::leafglOutput("map_bio", height = "800px"))),
-                             #shinyjqui::jqui_resizable(box(width=9,tmap::tmapOutput("map_bio", height = "800px"))),
-                             shinyjqui::jqui_resizable(box(width=3,shiny::plotOutput("SHAP_breakdown", height = "800px")))
+                             box(width=12,leafgl::leafglOutput("map_bio", height = "800px")),
+                             #shinyjqui::jqui_resizable(box(width=9,leafgl::leafglOutput("map_bio", height = "800px"))),
+                             box(width=12,plotOutput("SHAP_breakdown2", height = "800px")),
+                             #shinyjqui::jqui_resizable(box(width=3,shiny::plotOutput("SHAP_breakdown", height = "800px")))
                            )
                          )
                   )

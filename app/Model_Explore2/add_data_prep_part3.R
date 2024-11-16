@@ -67,6 +67,8 @@ sum_fun<-function(x){
     val_list<-c(sel_modelpredictions[[1]],sel_modelpredictions[[2]],sel_modelpredictions[[3]])
     val_list<-val_list[!is.na(val_list)]
     if (length(val_list)==0 | any(is.infinite(val_list))) val_list<-0
+    val_list <- val_list[val_list!=0]
+    val_list <- c(0,val_list)
     
     rng <- list(
       pretty=pretty(val_list,8),
@@ -84,7 +86,7 @@ sum_fun<-function(x){
     
   }
   
-  rng <- map(rng,~c(.x,rep(NA_real_,50-length(.x))))
+  rng <- map(rng,~c(.x,rep(NA_real_,20-length(.x))))
   
   rng <- map(rng,~tibble(rng=.x))
   rng <- map(rng,~rename_with(.x,~paste0(cur_column()))) 
@@ -97,7 +99,7 @@ dat2 <- dat %>%
     tx_Taxa %in% taxa ~ "tx_Taxa",
     T ~ tx_Taxa
   )) %>% 
-  select(tx_Taxa,starts_with("resp_"),-contains(c("rate","gate","concentration"))) %>% 
+  select(tx_Taxa,contains("observed"),contains("quant_0.75")) %>% 
   group_by(tx_Taxa) %>% 
   reframe(
     across(

@@ -5,6 +5,13 @@ library(sf)
 #shinyOptions(cache = cachem::cache_disk("./bind-cache",max_size = 1024 * 1024^4))
 #shinyOptions(cache = cachem::cache_disk("./cache"))
 
+hydro_n_url<-"https://maps.geogratis.gc.ca/wms/hydro_network_en?request=GetCapabilities&service=WMS&version=1.3.0&layers=hydro_network&legend_format=image%2Fpng&feature_info_type=text%2Fhtml"
+hydro_n<-xml2::read_html(hydro_n_url)
+#xml2::xml_structure(hydro_n)
+hydro_n<-xml2::xml_find_all(hydro_n,".//name")
+hydro_n<-xml2::xml_text(hydro_n)
+hydro_n<-hydro_n[ grepl("nhn:nhn:hydrography:hydro|nhn:nhn:hydrography:slwatercourse|nhn:nhn:hydrography:waterbody|nhn:nhn:drainageareas:nhnda",hydro_n)] #grepl("nhn:toponyms",hydro_n) 
+
 fp<-file.path("data",paste0("Model_data_v5_dart.gpkg"))
 con <- DBI::dbConnect(RSQLite::SQLite(), fp)
 
@@ -112,7 +119,7 @@ function(input, output, session) {
     req(input$sel_taxa)
     req(input$sel_ep)
     validate(need(length(input$sel_region)<9,"Select up to 8 regions for mapping"))
-
+    
     con <- DBI::dbConnect(RSQLite::SQLite(), fp)
     
     sel_modelpredictions<-tbl(con,"Model_Predictions") %>% 
@@ -150,15 +157,15 @@ function(input, output, session) {
   output$map_bio <- leaflet::renderLeaflet({
     req(input$sel_region)
     validate(need(length(input$sel_region)<9,"Select up to 8 regions for mapping"))
-    
+
     sel_modelpredictions<-sel_strms()
     sel_modelpredictions<-suppressWarnings(sf::st_cast(sel_modelpredictions,"LINESTRING"))
     
     shiny::updateRadioButtons(session,inputId = "map_layer_sel",selected="Stream Lines")
     
-    leaflet::leaflet(options = leaflet::leafletOptions(zoomControl = TRUE,
-                                                       zoomSnap = 0.25,
-                                                       zoomDelta = 1)) %>%
+    out <- leaflet::leaflet(options = leaflet::leafletOptions(zoomControl = TRUE,
+                                                              zoomSnap = 0.25,
+                                                              zoomDelta = 1)) %>%
       leaflet::addTiles() %>%
       leaflet::addProviderTiles(leaflet::providers$Esri.WorldImagery, group ="ESRI - Imagery") %>%
       leaflet::addProviderTiles(leaflet::providers$OpenStreetMap.Mapnik, group ="OpenStreetMap") %>%
@@ -168,6 +175,8 @@ function(input, output, session) {
         baseGroups = c("CartoDB",
                        "OpenStreetMap",
                        "ESRI - Imagery"),
+        overlayGroups = c("NHN Drainage Areas",
+                          "NHN Hydrography"),
         position = "topleft",
         options = leaflet::layersControlOptions(collapsed = F)
       ) %>%
@@ -177,26 +186,61 @@ function(input, output, session) {
         opacity=0.75,
         src =F,
         color=~"darkgrey"
-      )
+      ) %>% 
+      leaflet::hideGroup(c("NHN Drainage Areas","NHN Hydrography"))
+
+    for (i in hydro_n[grepl("drainageareas",hydro_n)]){
+      out <- out %>% 
+        leaflet::addWMSTiles(baseUrl = "https://maps.geogratis.gc.ca/wms/hydro_network_en?",
+                             layers = i,
+                             options = leaflet::WMSTileOptions(format = "image/png", transparent = T),
+                             group ="NHN Drainage Areas"
+        ) 
+    }
+    for (i in hydro_n[grepl("hydrography",hydro_n)]){
+      out <- out %>% 
+        leaflet::addWMSTiles(baseUrl = "https://maps.geogratis.gc.ca/wms/hydro_network_en?",
+                             layers = i,
+                             options = leaflet::WMSTileOptions(format = "image/png", transparent = T),
+                             group ="NHN Hydrography"
+        )
+    }
+    
+    return(out)
   })
   
-  observeEvent(
-    c(input$map_layer_sel,input$sel_ep,input$sel_taxa,input$map_breaks),
-    ignoreInit=F,
-    {
-      req(input$sel_region)
-      req(input$sel_taxa)
-      req(input$sel_ep)
-      req(input$map_layer_sel)
-      req(input$map_breaks)
-      req(input$map_layer_sel!="Stream Lines")
-      validate(need(length(input$sel_region)<9,"Select up to 8 regions for mapping"))
-      req(leaflet::leafletProxy("map_bio", session))
+  map_col_react <- reactive({
+    req(input$sel_region)
+    req(input$sel_taxa)
+    req(input$sel_ep)
+    req(input$map_layer_sel)
+    req(input$map_breaks)
+    req(input$map_layer_sel!="Stream Lines")
+    validate(need(length(input$sel_region)<9,"Select up to 8 regions for mapping"))
+    req(leaflet::leafletProxy("map_bio", session))
+    
+    sel_modelpredictions<-map_data() 
+    sel_modelpredictions<-suppressWarnings(sf::st_cast(sel_modelpredictions,"LINESTRING"))
+    
+    if (input$const_col) {
+      con <- DBI::dbConnect(RSQLite::SQLite(), fp)
       
-      sel_modelpredictions<-map_data() 
+      sel_taxa<-input$sel_taxa
+      if (!sel_taxa %in% CalcEP) sel_taxa<-"tx_Taxa"
       
-      sel_modelpredictions<-suppressWarnings(sf::st_cast(sel_modelpredictions,"LINESTRING"))
+      brks<-tbl(con,"value_breaks") %>% 
+        filter(tx_Taxa == local(sel_taxa)) %>% 
+        filter(break_type %in% local(input$map_breaks)) %>% 
+        select(contains(input$sel_ep)) %>% 
+        collect() %>% 
+        rename_with(~gsub(paste0(input$sel_ep,"_"),"",.x))
       
+      DBI::dbDisconnect(con)
+      
+      rng <- brks$observed[!is.na(brks$observed)]
+      rng2 <- brks$quant_0.75_refdiff[!is.na(brks$quant_0.75_refdiff)]
+
+    } else {
       val_list<-c(sel_modelpredictions$`Observed`,sel_modelpredictions$`Predicted - Reference`,sel_modelpredictions$`Predicted - Current`)
       val_list<-val_list[!is.na(val_list)]
       diff_list<-sel_modelpredictions$`(Current - Reference)`
@@ -204,6 +248,12 @@ function(input, output, session) {
       
       if (length(val_list)==0) val_list<-0
       if (length(diff_list)==0) diff_list<-0
+      
+      val_list <- val_list[val_list!=0]
+      val_list <- c(0,val_list)
+
+      diff_list <- diff_list[diff_list!=0]
+      diff_list <- c(0,diff_list)
       
       #browser()
       quant_fn<-function(x,n) quantile(x,probs = seq(0, 1, length.out = n + 1),na.rm=T)
@@ -213,7 +263,7 @@ function(input, output, session) {
                        getJenksBreaks=BAMMtools::getJenksBreaks)
       
       diff_list<-c(-abs(diff_list),abs(diff_list))
-
+      
       rng<-break_fn(val_list,8)
       rng2<-break_fn(diff_list,8)
       rng2<-rng2[rng2!=0]
@@ -230,29 +280,47 @@ function(input, output, session) {
       if (length(rng)<2) rng<-c(0,1,2,3,4)
       if (length(rng2)<2) rng2<-c(-4,-3,-2,-1,1,2,3,4)
       
-      col.pal <- leaflet::colorBin("viridis", bins = rng, na.color = "grey",reverse=F)
-      col.pal2 <- leaflet::colorBin("Spectral", bins = rng2, na.color = "grey")
-
-      sel_modelpredictions_sub<-sel_modelpredictions %>% 
-        tibble::as_tibble() %>% 
-        select(ProvReachID,
-               any_of(c("Observed",
-                        "Predicted - Current",
-                        "Predicted - Reference",
-                        "(Current - Reference)")),
-               starts_with("LDI"),
-               starts_with("hb_"),
-               -ends_with("_ref"))
+    }
+    
+    col.pal <- leaflet::colorBin("viridis", bins = rng, na.color = "grey",reverse=F)
+    col.pal2 <- leaflet::colorBin("Spectral", bins = rng2, na.color = "grey")
+    
+    if (input$map_layer_sel == "(Current - Reference)"){
+      col.pal.sel<-col.pal2
+      rng.sel<-rng2
+    } else {
+      col.pal.sel<-col.pal
+      rng.sel<-rng
+    }
+    
+    return(
+      list(
+        sel_modelpredictions=sel_modelpredictions,
+        col.pal=col.pal,
+        col.pal2=col.pal2,
+        col.pal.sel=col.pal.sel,
+        rng=rng,
+        rng2=rng2,
+        rng.sel=rng.sel
+      )
+    )
+  })
+  
+  observeEvent(
+    c(input$map_layer_sel,input$sel_ep,input$sel_taxa,input$map_breaks,input$const_col),
+    ignoreInit=F,
+    {
       
-      if (input$map_layer_sel == "(Current - Reference)"){
-        col.pal.sel<-col.pal2
-        rng.sel<-rng2
-      } else {
-        col.pal.sel<-col.pal
-        rng.sel<-rng
-      }
+      map_col <- map_col_react()
+      sel_modelpredictions <- map_col$sel_modelpredictions
+      col.pal <- map_col$col.pal
+      col.pal2 <- map_col$col.pal2
+      col.pal.sel <- map_col$col.pal.sel
+      rng <- map_col$rng
+      rng2 <- map_col$rng2
+      rng.sel <- map_col$rng.sel
       
-      
+      #browser()
       leaflet::leafletProxy("map_bio", session) %>%
         leafgl::clearGlLayers() %>% 
         leaflet::clearControls() %>% 
@@ -260,6 +328,8 @@ function(input, output, session) {
           baseGroups = c("CartoDB",
                          "OpenStreetMap",
                          "ESRI - Imagery"),
+          overlayGroups = c("NHN Drainage Areas",
+                            "NHN Hydrography"),
           position = "topleft",
           options = leaflet::layersControlOptions(collapsed = F)
         ) %>% 
@@ -278,8 +348,9 @@ function(input, output, session) {
           weight=0.5,
           opacity=0.9,
           src =F,
-          color=~col.pal.sel(sel_modelpredictions[[input$map_layer_sel]])
-        )
+          color=col.pal.sel(sel_modelpredictions[[input$map_layer_sel]])
+        ) %>% 
+        leaflet::hideGroup(c("NHN Drainage Areas","NHN Hydrography"))
       
     })
   
@@ -297,68 +368,184 @@ function(input, output, session) {
     sel_strms()$ProvReachID[sel_reach]
   })
   
+  pnt_react <- reactive({
+    validate(need(input$map_layer_sel %in% c("Predicted - Current","Predicted - Reference"),message="Select a stream line in the Current or Reference Layer to see the prediction breakdown"))
+    validate(need(!input$sel_taxa %in% CalcEP,message="Calculated Endpoints Don't Have SHAP scores yet..."))
+    validate(need(sel_reach(),message="No stream selected"))
+    
+    pnt <- sel_strms() %>%
+      filter(ProvReachID == sel_reach()) 
+    
+    pnt <- suppressWarnings(sf::st_cast(pnt,"POINT") )
+  })
+  
   observeEvent(input$map_bio_glify_click,{
-    output$SHAP_breakdown<-shiny::renderPlot({
-      validate(need(input$map_layer_sel %in% c("Predicted - Current","Predicted - Reference"),message="Select a stream line in the Current or Reference Layer to see the prediction breakdown"))
-      validate(need(!input$sel_taxa %in% CalcEP,message="Calculated Endpoints Don't Have SHAP scores yet..."))
-      
-      loading_message(session)
-      
-      sel_time<-case_when(
-        input$map_layer_sel == "Predicted - Current" ~ c("Current Mean","Current Presence/Absence"),
-        input$map_layer_sel == "Predicted - Reference" ~ c("Reference Mean","Reference Presence/Absence")
+    leaflet::leafletProxy("map_bio", session) %>%
+      leaflet::clearGroup("sel_pnts")
+  })
+  
+  observeEvent(input$map_bio_glify_click,{
+    validate(need(input$map_layer_sel %in% c("Predicted - Current","Predicted - Reference"),message="Select a stream line in the Current or Reference Layer to see the prediction breakdown"))
+    validate(need(!input$sel_taxa %in% CalcEP,message="Calculated Endpoints Don't Have SHAP scores yet..."))
+    validate(need(sel_reach(),message="No stream selected"))
+    
+    leaflet::leafletProxy("map_bio", session) %>%
+      leaflet::clearGroup("sel_pnts") %>% 
+      leaflet::addCircles(
+        radius = 12,
+        group = "sel_pnts",
+        color = "red",
+        weight = 8,
+        fillColor ="red",
+        #fillOpacity = 0.5,
+        data=pnt_react()
       )
-      
-      con <- DBI::dbConnect(RSQLite::SQLite(), fp)
-      
-      sel_modelShap<-tbl(con,"SHAP_scores") %>% 
-        filter(endpoint == local(input$sel_ep)) %>%
-        filter(sel_tx_Taxa == local(input$sel_taxa)) %>%
-        filter(sel_gen_ProvReachID %in% local(sel_reach())) %>% 
-        filter(shape_param %in% local(sel_time)) %>% 
-        collect() 
-      
-      if (nrow(sel_modelShap)==0){
-        shinyWidgets::closeSweetAlert()
-        validate(need(nrow(sel_modelShap)>0,message="Virtual Stream Connector Selected"))
-      }
-      
-      reach_shap<-sel_modelShap %>% 
-        select(-starts_with("sel_")) %>% 
-        pivot_longer(c(everything(),-shape_param,-endpoint),
-                     names_to="Predictors",
-                     values_to = "SHAP Score") %>% 
-        left_join(
-          sel_modelShap %>% 
-            select(shape_param,endpoint,starts_with("sel_"),-sel_gen_Region,-sel_gen_link_id,-sel_gen_ProvReachID) %>% 
-            mutate(across(everything(),~as.character(.x))) %>% 
-            pivot_longer(c(everything(),-shape_param,-endpoint),
-                         names_to="Predictors",
-                         values_to = "Value") %>% 
-            mutate(Predictors=gsub("sel_","",Predictors)),
-          by = join_by(shape_param, endpoint, Predictors)
-        ) 
-      
-      reach_shap <- reach_shap %>% 
-        mutate(Predictors=pred_rn(Predictors))
-      
-      DBI::dbDisconnect(con)
-      
-      pt<-ggplot(reach_shap,aes(y=Predictors,xmin=0,xmax=`SHAP Score`,colour=`SHAP Score`>0)) +
-        geom_linerange(linewidth=3) +
-        geom_vline(xintercept = 0) +
-        scale_x_continuous(breaks=scales::pretty_breaks(),labels=function(x) scales::comma(x)) +
-        #scale_y_discrete(sec.axis = sec_axis(transform=~.,labels=reach_shap$Value, name="Values"))+
-        xlab("SHAP Scores")+
-        ggtitle(paste("Reach: ",sel_reach()))+
-        theme_bw() +
-        facet_wrap(~shape_param,scales="free_x")+
-        theme(legend.position="none") +
-        theme(text=element_text(size=18))
-      
+  })
+  
+  SHAP_breakdown_react <- reactive({
+    req(input$map_bio_glify_click)
+    validate(need(input$map_layer_sel %in% c("Predicted - Current","Predicted - Reference"),message="Select a stream line in the Current or Reference Layer to see the prediction breakdown"))
+    validate(need(!input$sel_taxa %in% CalcEP,message="Calculated Endpoints Don't Have SHAP scores yet..."))
+    validate(need(sel_reach(),message="No stream selected"))
+    
+    sel_time<-case_when(
+      input$map_layer_sel == "Predicted - Current" ~ c("Current Mean","Current Presence/Absence"),
+      input$map_layer_sel == "Predicted - Reference" ~ c("Reference Mean","Reference Presence/Absence")
+    )
+    
+    con <- DBI::dbConnect(RSQLite::SQLite(), fp)
+    
+    sel_modelShap<-tbl(con,"SHAP_scores") %>%
+      filter(endpoint == local(input$sel_ep)) %>%
+      filter(sel_tx_Taxa == local(input$sel_taxa)) %>%
+      filter(sel_gen_ProvReachID %in% local(sel_reach())) %>%
+      filter(shape_param %in% local(sel_time)) %>%
+      collect()
+    
+    if (nrow(sel_modelShap)==0){
       shinyWidgets::closeSweetAlert()
-      pt
+      validate(need(nrow(sel_modelShap)>0,message="Virtual Stream Connector Selected"))
+    }
+    
+    reach_shap<-sel_modelShap %>%
+      select(-starts_with("sel_")) %>%
+      pivot_longer(c(everything(),-shape_param,-endpoint),
+                   names_to="Predictors",
+                   values_to = "SHAP Score") %>%
+      left_join(
+        sel_modelShap %>%
+          select(shape_param,endpoint,starts_with("sel_"),-sel_gen_Region,-sel_gen_link_id,-sel_gen_ProvReachID) %>%
+          mutate(across(everything(),~as.character(.x))) %>%
+          pivot_longer(c(everything(),-shape_param,-endpoint),
+                       names_to="Predictors",
+                       values_to = "Value") %>%
+          mutate(Predictors=gsub("sel_","",Predictors)),
+        by = join_by(shape_param, endpoint, Predictors)
+      )
+    
+    reach_shap <- reach_shap %>%
+      mutate(Predictors=pred_rn(Predictors))
+    
+    DBI::dbDisconnect(con)
+    
+    pt<-ggplot(reach_shap,aes(y=Predictors,xmin=0,xmax=`SHAP Score`,colour=`SHAP Score`>0)) +
+      geom_linerange(linewidth=3) +
+      geom_vline(xintercept = 0) +
+      scale_x_continuous(breaks=scales::pretty_breaks(),labels=function(x) scales::comma(x)) +
+      #scale_y_discrete(sec.axis = sec_axis(transform=~.,labels=reach_shap$Value, name="Values"))+
+      xlab("SHAP Scores")+
+      ggtitle(paste("Reach: ",sel_reach()))+
+      theme_bw() +
+      facet_wrap(~shape_param,scales="free_x")+
+      theme(legend.position="none") +
+      theme(text=element_text(size=17))
+    
+    return(pt)
+  })
+  
+  observeEvent(input$map_bio_glify_click,{
+    output$SHAP_breakdown1 <- renderPlot({
+      SHAP_breakdown_react()
     })
+    output$SHAP_breakdown2 <- renderPlot({
+      SHAP_breakdown_react()
+    })
+  })
+  
+  observeEvent(input$map_bio_glify_click,{
+    
+    shinyWidgets::show_alert(
+      title = NULL,
+      text = tags$div(
+        plotOutput("SHAP_breakdown1",height = "800px"),
+        "Plot retained below..."
+      ),
+      html = FALSE,
+      width = "80%"
+    ) 
+    
+    
+    # output$SHAP_breakdown<-shiny::renderPlot({
+    #   validate(need(input$map_layer_sel %in% c("Predicted - Current","Predicted - Reference"),message="Select a stream line in the Current or Reference Layer to see the prediction breakdown"))
+    #   validate(need(!input$sel_taxa %in% CalcEP,message="Calculated Endpoints Don't Have SHAP scores yet..."))
+    #   
+    #   loading_message(session)
+    #   
+    #   sel_time<-case_when(
+    #     input$map_layer_sel == "Predicted - Current" ~ c("Current Mean","Current Presence/Absence"),
+    #     input$map_layer_sel == "Predicted - Reference" ~ c("Reference Mean","Reference Presence/Absence")
+    #   )
+    #   
+    #   con <- DBI::dbConnect(RSQLite::SQLite(), fp)
+    #   
+    #   sel_modelShap<-tbl(con,"SHAP_scores") %>% 
+    #     filter(endpoint == local(input$sel_ep)) %>%
+    #     filter(sel_tx_Taxa == local(input$sel_taxa)) %>%
+    #     filter(sel_gen_ProvReachID %in% local(sel_reach())) %>% 
+    #     filter(shape_param %in% local(sel_time)) %>% 
+    #     collect() 
+    #   
+    #   if (nrow(sel_modelShap)==0){
+    #     shinyWidgets::closeSweetAlert()
+    #     validate(need(nrow(sel_modelShap)>0,message="Virtual Stream Connector Selected"))
+    #   }
+    #   
+    #   reach_shap<-sel_modelShap %>% 
+    #     select(-starts_with("sel_")) %>% 
+    #     pivot_longer(c(everything(),-shape_param,-endpoint),
+    #                  names_to="Predictors",
+    #                  values_to = "SHAP Score") %>% 
+    #     left_join(
+    #       sel_modelShap %>% 
+    #         select(shape_param,endpoint,starts_with("sel_"),-sel_gen_Region,-sel_gen_link_id,-sel_gen_ProvReachID) %>% 
+    #         mutate(across(everything(),~as.character(.x))) %>% 
+    #         pivot_longer(c(everything(),-shape_param,-endpoint),
+    #                      names_to="Predictors",
+    #                      values_to = "Value") %>% 
+    #         mutate(Predictors=gsub("sel_","",Predictors)),
+    #       by = join_by(shape_param, endpoint, Predictors)
+    #     ) 
+    #   
+    #   reach_shap <- reach_shap %>% 
+    #     mutate(Predictors=pred_rn(Predictors))
+    #   
+    #   DBI::dbDisconnect(con)
+    #   
+    #   pt<-ggplot(reach_shap,aes(y=Predictors,xmin=0,xmax=`SHAP Score`,colour=`SHAP Score`>0)) +
+    #     geom_linerange(linewidth=3) +
+    #     geom_vline(xintercept = 0) +
+    #     scale_x_continuous(breaks=scales::pretty_breaks(),labels=function(x) scales::comma(x)) +
+    #     #scale_y_discrete(sec.axis = sec_axis(transform=~.,labels=reach_shap$Value, name="Values"))+
+    #     xlab("SHAP Scores")+
+    #     ggtitle(paste("Reach: ",sel_reach()))+
+    #     theme_bw() +
+    #     facet_wrap(~shape_param,scales="free_x")+
+    #     theme(legend.position="none") +
+    #     theme(text=element_text(size=18))
+    #   
+    #   shinyWidgets::closeSweetAlert()
+    #   pt
+    # })
     
   })
   
@@ -403,7 +590,7 @@ function(input, output, session) {
     req(input$sel_region)
     req(input$sel_taxa)
     req(input$sel_ep)
-
+    
     loading_message(session)
     
     con <- DBI::dbConnect(RSQLite::SQLite(), fp)
