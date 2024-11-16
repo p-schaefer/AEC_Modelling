@@ -72,7 +72,7 @@ sum_fun<-function(x){
     has_0 <- any(val_list==0)
     if (length(val_list)==0 | any(is.infinite(val_list))) val_list<-0
     val_list <- val_list[val_list!=0]
-    if (has_0) diff_list <- val_list <- c(0,val_list)
+    if (has_0) val_list <- val_list <- c(0,val_list)
     
     
     rng <- list(
