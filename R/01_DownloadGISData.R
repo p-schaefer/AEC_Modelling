@@ -1,6 +1,12 @@
 # This script will be setup to download data from from government of Canada
 
 
+# CA Boundaries -----------------------------------------------------------
+
+CA_boundary<-list(
+  CA_boundary="https://www.gisapplication.lrc.gov.on.ca/fmedatadownload/Packages/CAADMIN.zip"
+)
+
 # Integrated Hydrology ----------------------------------------------------
 
 IH_list<-list(
