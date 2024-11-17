@@ -348,7 +348,7 @@ function(input, output, session) {
           weight=0.5,
           opacity=0.9,
           src =F,
-          color=col.pal.sel(sel_modelpredictions[[input$map_layer_sel]])
+          color=~col.pal.sel(sel_modelpredictions[[input$map_layer_sel]])
         ) %>% 
         leaflet::hideGroup(c("NHN Drainage Areas","NHN Hydrography"))
       
@@ -464,9 +464,9 @@ function(input, output, session) {
   })
   
   observeEvent(input$map_bio_glify_click,{
-    output$SHAP_breakdown1 <- renderPlot({
-      SHAP_breakdown_react()
-    })
+    # output$SHAP_breakdown1 <- renderPlot({
+    #   SHAP_breakdown_react()
+    # })
     output$SHAP_breakdown2 <- renderPlot({
       SHAP_breakdown_react()
     })
@@ -474,15 +474,15 @@ function(input, output, session) {
   
   observeEvent(input$map_bio_glify_click,{
     
-    shinyWidgets::show_alert(
-      title = NULL,
-      text = tags$div(
-        plotOutput("SHAP_breakdown1",height = "800px"),
-        "Plot retained below..."
-      ),
-      html = FALSE,
-      width = "80%"
-    ) 
+    # shinyWidgets::show_alert(
+    #   title = NULL,
+    #   text = tags$div(
+    #     plotOutput("SHAP_breakdown1",height = "800px"),
+    #     "Plot retained below..."
+    #   ),
+    #   html = FALSE,
+    #   width = "80%"
+    # ) 
     
     
     # output$SHAP_breakdown<-shiny::renderPlot({
