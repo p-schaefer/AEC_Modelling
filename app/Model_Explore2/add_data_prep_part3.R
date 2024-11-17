@@ -51,8 +51,8 @@ sum_fun<-function(x){
     
     rng2 <- list(
       pretty=pretty(diff_list,8),
-      quantile=quant_fn(diff_list,8),
-      getJenksBreaks=BAMMtools::getJenksBreaks(diff_list,8)
+      quantile=quant_fn(diff_list,8)#,
+      #getJenksBreaks=BAMMtools::getJenksBreaks(diff_list,8)
     )
     
     rng2 <- map(rng2,function(x){
@@ -77,8 +77,8 @@ sum_fun<-function(x){
     
     rng <- list(
       pretty=pretty(val_list,8),
-      quantile=quant_fn(val_list,8),
-      getJenksBreaks=BAMMtools::getJenksBreaks(val_list,8)
+      quantile=quant_fn(val_list,8)#,
+      #getJenksBreaks=BAMMtools::getJenksBreaks(val_list,8)
     )
     
     rng <- map(rng,function(x){
@@ -114,7 +114,7 @@ dat2 <- dat %>%
   ) 
 
 dat3 <- dat2 %>% 
-  mutate(break_type=rep(c("pretty","quantile","getJenksBreaks"),length.out=nrow(dat2))) %>% 
+  mutate(break_type=rep(c("pretty","quantile"),length.out=nrow(dat2))) %>% #,"getJenksBreaks"
   select(break_type,everything()) %>% 
   unnest(c(everything()))
 

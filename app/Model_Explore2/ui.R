@@ -228,9 +228,10 @@ fluidPage(
                                                           "",
                                                           list(
                                                             Equal="pretty",
-                                                            Quantile="quantile",
-                                                            `Jenks Natural Breaks`="getJenksBreaks"),
-                                                          selected="getJenksBreaks",
+                                                            Quantile="quantile"#,
+                                                            #`Jenks Natural Breaks`="getJenksBreaks"
+                                                            ),
+                                                          selected="quantile",
                                                           inline=T)
                                     )
                              )
