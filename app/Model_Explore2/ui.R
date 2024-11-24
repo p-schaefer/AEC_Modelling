@@ -132,16 +132,16 @@ fluidPage(
         tabItem(tabName = "home",
                 h3("Ontario Aquatic Ecosystem Classification Biotic Modeling"),
                 p("The goal of this project is to use data from Ontario’s Aquatic Ecosystem Classification (AEC)
-                  together with Flowing Waters Information System (FWIS) to develop predictive models of fish 
+                  together with Flowing Waters Information System (FWIS) to develop predictive models of fish
                   communities across Ontario. The biomass and density of 16 fish taxa are modeled using AEC
                   variables, as well as landcover summaries from the Ontario Landcover Compilation (OLC). Landcover
                   types were summarized into different groups, as well as a Landscape Disturbance Index (LDI), which
-                  quantifies the potential impacts of different landcover types to aquartic ecosystems. Predictions 
+                  quantifies the potential impacts of different landcover types to aquartic ecosystems. Predictions
                   of current populations are available across all tributaries to the Great Lakes and St. Lawrence River.
                   Predictions to simulated 'Reference' landscapes are available as well. Reference landscapes were
                   approximated by removing urban and agricultural landcovers, and proportionally increasing all natural
                   landcovers in the catchment to account for those removed. Additionally, the LDI was set to nearly 0 for
-                  urban and agiculture landcovers in the simulated 'reference' landscapes."),
+                  urban and agriculture landcovers in the simulated 'reference' landscapes."),
                 br(),
                 p("Results presented here are preliminary."),
                 br(),
@@ -186,13 +186,13 @@ fluidPage(
                               Predictions to simulated 'Reference' landscapes are available as well. Reference landscapes were
                               approximated by removing urban and agricultural landcovers, and proportionally increasing all natural
                               landcovers in the catchment to account for those removed. Additionally, the LDI was set to nearly 0 for
-                              urban and agiculture landcovers in the simulated 'reference' landscapes. Finally, the difference between observed
+                              urban and agriculture landcovers in the simulated 'reference' landscapes. Finally, the difference between observed
                               and reference communities are mapped, and expressed as (Current - Reference; i.e., positive values indicate
                               present day predictions are higher than simulated reference, and negative values indicate present day predictions are
                               lower than simulated reference)."),
                            p("Selecting a stream segment with either the 'Current' or 'Reference' layers selected
                               will show the predictor values associated with that segment for the 'Current' or 'Reference' predictions respectively.
-                              Selecting a stream segment in the 'Current' or 'Reference' predicted layers will also present a 'SHAP Breakdown' figure 
+                              Selecting a stream segment in the 'Current' or 'Reference' predicted layers will also present a 'SHAP Breakdown' figure
                               showing the contributions of each predictor variable to the final predicted outcome. A positive effect on the SHAP score
                               of the mean suggests that predictor value is increasing the mean prediction,
                               whereas a positive effect on the SHAP score of the presence/absence suggests that the predictor values is increasing
@@ -265,7 +265,7 @@ fluidPage(
                   h3("Model Performance"),
                   p("The figure below shows Observed vs Predicted values. The data shown are filtered to the data selected on the side panel.
                   The solid black line is fit to the 50th percentile of
-                     each observations predicted conditional distribition, and the blue lines are fit to the 25th and 75th percentiles.
+                     each observations predicted conditional distribution, and the blue lines are fit to the 25th and 75th percentiles.
                      All values are shown on the log-scale."),
                   shiny::plotOutput("predperf_out",  height = "750px")
                 )
@@ -283,7 +283,7 @@ fluidPage(
         tabItem(tabName = "predsurf_tab",
                 fluidPage(
                   h3("Predictor Response Surfaces"),
-                  p("The figure below shows the effect of a predictor variable on the presence/absence and mean predicted outcome. 
+                  p("The figure below shows the effect of a predictor variable on the presence/absence and mean predicted outcome.
                     The data shown are filtered to the data selected on the side panel. The predicted effects can be colour by a separate variable to identify interactions among predictors.
                     A positive effect on the SHAP score of the mean suggests that predictor value is increasing the mean prediction,
                     whereas a positive effect on the SHAP score of the presence/absence suggests that the predictor values is increasing
