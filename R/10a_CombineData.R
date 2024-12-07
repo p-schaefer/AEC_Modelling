@@ -57,9 +57,10 @@ sub_regions<-future_lapply(names(aec_region),function(aes_nm){
 
 # Identify Pour Points
 #plan(multisession(workers=8))
-sub_region_out<-future_lapply(sub_regions,function(sub_regions_1){
+sub_region_out<-lapply(sub_regions,function(sub_regions_1){
   
   lapply(sub_regions_1,function(sub_r){
+    print(sub_r$boundary$WorkUnitName)
     #browser()
     ihydro_r<-fl[grepl(sub_r$boundary$WorkUnitName,fl)]
     ihydro_r<-ihydro_r[!grepl("loi",ihydro_r)]
