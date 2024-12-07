@@ -102,14 +102,28 @@ taxa_prop1 <- model_data %>%
 taxa_prop <- taxa_prop1 %>% 
   group_by(tx_Taxa) %>% 
   summarise(
+    `Segment Total Biomass Mean`=expm1(mean(resp_Comm_Biomass,na.rm=T)),
+    `Segment Total Density Mean`=expm1(mean(resp_Comm_Abundance,na.rm=T)),
+    `Segment Total Biomass SD`=expm1(sd(resp_Comm_Biomass,na.rm=T)),
+    `Segment Total Density SD`=expm1(sd(resp_Comm_Abundance,na.rm=T)),
+    `Segment Percent Biomass Mean`=inv.logit(mean(resp_Perc_Biomass,na.rm=T),adj),
+    `Segment Percent Density Mean`=inv.logit(mean(resp_Perc_Abundance,na.rm=T),adj),
+    `Segment Percent Biomass SD`=inv.logit(sd(resp_Perc_Biomass,na.rm=T),adj),
+    `Segment Percent Density SD`=inv.logit(sd(resp_Perc_Abundance,na.rm=T),adj),
+    `Segment Percent Occurance`=inv.logit(sd(resp_Perc_Abundance,na.rm=T),adj),
     mean_biomass_perc=inv.logit(mean(resp_Perc_Biomass,na.rm=T),adj),
     mean_abund_perc=inv.logit(mean(resp_Perc_Abundance,na.rm=T),adj),
     perc_present=sum(resp_Comm_Abundance!=0)/length(resp_Comm_Abundance)
   ) %>% 
   arrange(desc(perc_present)) %>% 
-  filter(perc_present>=0.1) 
+  mutate(across(contains("Segment Total"),~scales::comma(.x,accuracy=0.01)),
+         across(contains("Segment Percent"),~scales::percent(.x,accuracy=0.01)))
 
-saveRDS(taxa_prop,file.path("data","taxa_keep.rds"))
+write_csv(taxa_prop,file.path("data","report tables","Table1_TaxaOccurance.csv"))
+
+saveRDS(taxa_prop %>% 
+          filter(perc_present>=0.1),
+        file.path("data","taxa_keep.rds"))
 
 model_data<-model_data %>% 
   filter(tx_Taxa %in% taxa_prop$tx_Taxa) %>% 

@@ -1,0 +1,397 @@
+---
+title: "Wastershed Report"
+format: 
+  html: 
+    toc: true
+    number-sections: true
+    page-layout: full
+    grid:
+      sidebar-width: 0px
+      body-width: 2000px
+      margin-width: 0px
+      gutter-width: 1.5rem
+execute: 
+  echo: false
+  warning: false
+  message: false
+params:
+  CA: "Toronto and Region Conservation Authority"
+  DB_loc: "data/Model_data_v5_dart.gpkg"
+  Boundary_loc: "data/CAADMIN.zip"
+---
+
+```{r}
+shiny::h1(params$CA)
+```
+
+```{r}
+#| label: libraries and functions
+#| include: false
+#| echo: false
+
+library(tidyverse)
+library(bslib)
+
+ep_rn<-function(x) {
+  case_when(
+    x=="resp_Comm_Biomass" ~ "Biomass (g/m²)",
+    x=="resp_Comm_Abundance" ~ "Density (ind/m²)",
+    x=="Atlantic Salmon (ouananiche)" ~ "Atlantic Salmon",
+    x=="Brook (speckled) Trout" ~ "Brook Trout",
+    x=="Brook Stickleback" ~ "Brook Stickleback",
+    x=="Brown Trout" ~ "Brown Trout",
+    x=="Central Mudminnow" ~ "Central Mudminnow",
+    x=="Common Shiner" ~ "Common Shiner",
+    x=="Creek Chub" ~ "Creek Chub",
+    x=="Fantail Darter" ~ "Fantail Darter",
+    x=="Johnny/tesselated Darter" ~ "Johnny/Tesselated Darter",
+    x=="Pumpkinseed" ~ "Pumpkinseed",
+    x=="Rainbow Darter" ~ "Rainbow Darter",
+    x=="Rainbow Trout (steelhead)" ~ "Rainbow Trout",
+    x=="Rock Bass" ~ "Rock Bass",
+    x=="White Sucker" ~ "White Sucker",
+    T ~ x
+  )
+}
+
+pred_rn<-function(x) {
+  case_when(
+    x=="tx_Taxa" ~ "Species",
+    x=="tx_Family" ~ "Family",
+    x=="tx_Tolerance" ~ "Species Tolerance",
+    x=="tx_Trophic_Class" ~ "Species Trophic Class",
+    x=="tx_Thermal_Regime" ~ "Species Thermal Requirement",
+    x=="tx_General_Habitat" ~ "Species Habitat Preference",
+    x=="tx_Environment" ~ "Species Environmental Preference",
+    x=="tx_Repro_1" ~ "Species Nest Guarding",
+    x=="tx_Repro_2" ~ "Species Spawning Habitat Preference",
+    x=="tx_Repro_3" ~ "Species Spawning Methods",
+    x=="hb_Temperature" ~ "AEC Modeled Stream Temperature",
+    x=="hb_GDDair_UpstreamCatchmentMean" ~ "AEC Air Temperature Growing Degree Days in Catchment",
+    x=="hb_Turbidity" ~ "AEC Turbidity",
+    x=="hb_Slope" ~ "AEC Channel Slope",
+    x=="hb_BFI_RCA" ~ "AEC Baseflow Index in Reach Contributing Area",
+    x=="hb_BFI_UCA" ~ "AEC Baseflow Index in Upstream Catchment Area",
+    x=="hb_UCA" ~ "AEC Catchment Area",
+    x=="hb_Temperature_Class" ~ "AEC Stream Temperature Class",
+    x=="hb_Lake_Inf" ~ "AEC Lake Influence",
+    x=="hb_Wadeability" ~ "AEC Wadeability",
+    x=="nr_BroadleafForest_HAiFLS_prop" ~ "OLCC Deciduous Treed - HAiFLS",
+    x=="nr_BroadleafForest_HAiFLO_prop" ~ "OLCC Deciduous Treed - HAiFLO",
+    x=="nr_ConiferousForest_HAiFLS_prop" ~ "OLCC Coniferous Treed - HAiFLS",
+    x=="nr_ConiferousForest_HAiFLO_prop" ~ "OLCC Coniferous Treed - HAiFLO",
+    x=="nr_MixedAgriculture_HAiFLS_prop" ~ "OLCC Agriculture and Undifferentiated Rural - HAiFLS",
+    x=="nr_MixedAgriculture_HAiFLO_prop" ~ "OLCC Agriculture and Undifferentiated Rural - HAiFLO",
+    x=="nr_MixedForest_HAiFLS_prop" ~ "OLCC Mixed, Sparse, Upland, Plantations Treed - HAiFLS",
+    x=="nr_MixedForest_HAiFLO_prop" ~ "OLCC Mixed, Sparse, Upland, Plantations Treed - HAiFLO",
+    x=="nr_Water_HAiFLS_prop" ~ "OLCC Clear Open, Turbid Water - HAiFLS",
+    x=="nr_Water_HAiFLO_prop" ~ "OLCC Clear Open, Turbid Water - HAiFLO",
+    x=="nr_Wetland_HAiFLS_prop" ~ "OLCC Marsh, Swamp, Fen, Bog - HAiFLS",
+    x=="nr_Wetland_HAiFLO_prop" ~ "OLCC Marsh, Swamp, Fen, Bog - HAiFLO",
+    x=="nr_UrbanDeveloped_HAiFLS_prop" ~ "OLCC Urban Developed - HAiFLS",
+    x=="nr_UrbanDeveloped_HAiFLO_prop" ~ "OLCC Urban Developed - HAiFLO",
+    x=="nr_ExposedLandBarren_HAiFLS_prop" ~ "OLCC Depletion/Disturbance - HAiFLS",
+    x=="nr_ExposedLandBarren_HAiFLO_prop" ~ "OLCC Depletion/Disturbance - HAiFLO",
+    x=="LDI_HAiFLS_mean" ~ "Land Disturbance Index - HAiFLS",
+    x=="LDI_HAiFLO_mean" ~ "Land Disturbance Index - HAiFLO",
+    T ~ x
+  )
+}
+```
+
+
+```{r}
+#| label: Pull data from database
+#| include: false
+#| echo: false
+
+td<-tempdir()
+
+unzip(params$Boundary_loc,exdir=td)
+
+zip_cont<-list.files(file.path(td),recursive = T,full.names = T)
+zip_cont<-zip_cont[grepl(".shp$",zip_cont)][[1]]
+boundary<-sf::read_sf(zip_cont) %>% 
+  filter(COM_NAME == params$CA) %>% 
+  sf::st_transform(4326)
+
+fp<-file.path(params$DB_loc)
+con <- DBI::dbConnect(RSQLite::SQLite(), fp)
+
+taxa<-tbl(con,"Taxa_names") %>% collect() %>% pull(1)
+CalcEP<-tbl(con,"CalcEP_names") %>% collect() %>% pull(1)
+pred_names<-tbl(con,"Predictor_names") %>% collect() %>% pull(1)
+ep<-list(Biomass = "resp_Comm_Biomass",
+         Density = "resp_Comm_Abundance")
+
+sel_strms <- sf::read_sf(fp,"AEC_Streams") %>% 
+  sf::st_transform(4326) %>% 
+  filter(grepl("w01|w02|w03|w04|w05|w06|w12|w13|w14",AEC_Region_sub))
+
+boundary<-sel_strms
+
+#sf::st_filter(boundary,.predicate=sf::st_within)
+
+sel_modelpredictions <- tbl(con,"Model_Predictions") %>% 
+  filter(gen_ProvReachID %in% sel_strms$ProvReachID) %>% 
+  collect() %>% 
+  left_join(sel_strms %>% mutate(line_length=as.numeric(sf::st_length(geom))) %>% as_tibble() %>%  select(-geom),
+            by=c("gen_ProvReachID"="ProvReachID"))
+
+sum_ep<-c(CalcEP[1],taxa)
+names(sum_ep)<-ep_rn(sum_ep)
+ave_ep<-c(CalcEP[-c(1)])
+names(ave_ep)<-ep_rn(ave_ep)
+
+sum_list<-map(sum_ep,
+              ~sel_modelpredictions %>% 
+                filter(tx_Taxa %in% .x) %>% 
+                mutate(resp_Comm_Biomass_quant_0.75=expm1(resp_Comm_Biomass_quant_0.75)*line_length,
+                       resp_Comm_Abundance_quant_0.75=expm1(resp_Comm_Abundance_quant_0.75)*line_length) %>% 
+                select(Biomass=resp_Comm_Biomass_quant_0.75,Density=resp_Comm_Abundance_quant_0.75) %>% 
+                summarise(across(everything(),~sum(.))) %>% 
+                mutate(Biomass=Biomass/1000)
+)
+
+ave_list<-map(ave_ep,
+              ~sel_modelpredictions %>% 
+                filter(tx_Taxa %in% .x) %>% 
+                select(Biomass=resp_Comm_Biomass_quant_0.75,line_length,Density=resp_Comm_Abundance_quant_0.75) %>% 
+                summarise(across(c(everything(),-line_length),~weighted.mean(.,line_length))) %>% 
+                unlist() %>% 
+                mean()
+)
+
+DBI::dbDisconnect(con)
+
+```
+
+```{r}
+#| label: Prepare InfoBoxes
+#| include: false
+#| echo: false
+
+ave_cards <- map2(
+  names(ave_list),
+  ave_list,
+  function(x,y){
+    value_box(
+      title = paste0("Mean ", 
+                     case_when(
+                       x == "Community Total Richness" ~ "Segment Richness",
+                       x == "SATI" ~ "SATI",
+                       x == "% Cold Water Stenotherm" ~ "Cold-Water Stenotherm",
+                       x == "% Tolerant Taxa" ~ "Tolerant Taxa",
+                       x == "% Intolerant Taxa" ~ "Intolerant Taxa",
+                       x == "Tolerant Taxa Richness" ~ "Tolerant Taxa Richness",
+                       x == "Intolerant Taxa Richness" ~ "Intolerant Taxa Richness",
+                       T ~ x
+                     )),
+      value = scales::unit_format(
+        big.mark = ",",
+        accuracy = 0.1,
+        unit=case_when(
+          grepl("%",x) ~ "%",
+          grepl("Richness",x) ~ "",
+          grepl("SATI",x) ~ "ᵒC",
+          T ~ ""
+        )
+      )(y)
+    )
+  }
+)
+
+# names(ave_cards)<-names(ave_list)
+# 
+# ave_cards<-c(list(layout_columns(fillable=F,card(ave_cards[1:3]))),
+#              list(layout_columns(fillable=F,card(ave_cards[c(4,6)]))),
+#              list(layout_columns(fillable=F,card(ave_cards[c(5,8)]))))
+
+info_boxes<-c(
+  list(
+    value_box(
+      title = "Total Biomass",
+      value = scales::unit_format(big.mark = ",",unit="kg")(sum_list[[1]][[1]])
+    ),
+    value_box(
+      title = "Total Density",
+      value = scales::unit_format(big.mark = ",",unit="Individuals")(sum_list[[1]][[2]])
+    )
+  ),
+  ave_cards
+)
+
+pie_charts <- sum_list[-c(1)] %>% 
+  enframe() %>% 
+  unnest(value) %>%
+  pivot_longer(c(Biomass,Density),names_to="ep",values_to="value") %>% 
+  rename(Taxa=name) %>% 
+  ggplot(aes(x="",y=value,fill=Taxa))+
+  geom_col()+
+  coord_polar(theta="y")+
+  scale_fill_brewer(palette = "Set3")+
+  theme_minimal()+
+  labs(x="",y="",fill="")+
+  facet_wrap(~ep,ncol=2,scales="free")+
+  theme(axis.text = element_blank(),
+        legend.position = "bottom",
+        plot.margin = margin(0,0,0,0))
+
+
+
+```
+
+```{r}
+#| label: Prepare Map
+#| include: false
+#| echo: false
+
+out_map <- leaflet::leaflet(
+  options = leaflet::leafletOptions(zoomControl = TRUE,
+                                    zoomSnap = 0.25,
+                                    zoomDelta = 1)
+) %>%
+  leaflet::addTiles() %>%
+  leaflet::addProviderTiles(leaflet::providers$Esri.WorldImagery, group ="ESRI - Imagery") %>%
+  leaflet::addProviderTiles(leaflet::providers$OpenStreetMap.Mapnik, group ="OpenStreetMap") %>%
+  leaflet::addProviderTiles(leaflet::providers$CartoDB.Positron, group ="CartoDB") %>% 
+  leaflet::setView(
+    lng=mean(sf::st_bbox(boundary)[c(1,3)]),lat=mean(sf::st_bbox(boundary)[c(2,4)])
+    ,zoom=9) #%>% 
+  #leaflet::addPolygons(data=boundary)
+
+col_brks<-c(CalcEP,taxa)
+names(col_brks)<-col_brks
+
+con <- DBI::dbConnect(RSQLite::SQLite(), fp)
+
+col_brks <- map(col_brks,function(i){
+  
+  if (i %in% c(taxa)) {
+    sel_taxa <- "tx_Taxa"
+  } else {
+    sel_taxa <- i
+  }
+  
+  brks<-tbl(con,"value_breaks") %>% 
+    filter(tx_Taxa == local(sel_taxa)) %>% 
+    filter(break_type %in% "quantile") %>% 
+    select(ends_with("quant_0.75")) %>% 
+    collect() %>% 
+    filter(!if_any(everything(),~is.na(.x))) %>% 
+    rowMeans(na.rm = T)
+  
+  if (i %in% c(CalcEP[[1]],taxa)) {
+    rng <- expm1(brks)
+  } else {
+    rng <- brks
+  }
+  col.pal <- leaflet::colorBin("viridis", bins = rng, na.color = "grey",reverse=F)
+  
+  return(
+    list(
+      rng=rng,
+      col.pal=col.pal
+    )
+  )
+})
+
+DBI::dbDisconnect(con)
+
+for (i in names(col_brks)[c(9,17,14)]){
+  lyr <- sel_strms %>% 
+    select(ProvReachID) %>% 
+    left_join(
+      sel_modelpredictions %>% 
+        filter(tx_Taxa == i) %>% 
+        select(ProvReachID = gen_ProvReachID,ends_with("Biomass_quant_0.75")) %>% 
+        rowwise() %>% 
+        mutate(mean=mean(c_across(ends_with("quant_0.75")),na.rm=T)) %>% 
+        ungroup() %>% 
+        select(ProvReachID,mean),
+      by = join_by(ProvReachID)
+    )
+  
+  lyr<-suppressWarnings(sf::st_cast(lyr,"LINESTRING"))
+  
+  if (i %in% c(CalcEP[[1]],taxa)) {
+    lyr$mean <- expm1(lyr$mean)
+  } else {
+    lyr$mean <- lyr$mean
+  }
+  
+  out_map <- out_map %>% 
+    leaflet::addLegend(
+      title = paste0(ep_rn(i)," Biomass"),
+      labels=scales::comma(col_brks[[i]]$rng,accuracy=0.01),
+      colors=col_brks[[i]]$col.pal(col_brks[[i]]$rng),
+      position = "topright",
+      group = ep_rn(i)
+    ) %>%
+    # leaflet::addPolylines(
+    #   data=lyr,
+    #   group = ep_rn(i),
+    #   weight=3,
+    #   opacity=0.8,
+    #   popup = scales::comma(lyr$mean,accuracy=0.01),
+    #   color=col_brks[[i]]$col.pal(lyr$mean)
+    # )
+    leafgl::addGlPolylines(
+      data=lyr,
+      group = i,
+      weight=0.5,
+      opacity=0.9,
+      src =F,
+      color=col_brks[[i]]$col.pal(lyr$mean)
+    )
+}
+
+out_map <- out_map %>% 
+  leaflet::addLayersControl(
+    baseGroups = c("CartoDB",
+                   "OpenStreetMap",
+                   "ESRI - Imagery"),
+    #overlayGroups = ep_rn(c(CalcEP,taxa)),
+    overlayGroups = ep_rn(names(col_brks)[c(9,17,14)]),
+    position = "topleft",
+    options = leaflet::layersControlOptions(collapsed = F)
+  ) %>% 
+    #leaflet::hideGroup(ep_rn(c(CalcEP,taxa))[-c(1)])
+  leaflet::hideGroup(ep_rn(names(col_brks)[c(9,17,14)])[-c(1)])
+
+```
+
+
+```{r}
+#| label: Generate Output top
+#| include: true
+#| echo: false
+#| columm: page
+#| layout-nrow: 2
+
+info_boxes[[1]]
+info_boxes[[2]]
+info_boxes[[3]]
+info_boxes[[4]]
+info_boxes[[5]]
+info_boxes[[6]]
+info_boxes[[7]]
+info_boxes[[8]]
+info_boxes[[9]]
+
+
+```
+
+
+
+```{r}
+#| label: Generate Output bottom
+#| include: true
+#| echo: false
+#| column: screen-inset
+#| layout-nrow: 1
+
+pie_charts
+out_map
+
+```
