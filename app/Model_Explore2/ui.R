@@ -20,13 +20,14 @@ ep_rn<-function(x) {
     x=="Rainbow Trout (steelhead)" ~ "Rainbow Trout",
     x=="Rock Bass" ~ "Rock Bass",
     x=="White Sucker" ~ "White Sucker",
+    x=="Sculpin Cottus" ~ "Sculpins",
     T ~ x
   )
 }
 
 pred_rn<-function(x) {
   case_when(
-    x=="tx_Taxa" ~ "Species",
+    x=="tx_Taxa" ~ "Species Interactions",
     x=="tx_Family" ~ "Family",
     x=="tx_Tolerance" ~ "Species Tolerance",
     x=="tx_Trophic_Class" ~ "Species Trophic Class",

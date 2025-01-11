@@ -6,7 +6,25 @@ lu_master<-readRDS(file.path("data","lookups.rds"))
 
 td<-tempdir()
 
+all_lc<-read_csv(file.path("data","final","All_LC_Attr.csv")) %>% 
+  select(-`...1`,-status)
+
 aec_out<-readRDS(file.path("data","final","int_results.rds"))
+
+int_data_out<-map2(aec_out,
+                   names(aec_out),
+                   ~.x$aec_steam_out %>% 
+                     dplyr::mutate(lon = sf::st_coordinates(sf::st_centroid(.))[,1],
+                                   lat = sf::st_coordinates(sf::st_centroid(.))[,2]) %>% 
+                     as_tibble() %>% 
+                     select(-Shape) %>% 
+                     left_join(all_lc %>% 
+                                 filter(grepl(gsub("_AEC_Core","",.y),region)),
+                               by="link_id") %>% 
+                     filter(!is.na(region))) %>% 
+  bind_rows()
+
+
 matched_points<-map_dfr(aec_out,~.x$bio_pnt_out) %>% 
   dplyr::mutate(lon = sf::st_coordinates(.)[,1],
                 lat = sf::st_coordinates(.)[,2]) %>% 

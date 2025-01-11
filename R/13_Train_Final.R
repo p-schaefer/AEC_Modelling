@@ -57,7 +57,7 @@ for (booster in booster_list) {
     
     train_py = lss.model$Dataset(
       data=train_data %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>% r_to_py(),
-      label=train_data %>% select(any_of(ep)) %>% as.matrix() %>% r_to_py()#,
+      label=train_data %>% select(any_of(ep)) %>% as.matrix() %>% r_to_py(),
       #group=table(as.numeric(model_data_means$gen_ProvReachID))
     )
     

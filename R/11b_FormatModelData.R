@@ -17,14 +17,15 @@ raw_tbl<-read.csv(file.path("data","raw","Bio","tblFishSummaryOfTotalCatches.csv
 
 raw_tbl<-raw_tbl %>% 
   filter( 
-    #OSAPSE==1, #the sample event was associated with at least one OSAP project and the sample event itself used site boundaries that were defined as per OSAP
+    OSAPSE==1, #the sample event was associated with at least one OSAP project and the sample event itself used site boundaries that were defined as per OSAP
     !is.na(TotalWeightPer100m2) # This makes sure only valid single taxa are included (i.e., Cyprid bulk samples will be excluded)
   ) %>% 
   select(SampleEventID,SpeciesCode,CommonName) %>% 
   distinct()
 
 tx_data<-tx_data %>% 
-  filter(SpeciesCode %in% raw_tbl$SpeciesCode) %>% 
+  #filter(SpeciesCode %in% raw_tbl$SpeciesCode) %>% 
+  filter(SpeciesCode %in% raw_tbl$SpeciesCode | grepl("Sculpin",`name to use`)) %>% 
   filter(SampleEventID %in% raw_tbl$SampleEventID)
 
 # Finalize Model Data -----------------------------------------------------
@@ -106,7 +107,7 @@ taxa_prop <- taxa_prop1 %>%
     `Segment Total Density Mean`=expm1(mean(resp_Comm_Abundance,na.rm=T)),
     `Segment Total Biomass SD`=expm1(sd(resp_Comm_Biomass,na.rm=T)),
     `Segment Total Density SD`=expm1(sd(resp_Comm_Abundance,na.rm=T)),
-    `Segment Percent Occurance`=sum(resp_Comm_Abundance!=0)/length(resp_Comm_Abundance),
+    `Segment Percent Occurrence`=sum(resp_Comm_Abundance!=0)/length(resp_Comm_Abundance),
     mean_biomass_perc=inv.logit(mean(resp_Perc_Biomass,na.rm=T),adj),
     mean_abund_perc=inv.logit(mean(resp_Perc_Abundance,na.rm=T),adj),
     perc_present=sum(resp_Comm_Abundance!=0)/length(resp_Comm_Abundance)
@@ -118,8 +119,18 @@ taxa_prop <- taxa_prop1 %>%
 write_csv(taxa_prop %>% mutate(`Included in Model`=perc_present>=0.1) %>% select(starts_with(c("tx_Taxa","Included","Segment "))) %>% rename(Taxa=tx_Taxa) ,
           file.path("data","report tables","Table1_TaxaOccurance.csv"))
 
-saveRDS(taxa_prop %>% 
-          filter(perc_present>=0.1),
+
+taxa_prop <- taxa_prop1 %>% 
+  group_by(tx_Taxa) %>% 
+  summarise(
+    mean_biomass_perc=inv.logit(mean(resp_Perc_Biomass,na.rm=T),adj),
+    mean_abund_perc=inv.logit(mean(resp_Perc_Abundance,na.rm=T),adj),
+    perc_present=sum(resp_Comm_Abundance!=0)/length(resp_Comm_Abundance)
+  ) %>% 
+  arrange(desc(perc_present)) %>% 
+  filter(perc_present>=0.1) 
+
+saveRDS(taxa_prop,
         file.path("data","taxa_keep.rds"))
 
 model_data<-model_data %>% 

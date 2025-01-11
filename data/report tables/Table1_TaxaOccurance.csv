@@ -1,56 +1,57 @@
-Taxa,Included in Model,Segment Total Biomass Mean,Segment Total Density Mean,Segment Total Biomass SD,Segment Total Density SD,Segment Percent Occurance
-Creek Chub,TRUE,32.28,11.86,14.83,6.87,65.51%
-White Sucker,TRUE,17.05,6.73,16.61,6.92,54.15%
-Brook Stickleback,TRUE,4.83,3.08,11.57,6.52,36.46%
-Johnny/tesselated Darter,TRUE,3.78,2.12,11.65,5.44,29.23%
-Common Shiner,TRUE,3.18,1.76,10.55,4.82,27.56%
-Central Mudminnow,TRUE,2.60,1.60,9.71,5.02,24.63%
-Brook (speckled) Trout,TRUE,2.24,1.07,9.25,3.32,21.64%
-Pumpkinseed,TRUE,1.63,0.92,7.06,3.21,19.61%
-Rainbow Trout (steelhead),TRUE,1.82,1.01,8.23,3.54,18.83%
-Rock Bass,TRUE,1.30,0.71,6.33,2.70,16.20%
-Rainbow Darter,TRUE,1.06,0.65,5.56,2.69,13.63%
-Brown Trout,TRUE,0.92,0.49,5.60,2.19,11.24%
-Fantail Darter,FALSE,0.48,0.30,3.13,1.63,7.59%
-Largemouth Bass,FALSE,0.40,0.25,2.62,1.40,7.11%
-Ichthyomyzon,FALSE,0.32,0.19,2.39,1.16,5.38%
-Yellow Perch,FALSE,0.28,0.17,2.02,1.06,5.38%
-Northern Hog Sucker,FALSE,0.30,0.18,2.27,1.13,4.90%
-Smallmouth Bass,FALSE,0.25,0.15,1.86,0.98,4.90%
-Logperch,FALSE,0.20,0.13,1.63,0.88,3.95%
-Central Stoneroller,FALSE,0.21,0.15,1.71,1.07,3.65%
-Iowa Darter,FALSE,0.14,0.10,1.40,0.90,2.57%
-Blackside Darter,FALSE,0.14,0.09,1.37,0.79,2.45%
-Atlantic Salmon (ouananiche),FALSE,0.11,0.07,1.18,0.64,1.85%
-Northern Pike,FALSE,0.09,0.05,0.90,0.47,1.85%
-Common Carp,FALSE,0.08,0.06,0.90,0.58,1.61%
-Bluegill,FALSE,0.08,0.05,0.89,0.53,1.49%
-Chinook Salmon,FALSE,0.08,0.05,0.89,0.55,1.49%
-Green Sunfish,FALSE,0.07,0.05,0.83,0.51,1.49%
-Fallfish,FALSE,0.07,0.05,0.84,0.49,1.37%
-Coho Salmon,FALSE,0.07,0.05,0.83,0.50,1.32%
-Redside Dace,FALSE,0.06,0.05,0.79,0.54,1.20%
-Burbot (ling),FALSE,0.05,0.03,0.63,0.34,1.08%
-Round Goby,FALSE,0.04,0.02,0.45,0.25,1.08%
-Black Crappie,FALSE,0.02,0.01,0.34,0.22,0.66%
-Greenside Darter,FALSE,0.04,0.02,0.58,0.37,0.60%
-Lamprey,FALSE,0.03,0.02,0.43,0.28,0.60%
-Goldfish,FALSE,0.02,0.01,0.41,0.26,0.48%
-Lake Chub,FALSE,0.02,0.02,0.36,0.28,0.48%
-Least Darter,FALSE,0.02,0.02,0.46,0.34,0.42%
-Longnose Sucker,FALSE,0.02,0.01,0.37,0.26,0.42%
-Threespine Stickleback,FALSE,0.01,0.01,0.20,0.19,0.24%
+Taxa,Included in Model,Segment Total Biomass Mean,Segment Total Density Mean,Segment Total Biomass SD,Segment Total Density SD,Segment Percent Occurrence
+Creek Chub,TRUE,31.02,11.28,15.06,6.93,64.57%
+White Sucker,TRUE,15.90,6.26,16.77,6.91,52.50%
+Brook Stickleback,TRUE,4.06,2.61,10.96,6.23,33.41%
+Sculpin Cottus,TRUE,4.23,2.05,13.38,5.19,29.25%
+Johnny/tesselated Darter,TRUE,3.59,2.01,11.33,5.30,28.60%
+Common Shiner,TRUE,3.05,1.68,10.27,4.69,26.87%
+Central Mudminnow,TRUE,2.45,1.50,9.33,4.82,23.84%
+Brook (speckled) Trout,TRUE,2.21,1.04,9.16,3.26,21.52%
+Pumpkinseed,TRUE,1.56,0.88,6.97,3.16,18.85%
+Rainbow Trout (steelhead),TRUE,1.79,0.99,8.10,3.47,18.73%
+Rock Bass,TRUE,1.28,0.69,6.27,2.68,15.81%
+Rainbow Darter,TRUE,1.05,0.63,5.46,2.64,13.50%
+Brown Trout,TRUE,0.91,0.48,5.53,2.14,11.18%
+Fantail Darter,FALSE,0.47,0.30,3.10,1.61,7.43%
+Largemouth Bass,FALSE,0.39,0.24,2.56,1.38,6.96%
+Ichthyomyzon,FALSE,0.32,0.19,2.36,1.15,5.41%
+Yellow Perch,FALSE,0.28,0.17,2.01,1.07,5.29%
+Northern Hog Sucker,FALSE,0.29,0.18,2.22,1.12,4.82%
+Smallmouth Bass,FALSE,0.25,0.15,1.86,0.99,4.70%
+Central Stoneroller,FALSE,0.21,0.15,1.72,1.07,3.69%
+Logperch,FALSE,0.19,0.11,1.56,0.83,3.51%
+Iowa Darter,FALSE,0.14,0.10,1.40,0.89,2.50%
+Blackside Darter,FALSE,0.14,0.09,1.36,0.79,2.44%
+Atlantic Salmon (ouananiche),FALSE,0.11,0.07,1.17,0.63,1.90%
+Northern Pike,FALSE,0.07,0.04,0.81,0.40,1.61%
+Chinook Salmon,FALSE,0.08,0.05,0.89,0.54,1.55%
+Green Sunfish,FALSE,0.08,0.05,0.85,0.52,1.55%
+Common Carp,FALSE,0.08,0.05,0.86,0.56,1.49%
+Bluegill,FALSE,0.07,0.04,0.79,0.47,1.31%
+Coho Salmon,FALSE,0.07,0.04,0.81,0.49,1.31%
+Fallfish,FALSE,0.07,0.04,0.82,0.47,1.25%
+Redside Dace,FALSE,0.06,0.05,0.82,0.56,1.19%
+Round Goby,FALSE,0.04,0.02,0.47,0.25,1.01%
+Burbot (ling),FALSE,0.04,0.03,0.60,0.32,0.95%
+Black Crappie,FALSE,0.02,0.01,0.34,0.22,0.65%
+Greenside Darter,FALSE,0.04,0.03,0.62,0.40,0.65%
+Lamprey,FALSE,0.02,0.02,0.40,0.26,0.54%
+Goldfish,FALSE,0.02,0.01,0.41,0.25,0.48%
+Least Darter,FALSE,0.02,0.02,0.41,0.32,0.42%
+Longnose Sucker,FALSE,0.02,0.01,0.36,0.24,0.36%
+Lake Chub,FALSE,0.02,0.01,0.34,0.24,0.30%
+Threespine Stickleback,FALSE,0.01,0.01,0.19,0.16,0.18%
 Northern Sunfish,FALSE,0.01,0.00,0.19,0.15,0.12%
-American Eel,FALSE,0.00,0.00,0.18,0.14,0.06%
 Brook Silverside,FALSE,0.00,0.00,0.04,0.04,0.06%
 Cutlip Minnow,FALSE,0.00,0.00,0.05,0.03,0.06%
 Fourspine Stickleback,FALSE,0.00,0.00,0.14,0.12,0.06%
+Lake Chubsucker,FALSE,0.00,0.00,0.05,0.03,0.06%
 Longnose Gar,FALSE,0.00,0.00,0.15,0.03,0.06%
 Muskellunge (muskie),FALSE,0.00,0.00,0.17,0.12,0.06%
-Walleye (yellow pickerel),FALSE,0.00,0.00,0.11,0.09,0.06%
-Warmouth,FALSE,0.00,0.00,0.12,0.10,0.06%
+Walleye (yellow pickerel),FALSE,0.00,0.00,0.11,0.08,0.06%
+Warmouth,FALSE,0.00,0.00,0.12,0.07,0.06%
 Alewife,FALSE,0.00,0.00,0.00,0.00,0.00%
-Aurora Trout,FALSE,0.00,0.00,0.00,0.00,0.00%
+American Eel,FALSE,0.00,0.00,0.00,0.00,0.00%
 Eastern Sand Darter,FALSE,0.00,0.00,0.00,0.00,0.00%
 Freshwater Drum (sheepshead),FALSE,0.00,0.00,0.00,0.00,0.00%
 Gizzard Shad,FALSE,0.00,0.00,0.00,0.00,0.00%
@@ -62,5 +63,3 @@ Sauger,FALSE,0.00,0.00,0.00,0.00,0.00%
 Shortjaw Cisco,FALSE,0.00,0.00,0.00,0.00,0.00%
 White Bass,FALSE,0.00,0.00,0.00,0.00,0.00%
 White Crappie,FALSE,0.00,0.00,0.00,0.00,0.00%
-White Perch,FALSE,0.00,0.00,0.00,0.00,0.00%
-splake (backcross),FALSE,0.00,0.00,0.00,0.00,0.00%
