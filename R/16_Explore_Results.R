@@ -1,5 +1,5 @@
 library(tidyverse)
-fp<-file.path("app","Model_Explore2","data",paste0("Model_data_v4_dart.gpkg"))
+fp<-file.path("app","Model_Explore2","data",paste0("Model_data_v5_dart.gpkg"))
 
 con <- DBI::dbConnect(RSQLite::SQLite(), fp)
 
@@ -33,13 +33,14 @@ ep_rn<-function(x) {
     x=="Rainbow Trout (steelhead)" ~ "Rainbow Trout",
     x=="Rock Bass" ~ "Rock Bass",
     x=="White Sucker" ~ "White Sucker",
+    x=="Sculpin Cottus" ~ "Sculpins",
     T ~ x
   )
 }
 
 pred_rn<-function(x) {
   case_when(
-    x=="tx_Taxa" ~ "Species",
+    x=="tx_Taxa" ~ "Species Interactions",
     x=="tx_Family" ~ "Family",
     x=="tx_Tolerance" ~ "Species Tolerance",
     x=="tx_Trophic_Class" ~ "Species Trophic Class",
@@ -214,7 +215,7 @@ plt2_predImpAll <- pred_imp %>%
                               group = sel_tx_Taxa))+
                     geom_linerange(position=position_dodge(width=0.75),linewidth=0.25)+
                     geom_point(position=position_dodge(width=0.75))+
-                    scale_colour_manual(values = c(RColorBrewer::brewer.pal(12,"Paired")))+
+                    scale_colour_manual(values = c(RColorBrewer::brewer.pal(12,"Paired"),"gray50"))+
                     facet_wrap(~shape_param,scales="free_x")+
                     labs(title=.y,colour = "")+
                     xlab("Importance\n(mean absolute SHAP value | 10th-90th Percentile range)")+
@@ -342,6 +343,7 @@ plt_RespSurf2 <- plt_RespSurf %>%
   unnest(plt_tbl)
 
 saveRDS(plt_RespSurf2,file.path("Figs","Fig 3. PredSirf.rds"))
+plt_RespSurf2<-readRDS(file.path("Figs","Fig 3. PredSirf.rds"))
 
 gp_plt<-plt_RespSurf2 %>%
   group_by(shape_param,endpoint) %>% 
