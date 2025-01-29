@@ -16,7 +16,9 @@ taxa_keep<-readRDS(file.path("data","taxa_keep.rds"))
 model_data0<-read_rds(file.path("data","final","Model_building_finaltaxa_data.rds")) %>% 
   filter(tx_Taxa %in% taxa_keep$tx_Taxa) %>% 
   mutate(tx_Taxa = factor(tx_Taxa, levels=taxa_keep$tx_Taxa)) %>% 
-  #filter(year(as.Date(gen_SampleDate))>1994) %>% 
+  #filter(year(as.Date(gen_SampleDate))>1994)   %>% 
+  # mutate(across(contains("_Perc_"),~inv.logit(.,adj))) %>%
+  # mutate(across(contains("_Comm_"),~expm1(.))) %>% 
   mutate(across(starts_with("resp_"),
                 ~case_when(
                   .x < quantile(.x[.x>0],0.01) ~ "0 - 1",
@@ -29,12 +31,18 @@ model_data0<-read_rds(file.path("data","final","Model_building_finaltaxa_data.rd
                 .names = "cat_{.col}")) %>% 
   mutate(across(starts_with("cat_resp_"),~factor(.x)))
 
-model_data_means <- model_data0 %>% 
-  mutate(across(starts_with(c("case_weight")),~as.numeric(.))) %>%
-  group_by(gen_ProvReachID,gen_link_id,gen_StreamName,across(starts_with("tx_"))) %>%
+model_data <- model_data0 %>% 
+  mutate(across(starts_with(c("case_weight")),~as.numeric(.))) %>% 
+  group_by(gen_ProvReachID,gen_link_id,gen_StreamName,across(starts_with("tx_"))) %>% 
   summarise(across(where(is.numeric),~median(.x,na.rm=T)),
             across(!where(is.numeric),~tail(.x,1)),
             .groups="drop")
+# model_data_means <- model_data0 %>% 
+#   mutate(across(starts_with(c("case_weight")),~as.numeric(.))) %>%
+#   group_by(gen_ProvReachID,gen_link_id,gen_StreamName,across(starts_with("tx_"))) %>%
+#   summarise(across(where(is.numeric),~median(.x,na.rm=T)),
+#             across(!where(is.numeric),~tail(.x,1)),
+#             .groups="drop")
 
 resp<-model_data0 %>% select(starts_with("resp_")) %>% colnames()
 resp<-resp[!grepl("Perc|cat_",resp)]
@@ -46,49 +54,52 @@ booster_list<-c("dart","dart_ltree")
 for (booster in booster_list) {
   for (ep in resp){
     
-    # Prepare datasets --------------------------------------------------------
-    recip<-readRDS(file.path("data","models","LSS",paste0("Final_Recipe_",ep,".rds")))
-    
-    recip_main<-recip$recip_main
-    final_prep<-recip$final_prep
-    
-    train_data<- final_prep %>%
-      juice()
-    
-    train_py = lss.model$Dataset(
-      data=train_data %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>% r_to_py(),
-      label=train_data %>% select(any_of(ep)) %>% as.matrix() %>% r_to_py(),
-      #group=table(as.numeric(model_data_means$gen_ProvReachID))
-    )
-    
-    # Define Model ------------------------------------------------------------
-    xgb = lss.model$LightGBMLSS(
-      distr.lgb$ZAGamma$ZAGamma(
-        stabilization = "None",
-        response_fn = "exp",
-        loss_fn="nll"
+      # Prepare datasets --------------------------------------------------------
+      recip<-readRDS(file.path("data","models","LSS",paste0("Final_Recipe_",ep,".rds")))
+      
+      recip_main<-recip$recip_main
+      final_prep<-recip$final_prep
+      
+      train_data<- final_prep %>%
+        juice()
+      
+      if (F) {
+        train_py = lss.model$Dataset(
+          data=train_data %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame() %>% r_to_py(),
+          label=train_data %>% select(any_of(ep)) %>% as.matrix() %>% r_to_py(),
+          #group=table(as.numeric(model_data_means$gen_ProvReachID))
+        )
+        
+      # Define Model ------------------------------------------------------------
+      xgb = lss.model$LightGBMLSS(
+        distr.lgb$ZAGamma$ZAGamma(
+          stabilization = "None",
+          response_fn = "exp",
+          loss_fn="nll"
+        )
       )
-    )
-    
-    # Load optimal hyperparameters --------------------------------------------
-    opt_param<-readRDS(file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_",booster,".rds")))
-    
-    xgb$train(
-      r_to_py(opt_param[names(opt_param)!="opt_rounds"]),
-      train_py,
-      num_boost_round=opt_param$opt_rounds
-    )
-    
-    # Save Model --------------------------------------------------------
-    
-    xgb$save_model(r_to_py(file.path("data","models","LSS",paste0("Final_Model_",ep,"_",booster,".txt"))))
+      
+      # Load optimal hyperparameters --------------------------------------------
+      opt_param<-readRDS(file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_",booster,".rds")))
+      
+      xgb$train(
+        r_to_py(opt_param[names(opt_param)!="opt_rounds"]),
+        train_py,
+        num_boost_round=opt_param$opt_rounds
+      )
+      
+      # Save Model --------------------------------------------------------
+      
+      xgb$save_model(r_to_py(file.path("data","models","LSS",paste0("Final_Model_",ep,"_",booster,".txt"))))
+    }
     
     if (T){#if (booster=="dart_ltree"){
       # OOS Predictions -------------------------------------------------------------
+      opt_param<-readRDS(file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_",booster,".rds")))
       
-      cros_v<-group_vfold_cv(model_data_means,
+      cros_v<-group_vfold_cv(model_data,
                              "gen_ProvReachID",
-                             20)
+                             500)
       
       out_res<-list()
       for (i in 1:nrow(cros_v)){

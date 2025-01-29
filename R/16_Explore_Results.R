@@ -82,7 +82,7 @@ pred_rn<-function(x) {
   )
 }
 
-# Predictive Performance --------------------------------------------------
+# OOS Predictive Performance --------------------------------------------------
 sel_modelOOSpredictions<-tbl(con,"OOS_Predictions") %>% 
   #filter(tx_Taxa == local(input$sel_taxa)) %>% 
   #filter(gen_ProvReachID %in% local(sel_ProvReachID)) %>%
@@ -112,12 +112,12 @@ plt_1to1 <- sel_modelOOSpredictions %>%
   )) %>% 
   mutate(plt=map2(data,tx_Taxa,
                   ~ggplot(.x,
-                          aes(x=observed,y=quant_0.5))+
+                          aes(x=observed,y=quant_0.75))+
                     geom_point(size=0.1,alpha=0.1)+
                     geom_abline(slope=1,intercept=0)+
-                    geom_smooth(aes(x=observed,y=quant_0.5),se=F,method="gam",colour="black", formula = y ~ splines::bs(x, 3))+
-                    geom_smooth(aes(x=observed,y=quant_0.75),se=F,method="gam",colour="blue", formula = y ~ splines::bs(x, 3))+
-                    geom_smooth(aes(x=observed,y=quant_0.25),se=F,method="gam",colour="blue", formula = y ~ splines::bs(x, 3))+
+                    geom_smooth(aes(x=observed,y=quant_0.75),se=F,method="gam",colour="black", formula = y ~ splines::bs(x, 3))+
+                    geom_smooth(aes(x=observed,y=quant_0.95),se=F,method="gam",colour="blue", formula = y ~ splines::bs(x, 3))+
+                    geom_smooth(aes(x=observed,y=quant_0.5),se=F,method="gam",colour="blue", formula = y ~ splines::bs(x, 3))+
                     scale_x_continuous(breaks=scales::pretty_breaks())+
                     scale_y_continuous(breaks=scales::pretty_breaks())+
                     coord_cartesian(xlim=rng_fn(.x),ylim=rng_fn(.x))+
@@ -153,6 +153,60 @@ ggsave(file.path("Figs","Fig 1 1to1 Derived.pdf"),plt_1to1$plt[[2]],height=8.5,w
 
 # do for calculated endpoints as well
 
+
+# Predictive Performance 2 ------------------------------------------------
+
+sel_modelISpredictions <- tbl(con,"Model_Predictions") %>% 
+  filter(!is.na(resp_Comm_Biomass_observed)) %>% 
+  select(tx_Taxa,gen_ProvReachID,contains("_quant_"),resp_Comm_Biomass_observed,resp_Comm_Abundance_observed) %>% 
+  pivot_longer(c(contains("_quant_"),resp_Comm_Biomass_observed,resp_Comm_Abundance_observed)) %>% 
+  collect() %>% 
+  mutate(endpoint=case_when(
+    grepl("Biomass",name) ~ "resp_Comm_Biomass",
+    grepl("Abundance",name) ~ "resp_Comm_Abundance"
+  )) %>% 
+  mutate(name=gsub("resp_Comm_Biomass_|resp_Comm_Abundance_","",name)) %>% 
+  pivot_wider() %>% 
+  mutate(endpoint=ep_rn(endpoint),
+         tx_Taxa=ep_rn(tx_Taxa))
+
+plt_1to1 <- sel_modelISpredictions %>% 
+  mutate(across(`quant_0.05`:observed,
+                ~case_when(
+                  tx_Taxa == "SATI" & (observed == 0 | quant_0.75 ==0) ~ NA_real_,
+                  T ~ .
+                ))) %>% 
+  group_by(tx_Taxa) %>% 
+  nest() %>% 
+  ungroup() %>% 
+  mutate(ep_gp=case_when(
+    tx_Taxa %in% CalcEP ~ "Derived",
+    T ~ "Taxa"
+  )) %>% 
+  mutate(plt=map2(data,tx_Taxa,
+                  ~ggplot(.x,
+                          aes(x=observed,y=quant_0.75))+
+                    geom_point(size=0.1,alpha=0.1)+
+                    geom_abline(slope=1,intercept=0)+
+                    geom_smooth(aes(x=observed,y=quant_0.75),se=F,method="gam",colour="black", formula = y ~ splines::bs(x, 3))+
+                    geom_smooth(aes(x=observed,y=quant_0.95),se=F,method="gam",colour="blue", formula = y ~ splines::bs(x, 3))+
+                    geom_smooth(aes(x=observed,y=quant_0.5),se=F,method="gam",colour="blue", formula = y ~ splines::bs(x, 3))+
+                    scale_x_continuous(breaks=scales::pretty_breaks())+
+                    scale_y_continuous(breaks=scales::pretty_breaks())+
+                    coord_cartesian(xlim=rng_fn(.x),ylim=rng_fn(.x))+
+                    theme_bw()+
+                    labs(x="Observed",
+                         y="Predicted",
+                         title=ep_rn(paste0(.y))) +
+                    facet_wrap(~endpoint)
+  )) %>% 
+  group_by(ep_gp ) %>% 
+  nest() %>% 
+  ungroup() %>% 
+  mutate(plt=map(data,~cowplot::plot_grid(plotlist = .x$plt,align="hv",axis="tblr")))
+
+ggsave(file.path("Figs","Fig 1 1to1 in sample Taxa.pdf"),plt_1to1$plt[[1]],height=8.5,width=11)
+ggsave(file.path("Figs","Fig 1 1to1 in sample Derived.pdf"),plt_1to1$plt[[2]],height=8.5,width=11)
 # Predictor Importance ----------------------------------------------------
 
 sel_modelShap0<-tbl(con,"SHAP_scores") %>% 
