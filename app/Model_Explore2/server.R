@@ -120,6 +120,7 @@ function(input, output, session) {
     req(input$sel_taxa)
     req(input$sel_ep)
     validate(need(length(input$sel_region)<9,"Select up to 8 regions for mapping"))
+    browser()
     
     con <- DBI::dbConnect(RSQLite::SQLite(), fp)
     
@@ -622,9 +623,9 @@ function(input, output, session) {
                 aes(x=observed,y=quant_0.5))+
       geom_point()+
       geom_abline(slope=1,intercept=0)+
-      geom_smooth(aes(x=observed,y=quant_0.5),se=F,method="gam",colour="black")+
-      geom_smooth(aes(x=observed,y=quant_0.75),se=F,method="gam",colour="blue")+
-      geom_smooth(aes(x=observed,y=quant_0.25),se=F,method="gam",colour="blue")+
+      geom_smooth(aes(x=observed,y=quant_0.75),se=F,method="gam",colour="black")+
+      geom_smooth(aes(x=observed,y=quant_0.95),se=F,method="gam",colour="blue")+
+      geom_smooth(aes(x=observed,y=quant_0.5),se=F,method="gam",colour="blue")+
       scale_x_continuous(breaks=scales::pretty_breaks())+
       scale_y_continuous(breaks=scales::pretty_breaks())+
       coord_cartesian(xlim=rng,ylim=rng)+

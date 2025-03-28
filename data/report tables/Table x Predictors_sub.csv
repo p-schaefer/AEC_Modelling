@@ -1,0 +1,28 @@
+Predictor,Predictor Group
+Species Interactions,Taxonomic Feature
+Species Tolerance,Taxonomic Feature
+Species Trophic Class,Taxonomic Feature
+Species Thermal Requirement,Taxonomic Feature
+Species Habitat Preference,Taxonomic Feature
+Species Nest Guarding,Taxonomic Feature
+Species Spawning Habitat Preference,Taxonomic Feature
+Species Spawning Methods,Taxonomic Feature
+AEC Modeled Stream Temperature,Natural Feature
+AEC Air Temperature Growing Degree Days in Catchment,Natural Feature
+AEC Turbidity,Natural Feature
+AEC Channel Slope,Natural Feature
+AEC Baseflow Index in Reach Contributing Area,Natural Feature
+AEC Baseflow Index in Upstream Catchment Area,Natural Feature
+AEC Catchment Area,Natural Feature
+AEC Stream Temperature Class,Natural Feature
+AEC Lake Influence,Natural Feature
+AEC Wadeability,Natural Feature
+OLCC Deciduous Treed,Landcover Feature
+OLCC Coniferous Treed,Landcover Feature
+OLCC Depletion/Disturbance,Landcover Feature
+OLCC Agriculture and Undifferentiated Rural,Landcover Feature
+"OLCC Mixed, Sparse, Upland, Plantations Treed",Landcover Feature
+OLCC Urban Developed,Landcover Feature
+"OLCC Clear Open, Turbid Water",Landcover Feature
+"OLCC Marsh, Swamp, Fen, Bog",Landcover Feature
+Land Disturbance Index,Landcover Feature

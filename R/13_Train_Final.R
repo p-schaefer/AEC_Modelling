@@ -99,7 +99,7 @@ for (booster in booster_list) {
       
       cros_v<-group_vfold_cv(model_data,
                              "gen_ProvReachID",
-                             500)
+                             20)
       
       out_res<-list()
       for (i in 1:nrow(cros_v)){

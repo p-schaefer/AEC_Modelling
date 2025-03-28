@@ -2,7 +2,7 @@ library(tidyverse)
 library(sf)
 
 booster_shap<-"dart"
-booster_pred<-"dart" #dart_ltree
+booster_pred<-"dart_ltree" #dart_ltree
 ep<-"resp_Comm_Biomass"
 
 fp<-file.path("app","Model_Explore2","data",paste0("Model_data_v5_dart.gpkg"))

@@ -228,6 +228,7 @@ fluidPage(
                                       shiny::radioButtons("map_breaks",
                                                           "",
                                                           list(
+                                                            #`Presence/Absence`="Presence/Absence",
                                                             Equal="pretty",
                                                             Quantile="quantile"#,
                                                             #`Jenks Natural Breaks`="getJenksBreaks"

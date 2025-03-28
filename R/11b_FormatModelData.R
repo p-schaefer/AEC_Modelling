@@ -3,6 +3,10 @@ library(tidymodels)
 
 tx_data<-read_csv(file.path("data","final","Model_building_rawtaxa_data.csv"))
 
+if (F) {
+  tx_data
+}
+
 adj<-0.005
 
 inv.logit <- function(f,a) {

@@ -64,11 +64,78 @@ for (dt in c("Current","Reference")){
     xgb<-xgb$load_model(r_to_py(file.path("data","models","LSS",paste0("Final_Model_",ep,"_",booster,".txt"))))
     
     if (F){
+      opt_param<-readRDS(file.path("data","models","LSS",paste0("best_params_lightgbm_",ep,"_",booster,".rds")))
+      
+      trn <- train_final %>% select(-starts_with(c("case_weight","resp_","cat_resp_"))) %>% as.data.frame()
+      colnames(trn)
+      
+      
+      tree_dot_all = xgb$booster$dump_model(-1L)
+      
+      tree_dot_all$pandas_categorical[1]
+      
+      out <- list()
+      for (i in 1:length(tree_dot_all$tree_info)) {
+        tree_dot <- tree_dot_all$tree_info[[i]]$tree_structure
+        list.names <- strsplit(names(unlist(tree_dot,recursive = T)), split=".", fixed=TRUE)
+        node.names <- sapply(list.names, function(x) paste(x, collapse="$"))
+        node.names2 <- paste0("tree_dot","$",node.names)
+        
+        taxa_splits <- node.names2[grepl("split_feature",node.names2)]
+        
+        taxa_splits2 <- sapply(taxa_splits,function(x) eval(parse(text=x)))
+        names(taxa_splits2)<-NULL
+        taxa_splits3 <- taxa_splits[taxa_splits2==0]
+        
+        taxa_splits4 <- gsub("split_feature","threshold",taxa_splits3)
+        taxa_splits5 <- sapply(taxa_splits4,function(x) eval(parse(text=x)))
+        names(taxa_splits5)<-NULL
+        
+        taxa_splits6 <- lapply(taxa_splits5,function(x) str_split(x,"\\|\\|"))
+        taxa_splits6 <- lapply(taxa_splits6,function(x) unlist(lapply(x,function(y) tree_dot_all$pandas_categorical[[1]][as.numeric(y)+1])))
+
+        out[[length(out)+1]] <- taxa_splits6
+        
+        # taxa_splits44 <- gsub("split_feature","internal_value",taxa_splits3)
+        # taxa_splits55 <- sapply(taxa_splits44,function(x) eval(parse(text=x)))
+        # names(taxa_splits55)<-NULL
+        
+      }
+      
+      out_matrix <- matrix(nrow=13,ncol=13)
+      out_matrix[] <- 0
+      out_matrix <- as.data.frame(out_matrix)
+      rownames(out_matrix) <- sort(tree_dot_all$pandas_categorical[[1]])
+      colnames(out_matrix) <- sort(tree_dot_all$pandas_categorical[[1]])
+      
+      for (i in 1:length(out)) {
+        if (length(out[[i]])==0) next()
+        for (ii in 1:length(out[[i]])) {
+          if (length(out[[i]][[ii]])==1){
+            out_matrix[out[[i]][[ii]],out[[i]][[ii]]] <- out_matrix[out[[i]][[ii]],out[[i]][[ii]]]+1
+          } else {
+            pw <- expand.grid(sort(out[[i]][[ii]]),sort(out[[i]][[ii]]))
+            pw <- lapply(1:nrow(pw),function(x) as.character(unlist(pw[x,])))
+            # pw1 <- combn(sort(out[[i]][[ii]]),2,simplify=F)
+            # pw2 <- combn(rev(sort(out[[i]][[ii]])),2,simplify=F)
+            # pw <- c(pw1,pw2)
+            for (iii in pw) {
+              if (iii[1]==iii[2]) next()
+              out_matrix[iii[1],iii[2]] <- out_matrix[iii[1],iii[2]]+1
+            }
+          }
+        }
+      }
+      pheatmap::pheatmap(as.matrix(out_matrix))
+
+      heatmap(as.matrix(out_matrix),
+              Colv=as.dendrogram(hclust(dist(t(as.matrix(out_matrix))),method ="ward.D")),
+              Rowv=as.dendrogram(hclust(dist(t(as.matrix(out_matrix))),method ="ward.D")))
       #explainer = shap$TreeExplainer(xgb$booster)
       
       #tree_dot = xgb$booster$dump_model()["tree_info"]
       dot_data = lss.model$lgb$create_tree_digraph(xgb$booster,
-                                                   tree_index=752L,
+                                                   tree_index=2255L,
                                                    orientation ="horizontal",
                                                    show_info=c("data_percentage","split_gain","internal_count",
                                                                "leaf_count","internal_value","internal_weight",

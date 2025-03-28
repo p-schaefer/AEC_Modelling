@@ -1,5 +1,5 @@
 library(tidyverse)
-fp<-file.path("app","Model_Explore2","data",paste0("Model_data_v5_dart.gpkg"))
+fp<-file.path("app","Model_Explore2","data",paste0("Model_data_v5_dart_old.gpkg"))
 
 con <- DBI::dbConnect(RSQLite::SQLite(), fp)
 
@@ -82,6 +82,41 @@ pred_rn<-function(x) {
   )
 }
 
+taxa<-tbl(con,"Taxa_names") %>% collect() %>% pull(1)
+CalcEP<-tbl(con,"CalcEP_names") %>% collect() %>% pull(1)
+pred_names<-tbl(con,"Predictor_names") %>% collect() %>% pull(1)
+
+pred_tbl <- tibble(raw_nm=colnames(tbl(con,"SHAP_scores"))) %>% 
+  mutate(Predictor=pred_rn(raw_nm),
+         `Predictor Group`=case_when(
+           grepl("^AEC",Predictor) ~ "Natural Feature",
+           grepl("^OLCC|Land Disturbance",Predictor) ~ "Landcover Feature",
+           grepl("tx_",raw_nm) ~ "Taxonomic Feature",
+           T ~ NA_character_
+         )) %>% 
+  filter(!is.na(`Predictor Group`)) %>% 
+  filter(!grepl("sel_",raw_nm)) %>% 
+  select(-raw_nm) %>% 
+  write_csv(file.path("data","report tables","Table x Predictors_all.csv"))
+
+pred_tbl <- tibble(raw_nm=colnames(tbl(con,"SHAP_scores"))) %>% 
+  mutate(Predictor=pred_rn(raw_nm),
+         `Predictor Group`=case_when(
+           grepl("^AEC",Predictor) ~ "Natural Feature",
+           grepl("^OLCC|Land Disturbance",Predictor) ~ "Landcover Feature",
+           grepl("tx_",raw_nm) ~ "Taxonomic Feature",
+           T ~ NA_character_
+         )) %>% 
+  filter(!is.na(`Predictor Group`)) %>% 
+  filter(!grepl("sel_",raw_nm)) %>% 
+  select(-raw_nm) %>% 
+  mutate(Predictor=gsub(" - HAiFLO| - HAiFLS","",Predictor)) %>% 
+  distinct() %>% 
+  write_csv(file.path("data","report tables","Table x Predictors_sub.csv"))
+
+tibble(`Community Endpoint`=CalcEP) %>% 
+  write_csv(file.path("data","report tables","Table x Derived Endpoints.csv"))
+
 # OOS Predictive Performance --------------------------------------------------
 sel_modelOOSpredictions<-tbl(con,"OOS_Predictions") %>% 
   #filter(tx_Taxa == local(input$sel_taxa)) %>% 
@@ -95,6 +130,48 @@ rng_fn<-function(x){
   rng<-range(c(x$observed,x$quant_0.75),na.rm=T)
   rng<-range(pretty(rng))
   rng
+}
+
+r2_fun<-function(x,taxa){
+  if (taxa %in% c(
+    "Atlantic Salmon",
+    "Brook Trout",
+    "Brook Stickleback",
+    "Brown Trout",
+    "Central Mudminnow",
+    "Common Shiner",
+    "Creek Chub",
+    "Fantail Darter",
+    "Johnny/Tesselated Darter",
+    "Tesselated Darter",
+    "Pumpkinseed",
+    "Rainbow Darter",
+    "Rainbow Trout",
+    "Rock Bass",
+    "White Sucker",
+    "Sculpins"
+  )) {
+    return(
+      x %>% 
+        group_by(endpoint) %>% 
+        summarise(R2=cor(observed,quant_0.75,method = "spearman",use = "pairwise.complete.obs")^2,
+                  AUC=pROC::auc(observed>0,1-gate)[[1]],
+                  .groups = "drop") %>% 
+        mutate(val=paste0(endpoint," R²/AUC = ",scales::number(R2,accuracy=0.01),"/",scales::number(AUC,accuracy=0.01))) %>% 
+        pull(val) %>% 
+        paste0(collapse = "\n")
+    )
+  } else  {
+    return(
+      x %>% 
+        group_by(endpoint) %>% 
+        summarise(R2=cor(observed,quant_0.75,method = "spearman",use = "pairwise.complete.obs")^2,
+                  .groups = "drop") %>% 
+        mutate(val=paste0(endpoint," R² = ",scales::number(R2,accuracy=0.01))) %>% 
+        pull(val) %>% 
+        paste0(collapse = "\n")
+    )
+  }
 }
 
 plt_1to1 <- sel_modelOOSpredictions %>% 
@@ -111,20 +188,24 @@ plt_1to1 <- sel_modelOOSpredictions %>%
     T ~ "Taxa"
   )) %>% 
   mutate(plt=map2(data,tx_Taxa,
-                  ~ggplot(.x,
+                  ~ggplot(.x ,
                           aes(x=observed,y=quant_0.75))+
                     geom_point(size=0.1,alpha=0.1)+
-                    geom_abline(slope=1,intercept=0)+
-                    geom_smooth(aes(x=observed,y=quant_0.75),se=F,method="gam",colour="black", formula = y ~ splines::bs(x, 3))+
-                    geom_smooth(aes(x=observed,y=quant_0.95),se=F,method="gam",colour="blue", formula = y ~ splines::bs(x, 3))+
-                    geom_smooth(aes(x=observed,y=quant_0.5),se=F,method="gam",colour="blue", formula = y ~ splines::bs(x, 3))+
+                    geom_abline(slope=1,intercept=0,linewidth=0.25)+
+                    geom_smooth(aes(x=observed,y=quant_0.75),se=F,method="lm",colour="blue")+
+                    #geom_quantile(aes(x=observed,y=quant_0.75),quantiles = c(0.05,0.5,0.95),method="rqss",colour="blue",lambda=10)+
+                    #geom_smooth(aes(x=observed,y=quant_0.75),se=F,method="gam",colour="blue", formula = y ~ splines::bs(x, 3))+
+                    #geom_smooth(aes(x=observed,y=quant_0.75),se=F,method="gam",colour="blue", formula = y ~ splines::bs(x, 3))+
+                    #geom_smooth(aes(x=observed,y=quant_0.84),se=F,method="gam",colour="blue", formula = y ~ splines::bs(x, 3))+
+                    #geom_smooth(aes(x=observed,y=quant_0.66),se=F,method="gam",colour="blue", formula = y ~ splines::bs(x, 3))+
                     scale_x_continuous(breaks=scales::pretty_breaks())+
                     scale_y_continuous(breaks=scales::pretty_breaks())+
                     coord_cartesian(xlim=rng_fn(.x),ylim=rng_fn(.x))+
                     theme_bw()+
                     labs(x="Observed",
                          y="Predicted",
-                         title=ep_rn(paste0(.y))) +
+                         title=ep_rn(paste0(.y)),
+                         caption = r2_fun(.x,.y)) +
                     facet_wrap(~endpoint)
   )) %>% 
   group_by(ep_gp ) %>% 
@@ -134,6 +215,9 @@ plt_1to1 <- sel_modelOOSpredictions %>%
 
 ggsave(file.path("Figs","Fig 1 1to1 Taxa.pdf"),plt_1to1$plt[[1]],height=8.5,width=11)
 ggsave(file.path("Figs","Fig 1 1to1 Derived.pdf"),plt_1to1$plt[[2]],height=8.5,width=11)
+
+plt_1to1$data[[1]]$plt[[8]]
+plt_1to1$data[[2]]$plt[[4]]
 
 # plt<-ggplot(sel_modelOOSpredictions,
 #             aes(x=observed,y=quant_0.5))+
@@ -189,8 +273,8 @@ plt_1to1 <- sel_modelISpredictions %>%
                     geom_point(size=0.1,alpha=0.1)+
                     geom_abline(slope=1,intercept=0)+
                     geom_smooth(aes(x=observed,y=quant_0.75),se=F,method="gam",colour="black", formula = y ~ splines::bs(x, 3))+
-                    geom_smooth(aes(x=observed,y=quant_0.95),se=F,method="gam",colour="blue", formula = y ~ splines::bs(x, 3))+
-                    geom_smooth(aes(x=observed,y=quant_0.5),se=F,method="gam",colour="blue", formula = y ~ splines::bs(x, 3))+
+                    geom_smooth(aes(x=observed,y=quant_0.84),se=F,method="gam",colour="blue", formula = y ~ splines::bs(x, 3))+
+                    geom_smooth(aes(x=observed,y=quant_0.66),se=F,method="gam",colour="blue", formula = y ~ splines::bs(x, 3))+
                     scale_x_continuous(breaks=scales::pretty_breaks())+
                     scale_y_continuous(breaks=scales::pretty_breaks())+
                     coord_cartesian(xlim=rng_fn(.x),ylim=rng_fn(.x))+
@@ -304,6 +388,8 @@ plt_RespSurf <- tibble(
 plt_RespSurf <- plt_RespSurf %>% 
   mutate(plt=pmap(list(sel_taxa=taxa,shap_pred_sel=pred_names), #sel_ep=ep,
                   function(sel_ep,sel_taxa,shap_pred_sel) {
+                    browser()
+                    
                     sel_modelShap <- tbl(con,"SHAP_scores") %>%
                       #filter(endpoint == local(sel_ep)) %>%
                       filter(sel_tx_Taxa == local(sel_taxa)) %>%
@@ -318,7 +404,7 @@ plt_RespSurf <- plt_RespSurf %>%
                       filter(!is.na(x)) %>% 
                       filter(x!="NA") 
                     
-                    knots <- 10
+                    knots <- 3
                     if (is.character(sel_modelShap$x[[1]])){
                       sel_modelShap <- sel_modelShap %>% 
                         mutate(x_lab=x,
@@ -409,7 +495,7 @@ gp_plt<-plt_RespSurf2 %>%
                     geom_smooth(stat="identity")+
                     labs(colour="Taxa",y="SHAP")+
                     facet_wrap(~pred_rn(pred_names),scales = "free")+
-                    scale_colour_manual(values = RColorBrewer::brewer.pal(12,"Paired"))+
+                    scale_colour_manual(values = c(RColorBrewer::brewer.pal(12,"Paired"),"grey"))+
                     scale_y_continuous(limits=ax_lm)+
                     theme_bw()+
                     theme(legend.position = "bottom")))
@@ -417,8 +503,238 @@ gp_plt<-plt_RespSurf2 %>%
 a<-map2(gp_plt$plt_nm,gp_plt$plot,
         ~ggsave(file.path("Figs",paste0("Fig 3. PredSurf ",gsub("\\/","",.x),".pdf")),.y,height=11.5,width=17))
 
-  
 
+
+# Individual Response Surfaces --------------------------------------------
+
+sel_taxa<-c("Brook (speckled) Trout","White Sucker","Rock Bass","Sculpin Cottus")
+shap_pred_sel<-c("LDI_HAiFLS_mean","hb_Turbidity","hb_GDDair_UpstreamCatchmentMean") #pred_names
+#shap_pred_sel<-"tx_Taxa"
+sel_ep<-"resp_Comm_Abundance"
+sel_shape_param<-"Current Presence/Absence"
+
+sel_modelShap1 <- tbl(con,"SHAP_scores") %>%
+  filter(shape_param == local(sel_shape_param)) %>%
+  filter(endpoint == local(sel_ep)) %>%
+  filter(sel_tx_Taxa %in% local(c(sel_taxa))) %>%
+  select(sel_gen_ProvReachID,sel_gen_Region,sel_tx_Taxa,endpoint,shape_param,
+         all_of(local(shap_pred_sel)),
+         #all_of(local(paste0("sel_",shap_pred_sel)))
+  ) %>%
+  pivot_longer(all_of(local(shap_pred_sel))) %>% 
+  collect() %>%
+  setNames(c("ProvReachID","gen_Region","Taxa","endpoint","shape_param","y_nm","y")) %>% 
+  filter(!grepl("Reference",shape_param)) %>% 
+  mutate(shape_param=gsub("Current ","",shape_param)) 
+
+sel_modelShap2 <- tbl(con,"SHAP_scores") %>%
+  filter(shape_param == local(sel_shape_param)) %>%
+  filter(endpoint == local(sel_ep)) %>%
+  filter(sel_tx_Taxa %in% local(c(sel_taxa))) %>%
+  select(sel_gen_ProvReachID,sel_gen_Region,sel_tx_Taxa,endpoint,shape_param,
+         #all_of(local(shap_pred_sel)),
+         all_of(local(paste0("sel_",shap_pred_sel)))
+  ) %>%
+  pivot_longer(all_of(local(paste0("sel_",shap_pred_sel)))) %>% 
+  collect() %>%
+  setNames(c("ProvReachID","gen_Region","Taxa","endpoint","shape_param","y_nm","x")) %>% 
+  filter(!grepl("Reference",shape_param)) %>% 
+  mutate(shape_param=gsub("Current ","",shape_param)) %>% 
+  mutate(y_nm=gsub("sel_","",y_nm))
+
+
+sel_modelShap<-left_join(sel_modelShap1,sel_modelShap2) %>% 
+  filter(!is.na(y)) %>% 
+  filter(!is.na(x)) %>% 
+  filter(x!="NA") %>% 
+  filter(gen_Region %in% c("w03_Lake_Ontario_West","w01_Lake_Erie_West","w22_Lake_Superior_Lake_Nipigon","w14_Georgian_Bay_South_Simcoe")) %>% 
+  mutate(gen_Region=gsub("w\\d\\d_","",gen_Region))%>% 
+  mutate(gen_Region=gsub("_Lake_Nipigon","",gen_Region)) %>% 
+  mutate(gen_Region=gsub("_South_Simcoe","",gen_Region)) %>% 
+  mutate(gen_Region=gsub("_"," ",gen_Region)) 
+
+plt<-ggplot(sel_modelShap,aes(x=x,y=y,colour=ep_rn(Taxa)))+
+  geom_point(size=0.1,alpha=0.01)+
+  geom_hline(yintercept = 0,linetype="dashed",linewidth=0.25)+
+  geom_smooth(aes(x=x,y=y,colour=ep_rn(Taxa)),inherit.aes = F,se=T,method="gam", formula = y ~ splines::bs(x, 3))+ #,formula = y ~ s(x,bs="ps")
+  labs(
+    x="",
+    #x=pred_rn(shap_pred_sel),
+    y="SHAP Score",
+    colour="Taxa",
+    title="SHAP Contributions to Presence/Absence"
+    #title=paste(ep_rn(sel_taxa)) #,ep_rn(sel_ep)
+  )+
+  theme_bw()+
+  scale_colour_manual(values = c(RColorBrewer::brewer.pal(length(sel_taxa),"Dark2")))+
+  scale_y_continuous(#labels=scales::comma,
+    #breaks=ax_brk,
+    limits=ax_lm)+ #,expand=c(0,0) breaks=ax_brk,
+  facet_grid(gen_Region~pred_rn(y_nm),scales="free") +
+  #facet_grid(ep_rn(shape_param)~ep_rn(endpoint),scales="free")+
+  theme(legend.position = "bottom")
+
+# Maps --------------------------------------------------------------------
+
+
+sel_strms <- sf::read_sf(fp,"AEC_Streams") %>% 
+  sf::st_transform(4326)
+
+sel_modelpredictions<-tbl(con,"Model_Predictions") %>% 
+  filter(tx_Taxa == "Brook (speckled) Trout") %>%
+  select(gen_ProvReachID,contains("Biomass"),contains(pred_names)) %>% 
+  collect()
+
+out<- sel_strms %>% 
+  left_join(sel_modelpredictions,
+            by=c("ProvReachID"="gen_ProvReachID")) %>% 
+  #mutate(across(contains(c("quant_","observed","predicted")),~expm1(.x))) %>% 
+  rename_with(~gsub(paste0("resp_Comm_Biomass","_"),"",.x)) %>% 
+  select(ProvReachID,
+         observed,
+         p50=quant_0.75,
+         p50_ref=quant_0.75_ref,
+         p50_refdiff=quant_0.75_refdiff,
+         contains(pred_names),
+         geom) %>% 
+  mutate(
+    `Observed`=observed,
+    `Predicted - Reference`=p50_ref,
+    `Predicted - Current`=p50,
+    `(Current - Reference)`=p50_refdiff
+  ) %>% 
+  filter(!is.na(p50)) %>% 
+  sf::st_as_sf() %>% 
+  sf::st_cast("LINESTRING")
+
+col_pred<-leaflet::colorBin("viridis", 
+                            bins = c(0,quantile(out$p50[out$p50>0],probs = seq(0, 1, length.out = 8),na.rm=T)), 
+                            na.color = "grey",
+                            reverse=F)
+
+map_bio_pred <- leaflet::leaflet(options = leaflet::leafletOptions(zoomControl = TRUE,
+                                                                   zoomSnap = 0.25,
+                                                                   zoomDelta = 1)) %>%
+  leaflet::addTiles() %>%
+  #leaflet::addProviderTiles(leaflet::providers$Esri.WorldImagery, group ="ESRI - Imagery") %>%
+  #leaflet::addProviderTiles(leaflet::providers$OpenStreetMap.Mapnik, group ="OpenStreetMap") %>%
+  leaflet::addProviderTiles(leaflet::providers$CartoDB.Positron, group ="CartoDB") %>% 
+  leaflet::addLayersControl(
+    # baseGroups = c("CartoDB",
+    #                "OpenStreetMap",
+    #                "ESRI - Imagery"),
+    position = "topleft",
+    options = leaflet::layersControlOptions(collapsed = F)
+  ) %>%
+  leafgl::addGlPolylines(
+    data=out,
+    weight=0.1,
+    opacity=0.9,
+    src =F,
+    col=~col_pred(out$p50)
+  )
+
+map_bio_obs <- leaflet::leaflet(options = leaflet::leafletOptions(zoomControl = TRUE,
+                                                                  zoomSnap = 0.25,
+                                                                  zoomDelta = 1)) %>%
+  leaflet::addTiles() %>%
+  #leaflet::addProviderTiles(leaflet::providers$Esri.WorldImagery, group ="ESRI - Imagery") %>%
+  #leaflet::addProviderTiles(leaflet::providers$OpenStreetMap.Mapnik, group ="OpenStreetMap") %>%
+  leaflet::addProviderTiles(leaflet::providers$CartoDB.Positron, group ="CartoDB") %>% 
+  leaflet::addLayersControl(
+    # baseGroups = c("CartoDB",
+    #                "OpenStreetMap",
+    #                "ESRI - Imagery"),
+    position = "topleft",
+    options = leaflet::layersControlOptions(collapsed = F)
+  ) %>% 
+  leafgl::addGlPolylines(
+    data=out,
+    weight=0.1,
+    opacity=0.9,
+    src =F,
+    col=~col_pred(out$observed)
+  )
+
+if (F) { # Predictor variable summaries
+  pred_names<-tbl(con,"Predictor_names") %>% collect() %>% pull(1)
+  
+  sel_modelpredictors<-tbl(con,"Predictor_Data") %>% 
+    collect()
+  
+  sel_modelpredictions<-tbl(con,"Model_Predictions") %>% 
+    filter(tx_Taxa == "Brook (speckled) Trout") %>% 
+    collect()
+  
+  obs_reaches <- sel_modelpredictions$gen_ProvReachID[!is.na(sel_modelpredictions$resp_Comm_Biomass_observed)]
+  all_reaches <- sel_modelpredictions$gen_ProvReachID
+  
+  df <- bind_rows(
+    sel_modelpredictors %>% 
+      filter(gen_ProvReachID %in% obs_reaches) %>% 
+      select(all_of(pred_names),-where(is.character)) %>% 
+      pivot_longer(everything()) %>% 
+      group_by(name) %>% 
+      summarise(
+        mean=mean(value,na.rm=T),
+        sd=sd(value,na.rm=T),
+        p2.5=quantile(value,0.025,na.rm=T),
+        p97.5=quantile(value,0.975,na.rm=T)
+      ) %>% 
+      ungroup() %>% 
+      mutate(name=pred_rn(name)) %>% 
+      mutate(subset="Sampled Segments"),
+    sel_modelpredictors %>% 
+      filter(!gen_ProvReachID %in% obs_reaches) %>% 
+      select(all_of(pred_names),-where(is.character)) %>% 
+      pivot_longer(everything()) %>% 
+      group_by(name) %>% 
+      summarise(
+        mean=mean(value,na.rm=T),
+        sd=sd(value,na.rm=T),
+        p50=quantile(value,0.5,na.rm=T),
+        p2.5=quantile(value,0.025,na.rm=T),
+        p97.5=quantile(value,0.975,na.rm=T)
+      ) %>% 
+      ungroup() %>% 
+      mutate(name=pred_rn(name)) %>% 
+      mutate(subset="Unsampled Segments")
+  )
+  
+  df %>% 
+    mutate(num=paste0(scales::number(p2.5,accuracy=0.01)," (",scales::number(p2.5,accuracy=0.01)," ",scales::number(p97.5,accuracy=0.01),")")) %>% 
+    select(name,num,subset) %>% 
+    pivot_wider(names_from = subset,values_from = num) %>% 
+    write_csv(file.path("Figs","Predictor Summaries.csv"))
+
+}
+
+if (F) {
+  pred_names
+  
+  sel_modelShap <- tbl(con,"SHAP_scores") %>% 
+    select(tx_Taxa,endpoint,shape_param,sel_tx_Taxa) %>% 
+    collect() %>% 
+    filter(!grepl("Reference",shape_param)) %>% 
+    mutate(sel_tx_Taxa=ep_rn(sel_tx_Taxa)) %>% 
+    mutate(endpoint=ep_rn(endpoint)) %>% 
+    mutate(shape_param=gsub("Current ","",shape_param)) %>% 
+    mutate(tx_Taxa=abs(tx_Taxa)) %>% 
+    group_by(sel_tx_Taxa,endpoint,shape_param) %>% 
+    summarise(
+      mean=mean(tx_Taxa,na.rm=T),
+      sd=sd(tx_Taxa,na.rm=T),
+      p50=quantile(tx_Taxa,0.5,na.rm=T),
+      p2.5=quantile(tx_Taxa,0.025,na.rm=T),
+      p97.5=quantile(tx_Taxa,0.975,na.rm=T)
+    ) 
+  
+  sel_modelShap %>% 
+    mutate(num=paste0(scales::number(p2.5,accuracy=0.01)," (",scales::number(p2.5,accuracy=0.01)," ",scales::number(p97.5,accuracy=0.01),")")) %>% 
+    select(Taxa=sel_tx_Taxa,Endpoint=endpoint,num,shape_param) %>% 
+    pivot_wider(names_from = shape_param,values_from = num) %>% 
+    write_csv(file.path("Figs","Taxa Shap Summaries.csv"))
+}
 
 # Database Disconnect -------------------------------------------------------
 

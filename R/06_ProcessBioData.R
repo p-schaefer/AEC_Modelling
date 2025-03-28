@@ -145,6 +145,15 @@ if (F) {
               across(!where(is.numeric),~tail(.x,1)),
               .groups="drop")
   
+  tx_data<-read_csv(file.path("data","final","Model_building_rawtaxa_data.csv"))
+  
+  atr_tbl2 <- atr_tbl2 %>% 
+    filter(SampleEventID %in% tx_data$SampleEventID) %>% 
+    group_by(SiteCode,SpeciesCode) %>% 
+    summarise(across(where(is.numeric),~median(.x,na.rm = T)),
+              across(where(function(...)!is.numeric(...)),~head(.x,1))) %>% 
+    ungroup()
+  
   ep_tbl2<-calc_fish_ep(atr_tbl2)
   
   ep_tbl_sub2<-calc_fish_ep(atr_tbl_sub2)
@@ -178,22 +187,51 @@ if (F) {
                filter(!is.na(full),!is.na(sub)) %>% 
                filter(!(full==0 & sub==0)) 
              
-             ggplot(df,aes(x=full,y=sub))+
+             if (grepl("%",y)) {
+               df$full<-df$full*100
+               df$sub<-df$sub*100
+             }
+             
+             p1<-ggplot(df,aes(x=full,y=sub))+
                #geom_hex(alpha=0.5)+
                geom_point(size=0.5)+
                geom_smooth()+
                geom_abline(slope=1,intercept = 0,colour="gray",linewidth=0.25,colour="black")+
-               labs(
-                 x="Full Community",
-                 y="12 Taxa Subset",
-                 subtitle = y,
-                 caption = paste0("r2 = ",scales::number(cor(df$full,df$sub,method = "spearman")^2,accuracy = 0.01))
-               )+
                theme_bw()+
                theme(legend.position = "none")
+             
+             if (y %in% c("Community Total Biomass","Community Total Density")) {
+               p1 <- p1+
+                 scale_x_continuous(transform = "log10",labels = scales::comma)+
+                 scale_y_continuous(transform = "log10",labels = scales::comma)+
+                 labs(
+                   x="Full Community",
+                   y="13 Taxa Subset",
+                   subtitle = y,
+                   caption = paste0("R² = ",scales::number(cor(log10(df$full),log10(df$sub),method = "spearman")^2,accuracy = 0.01))
+                 )
+             } else {
+               p1 <- p1+
+                 scale_x_continuous(labels = scales::comma)+
+                 scale_y_continuous(labels = scales::comma)+
+                 labs(
+                   x="Full Community",
+                   y="13 Taxa Subset",
+                   subtitle = y,
+                   caption = paste0("R² = ",scales::number(cor(df$full,df$sub,method = "spearman")^2,accuracy = 0.01))
+                 )
+             }
+             return(p1)
            })
   
   a1<-cowplot::plot_grid(plotlist =  p1)
+  ggsave(file.path("Figs","Fig x raw vs subset derived ep.pdf"),a1,height=8.5,width=11)
+  
+  summ_stat<-map(p1,function(x){
+    tibble(`Segment Mean (SD)`=paste0(scales::number(mean(x$data$sub),accuracy = 0.01)," (",scales::number(sd(x$data$sub),accuracy = 0.01),")"))
+  })
+  
+  write_csv(bind_rows(summ_stat,.id="Metric"),file.path("Figs","Derived endpoint summary.csv"))
   
 }
 

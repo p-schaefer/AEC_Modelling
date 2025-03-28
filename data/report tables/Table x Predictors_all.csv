@@ -1,0 +1,37 @@
+Predictor,Predictor Group
+Species Interactions,Taxonomic Feature
+Species Tolerance,Taxonomic Feature
+Species Trophic Class,Taxonomic Feature
+Species Thermal Requirement,Taxonomic Feature
+Species Habitat Preference,Taxonomic Feature
+Species Nest Guarding,Taxonomic Feature
+Species Spawning Habitat Preference,Taxonomic Feature
+Species Spawning Methods,Taxonomic Feature
+AEC Modeled Stream Temperature,Natural Feature
+AEC Air Temperature Growing Degree Days in Catchment,Natural Feature
+AEC Turbidity,Natural Feature
+AEC Channel Slope,Natural Feature
+AEC Baseflow Index in Reach Contributing Area,Natural Feature
+AEC Baseflow Index in Upstream Catchment Area,Natural Feature
+AEC Catchment Area,Natural Feature
+AEC Stream Temperature Class,Natural Feature
+AEC Lake Influence,Natural Feature
+AEC Wadeability,Natural Feature
+OLCC Deciduous Treed - HAiFLS,Landcover Feature
+OLCC Deciduous Treed - HAiFLO,Landcover Feature
+OLCC Coniferous Treed - HAiFLS,Landcover Feature
+OLCC Coniferous Treed - HAiFLO,Landcover Feature
+OLCC Depletion/Disturbance - HAiFLS,Landcover Feature
+OLCC Depletion/Disturbance - HAiFLO,Landcover Feature
+OLCC Agriculture and Undifferentiated Rural - HAiFLS,Landcover Feature
+OLCC Agriculture and Undifferentiated Rural - HAiFLO,Landcover Feature
+"OLCC Mixed, Sparse, Upland, Plantations Treed - HAiFLS",Landcover Feature
+"OLCC Mixed, Sparse, Upland, Plantations Treed - HAiFLO",Landcover Feature
+OLCC Urban Developed - HAiFLS,Landcover Feature
+OLCC Urban Developed - HAiFLO,Landcover Feature
+"OLCC Clear Open, Turbid Water - HAiFLS",Landcover Feature
+"OLCC Clear Open, Turbid Water - HAiFLO",Landcover Feature
+"OLCC Marsh, Swamp, Fen, Bog - HAiFLS",Landcover Feature
+"OLCC Marsh, Swamp, Fen, Bog - HAiFLO",Landcover Feature
+Land Disturbance Index - HAiFLS,Landcover Feature
+Land Disturbance Index - HAiFLO,Landcover Feature
