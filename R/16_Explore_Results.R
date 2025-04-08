@@ -674,12 +674,17 @@ if (F) { # Predictor variable summaries
       filter(gen_ProvReachID %in% obs_reaches) %>% 
       select(all_of(pred_names),-where(is.character)) %>% 
       pivot_longer(everything()) %>% 
+      mutate(value=case_when(
+        grepl("_prop",name) ~ value*100,
+        T ~ value
+      )) %>% 
       group_by(name) %>% 
       summarise(
         mean=mean(value,na.rm=T),
         sd=sd(value,na.rm=T),
-        p2.5=quantile(value,0.025,na.rm=T),
-        p97.5=quantile(value,0.975,na.rm=T)
+        p50=quantile(value,0.5,na.rm=T),
+        p5=quantile(value,0.05,na.rm=T),
+        p95=quantile(value,0.95,na.rm=T)
       ) %>% 
       ungroup() %>% 
       mutate(name=pred_rn(name)) %>% 
@@ -688,13 +693,17 @@ if (F) { # Predictor variable summaries
       filter(!gen_ProvReachID %in% obs_reaches) %>% 
       select(all_of(pred_names),-where(is.character)) %>% 
       pivot_longer(everything()) %>% 
+      mutate(value=case_when(
+        grepl("_prop",name) ~ value*100,
+        T ~ value
+      )) %>% 
       group_by(name) %>% 
       summarise(
         mean=mean(value,na.rm=T),
         sd=sd(value,na.rm=T),
         p50=quantile(value,0.5,na.rm=T),
-        p2.5=quantile(value,0.025,na.rm=T),
-        p97.5=quantile(value,0.975,na.rm=T)
+        p5=quantile(value,0.05,na.rm=T),
+        p95=quantile(value,0.95,na.rm=T)
       ) %>% 
       ungroup() %>% 
       mutate(name=pred_rn(name)) %>% 
@@ -702,7 +711,7 @@ if (F) { # Predictor variable summaries
   )
   
   df %>% 
-    mutate(num=paste0(scales::number(p2.5,accuracy=0.01)," (",scales::number(p2.5,accuracy=0.01)," ",scales::number(p97.5,accuracy=0.01),")")) %>% 
+    mutate(num=paste0(scales::comma(p50,accuracy=0.01)," (",scales::comma(p5,accuracy=0.01)," ",scales::comma(p95,accuracy=0.01),")")) %>% 
     select(name,num,subset) %>% 
     pivot_wider(names_from = subset,values_from = num) %>% 
     write_csv(file.path("Figs","Predictor Summaries.csv"))
@@ -725,15 +734,15 @@ if (F) {
       mean=mean(tx_Taxa,na.rm=T),
       sd=sd(tx_Taxa,na.rm=T),
       p50=quantile(tx_Taxa,0.5,na.rm=T),
-      p2.5=quantile(tx_Taxa,0.025,na.rm=T),
-      p97.5=quantile(tx_Taxa,0.975,na.rm=T)
+      p5=quantile(tx_Taxa,0.05,na.rm=T),
+      p95=quantile(tx_Taxa,0.95,na.rm=T)
     ) 
   
   sel_modelShap %>% 
-    mutate(num=paste0(scales::number(p2.5,accuracy=0.01)," (",scales::number(p2.5,accuracy=0.01)," ",scales::number(p97.5,accuracy=0.01),")")) %>% 
+    mutate(num=paste0(scales::comma(p50,accuracy=0.01)," (",scales::comma(p5,accuracy=0.01)," ",scales::comma(p95,accuracy=0.01),")")) %>% 
     select(Taxa=sel_tx_Taxa,Endpoint=endpoint,num,shape_param) %>% 
     pivot_wider(names_from = shape_param,values_from = num) %>% 
-    write_csv(file.path("Figs","Taxa Shap Summaries.csv"))
+    write_excel_csv(file.path("Figs","Taxa Shap Summaries.csv"))
 }
 
 # Database Disconnect -------------------------------------------------------

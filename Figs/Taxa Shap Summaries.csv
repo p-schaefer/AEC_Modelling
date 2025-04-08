@@ -1,27 +1,27 @@
-Taxa,Endpoint,Mean,Presence/Absence
-Brook Stickleback,Biomass (g/m²),0.08 (0.08 0.28),0.08 (0.08 1.51)
-Brook Stickleback,Density (ind/m²),0.01 (0.01 0.20),0.07 (0.07 1.26)
-Brook Trout,Biomass (g/m²),0.05 (0.05 0.24),0.05 (0.05 1.66)
-Brook Trout,Density (ind/m²),0.00 (0.00 0.13),0.04 (0.04 1.47)
-Brown Trout,Biomass (g/m²),0.04 (0.04 0.18),0.66 (0.66 1.51)
-Brown Trout,Density (ind/m²),0.00 (0.00 0.11),0.64 (0.64 1.32)
-Central Mudminnow,Biomass (g/m²),0.00 (0.00 0.13),0.02 (0.02 1.00)
-Central Mudminnow,Density (ind/m²),0.00 (0.00 0.11),0.02 (0.02 0.85)
-Common Shiner,Biomass (g/m²),0.03 (0.03 0.21),0.01 (0.01 0.67)
-Common Shiner,Density (ind/m²),0.01 (0.01 0.18),0.01 (0.01 0.55)
-Creek Chub,Biomass (g/m²),0.07 (0.07 0.38),0.96 (0.96 2.44)
-Creek Chub,Density (ind/m²),0.12 (0.12 0.69),0.85 (0.85 2.36)
-Johnny/Tesselated Darter,Biomass (g/m²),0.00 (0.00 0.10),0.03 (0.03 0.72)
-Johnny/Tesselated Darter,Density (ind/m²),0.06 (0.06 0.25),0.02 (0.02 0.55)
-Pumpkinseed,Biomass (g/m²),0.02 (0.02 0.26),0.04 (0.04 0.63)
-Pumpkinseed,Density (ind/m²),0.02 (0.02 0.25),0.04 (0.04 0.58)
-Rainbow Darter,Biomass (g/m²),0.00 (0.00 0.08),0.28 (0.28 1.68)
-Rainbow Darter,Density (ind/m²),0.02 (0.02 0.14),0.31 (0.31 1.52)
-Rainbow Trout,Biomass (g/m²),0.00 (0.00 0.09),0.04 (0.04 0.82)
-Rainbow Trout,Density (ind/m²),0.00 (0.00 0.19),0.03 (0.03 0.67)
-Rock Bass,Biomass (g/m²),0.00 (0.00 0.08),0.08 (0.08 1.37)
-Rock Bass,Density (ind/m²),0.03 (0.03 0.25),0.10 (0.10 1.31)
-Sculpins,Biomass (g/m²),0.00 (0.00 0.15),0.02 (0.02 1.02)
-Sculpins,Density (ind/m²),0.00 (0.00 0.23),0.02 (0.02 0.90)
-White Sucker,Biomass (g/m²),0.00 (0.00 0.14),0.67 (0.67 1.58)
-White Sucker,Density (ind/m²),0.01 (0.01 0.23),0.71 (0.71 1.73)
+﻿"Taxa","Endpoint","Mean","Presence/Absence"
+"Brook Stickleback","Biomass (g/m²)","0.19 (0.10 0.27)","0.89 (0.16 1.44)"
+"Brook Stickleback","Density (ind/m²)","0.10 (0.01 0.19)","0.75 (0.14 1.21)"
+"Brook Trout","Biomass (g/m²)","0.14 (0.06 0.22)","0.75 (0.09 1.53)"
+"Brook Trout","Density (ind/m²)","0.04 (0.00 0.12)","0.70 (0.08 1.36)"
+"Brown Trout","Biomass (g/m²)","0.11 (0.05 0.17)","1.18 (0.78 1.46)"
+"Brown Trout","Density (ind/m²)","0.04 (0.00 0.09)","1.07 (0.72 1.28)"
+"Central Mudminnow","Biomass (g/m²)","0.05 (0.01 0.11)","0.37 (0.03 0.90)"
+"Central Mudminnow","Density (ind/m²)","0.03 (0.00 0.09)","0.29 (0.03 0.75)"
+"Common Shiner","Biomass (g/m²)","0.12 (0.04 0.19)","0.22 (0.02 0.61)"
+"Common Shiner","Density (ind/m²)","0.09 (0.02 0.16)","0.20 (0.02 0.51)"
+"Creek Chub","Biomass (g/m²)","0.18 (0.08 0.35)","1.64 (1.04 2.29)"
+"Creek Chub","Density (ind/m²)","0.32 (0.14 0.62)","1.47 (0.93 2.20)"
+"Johnny/Tesselated Darter","Biomass (g/m²)","0.05 (0.01 0.10)","0.45 (0.06 0.68)"
+"Johnny/Tesselated Darter","Density (ind/m²)","0.15 (0.08 0.23)","0.34 (0.04 0.51)"
+"Pumpkinseed","Biomass (g/m²)","0.11 (0.03 0.24)","0.35 (0.07 0.59)"
+"Pumpkinseed","Density (ind/m²)","0.11 (0.03 0.23)","0.31 (0.07 0.54)"
+"Rainbow Darter","Biomass (g/m²)","0.02 (0.00 0.07)","1.39 (0.54 1.65)"
+"Rainbow Darter","Density (ind/m²)","0.08 (0.03 0.13)","1.28 (0.53 1.49)"
+"Rainbow Trout","Biomass (g/m²)","0.03 (0.00 0.08)","0.46 (0.08 0.78)"
+"Rainbow Trout","Density (ind/m²)","0.07 (0.01 0.17)","0.37 (0.06 0.63)"
+"Rock Bass","Biomass (g/m²)","0.02 (0.00 0.07)","0.88 (0.17 1.28)"
+"Rock Bass","Density (ind/m²)","0.17 (0.06 0.24)","0.93 (0.19 1.24)"
+"Sculpins","Biomass (g/m²)","0.04 (0.00 0.13)","0.42 (0.04 0.93)"
+"Sculpins","Density (ind/m²)","0.07 (0.01 0.19)","0.36 (0.04 0.82)"
+"White Sucker","Biomass (g/m²)","0.04 (0.00 0.13)","1.04 (0.72 1.48)"
+"White Sucker","Density (ind/m²)","0.13 (0.02 0.22)","1.10 (0.76 1.59)"
