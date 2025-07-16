@@ -1,9 +1,60 @@
+#################### Install required packages ####################
+#installation of packages require compilation, and may take a lot of time
+
+#---- terra ----#
+#if having compilation failure, follow instructions on GitHub: https://github.com/rspatial/terra?tab=readme-ov-file
+#for window users: 
+  #first install Rcpp package, which terra depends on:
+install.packages("Rcpp")
+  #second, download manually Rtools, a C++ compiler that R can use
+#Rtools: https://cran.r-project.org/bin/windows/Rtools/
+  #lastly, install terra directly from GitHub repository
+remotes::install_github("rspatial/terra")
+
+#---- sf ----#
+#may require Rtools for proper installation.
+#if install.packages(sf) does not work, try to install directy from GitHub repository
+remotes::install_github("r-spatial/sf") #development version
+
+#---- whitebox ----#
+#WhiteboxTools and whitebox are required for ihydro
+install.packages("whitebox")
+if (F){
+  install_whitebox()
+  # Possible warning message:
+  # ------------------------------------------------------------------------
+  # Could not find WhiteboxTools!
+  # ------------------------------------------------------------------------
+  #
+  # Your next step is to download and install the WhiteboxTools binary:
+  #     > whitebox::install_whitebox()
+  #
+  # If you have WhiteboxTools installed already run `wbt_init(exe_path=...)`':
+  #    > wbt_init(exe_path='/home/user/path/to/whitebox_tools')
+  #
+  # For whitebox package documentation, ask for help:
+  #    > ??whitebox
+  #
+  # For more information visit https://giswqs.github.io/whiteboxR/
+  #
+  # ------------------------------------------------------------------------
+}
+
+#---- ihydro ----#
+# created by p-schaefer, an integrated hydrology tools for environmental science
+#if install.packages(ihydro) does not work, try to install directly from GitHub repository
+remotes::install_github("p-schaefer/ihydro")
+
+
+#----library----#
+
 library(tidyverse)
 library(sf)
 library(terra)
-library(whitebox)
+library(whitebox) 
 library(future.apply)
 library(ihydro)
+
 
 #HW_save_loc<-"/mnt/storage/HW"
 HW_save_loc<-file.path("data","HW")
