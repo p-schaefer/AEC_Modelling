@@ -21,12 +21,13 @@ IH_list<-list(
 # AEC ---------------------------------------------------------------------
 
 AEC_list<-list(
-  LakeOntario="https://www.gisapplication.lrc.gov.on.ca/fmedatadownload/Packages/AEC_Core_Package02_LakeOntario.zip",
-  LakeErie="https://www.gisapplication.lrc.gov.on.ca/fmedatadownload/Packages/AEC_Core_Package01_LakeErie.zip",
-  LakeHuronSouth="https://www.gisapplication.lrc.gov.on.ca/fmedatadownload/Packages/AEC_Core_Package04_LakeHuronSouth.zip",
-  OttawaStLawrenceRivers="https://www.gisapplication.lrc.gov.on.ca/fmedatadownload/Packages/AEC_Core_Package03_OttawaStLawrenceRivers.zip",
-  LakeHuronNorth="https://www.gisapplication.lrc.gov.on.ca/fmedatadownload/Packages/AEC_Core_Package05_LakeHuronNorth.zip",
-  LakeSuperior="https://www.gisapplication.lrc.gov.on.ca/fmedatadownload/Packages/AEC_Core_Package06_LakeSuperior.zip"
+  #active links as of 15 July 2025 found at: https://geohub.lio.gov.on.ca/maps/mnrf::aquatic-ecosystem-classification-aec-for-ontario/about
+  LakeOntario = "https://ws.gisetl.lrc.gov.on.ca/fmedatadownload/Packages/AEC_Core_Package02_LakeOntario.zip",
+  LakeErie = "https://ws.gisetl.lrc.gov.on.ca/fmedatadownload/Packages/AEC_Core_Package01_LakeErie.zip",
+  LakeHuronSouth = "https://ws.gisetl.lrc.gov.on.ca/fmedatadownload/Packages/AEC_Core_Package04_LakeHuronSouth.zip",
+  OttawaStLawrenceRivers = "https://ws.gisetl.lrc.gov.on.ca/fmedatadownload/Packages/AEC_Core_Package03_OttawaStLawrenceRivers.zip",
+  LakeHuronNorth = "https://ws.gisetl.lrc.gov.on.ca/fmedatadownload/Packages/AEC_Core_Package05_LakeHuronNorth.zip",
+  LakeSuperior = "https://ws.gisetl.lrc.gov.on.ca/fmedatadownload/Packages/AEC_Core_Package06_LakeSuperior.zip"
 )
 
 
@@ -92,17 +93,24 @@ master_dl<-list(
 # Download files ----------------------------------------------------------
 
 if (T) {
-  library(curl)
-  
+  library(curl)  
+  #create file path, if it does not exist
   if (!dir.exists(file.path("data","raw","GIS"))) dir.create(file.path("data","raw","GIS"), recursive = TRUE)
   
-  dl<-lapply(master_dl,function(l1) lapply(l1,function(l2) {
-    if (!file.exists(file.path("data","raw","GIS",basename(l2)))){
-      h = new_handle(dirlistonly=TRUE)
-      con = curl(l2, "r", h)
-      curl_download(l2,file.path("data","raw","GIS",basename(l2)))
-    }
-  }))
+  dl<-lapply(master_dl,
+             function(l1) lapply(l1,function(l2) {
+               #not already downloaded, 
+               if (!file.exists(file.path("data","raw","GIS",basename(l2)))){               
+                 tryCatch({
+                   #Download url files
+                   curl_download(l2,file.path("data","raw","GIS",basename(l2))) 
+                   message("Successfully downloaded: ", basename(l2))
+                 }, error = function(e) {
+                   warning("Failed to download: ", basename(l2))
+                   warning("Error details: ", e$message)
+                 })
+               }
+             }))
 }
 
 
